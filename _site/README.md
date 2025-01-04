@@ -1,3 +1,3 @@
-# jadekler.github.io
+# jeanbza.github.io
 
 bundle exec jekyll serve

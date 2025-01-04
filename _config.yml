@@ -18,15 +18,17 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-title: Jean de Klerk
-email: deklerk@google.com
+title: Jean Barkhuysen
+email: jbarkhuysen@google.com
 description: >-
+  SWE at Netflix working on distributed media processing/storage. Former Googler
+  working on distributed storage. Former surname de Klerk.
+
   This is my personal website. The views represented here are my own, and do not
   represent my employer.
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "jadekler.github.io" # the base hostname & protocol for your site, e.g. http://example.com
-twitter_username: jadekler
-github_username:  jadekler
+url: "jeanbza.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+github_username:  jeanbza
 
 # Build settings
 theme: minima

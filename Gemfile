@@ -7,19 +7,21 @@ source "https://rubygems.org"
 #
 # This will help ensure the proper Jekyll version is running.
 # Happy Jekylling!
-gem "jekyll", "~> 4.2.2"
+gem "jekyll", "~> 4.3.4"
 # This is the default theme for new Jekyll sites. You may change this to anything you like.
-gem "minima", "~> 2.5.1"
+gem "minima", "~> 2.5.2"
 # If you want to use GitHub Pages, remove the "gem "jekyll"" above and
 # uncomment the line below. To upgrade, run `bundle update github-pages`.
 # gem "github-pages", group: :jekyll_plugins
 # If you have any plugins, put them here!
 group :jekyll_plugins do
-  gem "jekyll-feed", "~> 0.16"
+  gem "jekyll-feed", "~> 0.17"
 end
 
-# jekyll 4.2 seems to need this
-gem "webrick", "~> 1.7.0"
-
-# toc
+# ToC
 gem "jekyll-toc"
+
+# Things that were removed from stdlib in ruby 3.4, but we still need.
+gem "csv"
+gem "logger"
+gem "base64"

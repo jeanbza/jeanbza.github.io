@@ -1,4 +1,4 @@
-module github.com/jadekler.github.io/example
+module github.com/jeanbza.github.io/example
 
 go 1.15
 

@@ -8,3 +8,5 @@
 *.pdf
 *.synctex.gz
 assets/__latexindent_temp.tex
+.vscode
+.code
