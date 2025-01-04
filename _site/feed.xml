@@ -1,5 +1,33 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-03T19:34:21-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-03T19:48:51-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Goodbye Google, Hiya Netflix</title><link href="http://localhost:4000/2025/01/02/goodbye-google.html" rel="alternate" type="text/html" title="Goodbye Google, Hiya Netflix" /><published>2025-01-02T00:55:23-07:00</published><updated>2025-01-02T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/02/goodbye-google</id><content type="html" xml:base="http://localhost:4000/2025/01/02/goodbye-google.html"><![CDATA[<h1 id="a-goodbye-to-google">A goodbye to Google</h1>
+
+<p>I left Google last month, after almost 7 years to the day.</p>
+
+<p>This comes from a desire to switch to remote work, which lets my wife, kids, and
+I move closer to our family.</p>
+
+<p>In my farewell letter to the team, I indulged in a bit of a tradition of writing
+a retrospective. I don’t think I’ll do so here, but I thought it was worth
+putting a marker in ~the sand~ my blog all the same.</p>
+
+<p>I will share the last paragraph, though:</p>
+
+<blockquote>
+  <p>I’ve been incredibly lucky to be surrounded by phenomenal managers, team
+leads, and incredibly talented peers. I’m indelibly grateful [to each of them].
+It has been an immense privilege and pleasure working and learning from [them].</p>
+</blockquote>
+
+<p>Working at Google the past 7 years has been a total dream, and I’ve learned an
+immense amount from the challenges I’ve been lucky enough to work on, and moreso
+the peers I’ve been able to work with.</p>
+
+<h2 id="a-hello-to-netflix">A hello to Netflix</h2>
+
+<p>All that said, I am also very excited for my next chapter at Netflix. I’ve heard
+great things about the work that’s done at Netflix and look forward to see
+another way to do things, apply some of the things I’ve learned, and no doubt
+learn a great deal from the next set of challenges and great colleagues.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[A goodbye to Google]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
 
 <p>This is a collection of extremely useful internal resources, which are made
 publicly available. I thought I’d share these, since they are a bit hard to find
@@ -877,7 +905,7 @@ func Decompress(name, path string) error {
 
 <p>As part of my role transfer, I joined NetInfra - network infrastructure. I spent 2 years on that team, and primarily spent my time designing and leading the development of workflow orchestration system. The system stringed (strang?) together various NetInfra forecast, design, execution, and planning systems into a cohesive whole that could forecast network growth, plan for it, and execute changes to Google data centers to handle the growth. Think: forecast YouTube grows by Xxx leads to purchasing X, Y, Z and the instructions for when and where to install them. Lots of bin packing and optimisation solving in that space.</p>
 
-<p>It was interesting, but not particularly thrilling. Mostly I lacked for good mentors in the org. After 2 years, I’d had my fill, and moved on to my current team: object file system (ObjFS), the filesystem underpinning Google’s distributed build stack. It’s written in C++, handles significantly more than 1 million QPS, and the org has loads of fantastic mentors.</p>
+<p>It was interesting, but it was time to move on. After 2 years, I’d had my fill, and moved on to my current team: object file system (ObjFS), the filesystem underpinning Google’s distributed build stack. It’s written in C++, handles significantly more than 1 million QPS, and the org has loads of fantastic mentors.</p>
 
 <p>It’s so far been intense, but good. A great deal of learning - in the domain, certainly, but also about C++ and build systems in general. I’ve thoroughly enjoyed being back in a growth/learning space. I look forward to what the next few years will bring on this team!</p>
 
@@ -1258,4 +1286,4 @@ gRPC server would look similar.</p>
 <h1 id="conclusion">Conclusion</h1>
 
 <p>Stubbing and mocking gRPC servers in Go is very easy, doesn’t require any
-libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Keeping Your Modules Compatible</title><link href="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html" rel="alternate" type="text/html" title="Keeping Your Modules Compatible" /><published>2020-07-07T15:55:23-06:00</published><updated>2020-07-07T15:55:23-06:00</updated><id>http://localhost:4000/2020/07/07/keeping-your-modules-compatible</id><content type="html" xml:base="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html"><![CDATA[<p>Posted at <a href="https://blog.golang.org/module-compatibility">blog.golang.org/module-compatibility</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at blog.golang.org/module-compatibility.]]></summary></entry></feed>
+libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry></feed>
