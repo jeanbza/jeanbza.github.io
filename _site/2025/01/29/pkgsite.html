@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Running your own pkgsite | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Running your own pkgsite" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Who this is for" />
+<meta property="og:description" content="Who this is for" />
+<link rel="canonical" href="http://localhost:4000/2025/01/29/pkgsite.html" />
+<meta property="og:url" content="http://localhost:4000/2025/01/29/pkgsite.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-01-29T00:55:23-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Running your own pkgsite" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-01-29T00:55:23-07:00","datePublished":"2025-01-29T00:55:23-07:00","description":"Who this is for","headline":"Running your own pkgsite","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2025/01/29/pkgsite.html"},"url":"http://localhost:4000/2025/01/29/pkgsite.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#running-your-own-pkgsite">Running your own pkgsite</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#who-this-is-for">Who this is for</a></li>
+<li class="toc-entry toc-h2"><a href="#understanding-pkgsite">Understanding pkgsite</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#code-layout">Code layout</a></li>
+<li class="toc-entry toc-h3"><a href="#modifiable-config">Modifiable config</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h2"><a href="#running-pkgsite">Running pkgsite</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#a-simple-pkgsite">A simple pkgsite</a></li>
+<li class="toc-entry toc-h3"><a href="#standing-up-a-real-pkgsite">Standing up a real pkgsite</a></li>
+<li class="toc-entry toc-h3"><a href="#poke-the-worker">Poke the worker</a></li>
+<li class="toc-entry toc-h3"><a href="#see-the-results">See the results</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#running-your-own-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running your own pkgsite</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-01-29T00:55:23-07:00" itemprop="datePublished">Jan 29, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h2 id="who-this-is-for">
+<a class="anchor" href="#who-this-is-for" aria-hidden="true"><span class="octicon octicon-link"></span></a>Who this is for</h2>
+
+<p>I’ve recently joined Netflix, and I’m doing a bit of Go. Go is not one of the
+main languages at Netflix, so it lacks a dedicated team supporting it, and lacks
+some common tooling.</p>
+
+<p>Netflix has a private enterprise GitHub (and goproxy), which means that
+<a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
+to run pkgsite myself against this private enterprise GitHub. This article is
+for anyone else setting out to do similarly.</p>
+
+<h2 id="understanding-pkgsite">
+<a class="anchor" href="#understanding-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Understanding pkgsite</h2>
+
+<p>https://github.com/golang/pkgsite/blob/master/doc/design.md describes pkgsite’s
+components. https://sum.golang.org/ describes the proxy and index that enables
+pkgsite.</p>
+
+<h3 id="code-layout">
+<a class="anchor" href="#code-layout" aria-hidden="true"><span class="octicon octicon-link"></span></a>Code layout</h3>
+
+<p>pkgsite is canonically hosted at https://go.googlesource.com/pkgsite and can be
+cloned with <code class="language-plaintext highlighter-rouge">git clone https://go.googlesource.com/pkgsite</code>. The important parts
+for this article are,</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____cmd
+| |____frontend
+| | |____main.go
+| |____pkgsite
+| | |____main.go
+| |____worker
+| | |____main.go
+|____migrations
+| |____000073_create_documentation_symbols.down.sql
+| |____000018_add_module_version_states_status_index.up.sql
+| |____...etc...
+|____devtools
+| |____cmd
+| | |____seeddb
+| | | |____seed.txt
+| | | |____main.go
+</code></pre></div></div>
+
+<p>Let’s quickly describe each:</p>
+
+<ul>
+  <li>
+<strong>cmd/pkgsite</strong>: The simplest and best documented. Running this lets you host
+a minimal pkgsite. It’s not connected to a database and doesn’t have a worker
+searching for modules. So, it doesn’t have a usable search feature. It’s useful
+for looking at one or two of your own projects but without search, it’s not good
+enough for an entire org.</li>
+  <li>
+<strong>frontend</strong>: The web-serving frontend. When run, serves the frontend at
+<code class="language-plaintext highlighter-rouge">localhost:8080</code>.</li>
+  <li>
+<strong>worker</strong>: The data-fetching backend that updates the database. When run,
+serves a work management page at <code class="language-plaintext highlighter-rouge">localhost:8000</code>.</li>
+  <li>
+<strong>migrations</strong>: A series of sql scripts that when run in order will set up
+all the necessary tables and schemas.</li>
+  <li>
+<strong>seeddb</strong>: A one-shot program that reads a <code class="language-plaintext highlighter-rouge">seed.txt</code> file, fetches modules
+listed there-in, and populates the database with the information.</li>
+</ul>
+
+<h3 id="modifiable-config">
+<a class="anchor" href="#modifiable-config" aria-hidden="true"><span class="octicon octicon-link"></span></a>Modifiable config</h3>
+
+<p>The frontend and worker both use <code class="language-plaintext highlighter-rouge">internal/config/serverconfig/config.go</code>, which
+is modifiable with environment variables. Here’s a few you may care about:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Proxy config.
+ProxyURL:   GetEnv("GO_MODULE_PROXY_URL", "https://proxy.golang.org"),
+
+# Database config.
+DBHost:               chooseOne(GetEnv("GO_DISCOVERY_DATABASE_HOST", "localhost")),
+DBUser:               GetEnv("GO_DISCOVERY_DATABASE_USER", "postgres"),
+DBPassword:           os.Getenv("GO_DISCOVERY_DATABASE_PASSWORD"),
+DBSecondaryHost:      chooseOne(os.Getenv("GO_DISCOVERY_DATABASE_SECONDARY_HOST")),
+DBPort:               GetEnv("GO_DISCOVERY_DATABASE_PORT", "5432"),
+DBName:               GetEnv("GO_DISCOVERY_DATABASE_NAME", "discovery-db"),
+</code></pre></div></div>
+
+<h2 id="running-pkgsite">
+<a class="anchor" href="#running-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running pkgsite</h2>
+
+<h3 id="a-simple-pkgsite">
+<a class="anchor" href="#a-simple-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>A simple pkgsite</h3>
+
+<p>You can run a simple pkgsite with <code class="language-plaintext highlighter-rouge">go run cmd/pkgsite/main.go -proxy=URL</code>, but
+it is only hosts documentation for a single repo. So, we’ll move on from this.</p>
+
+<h3 id="standing-up-a-real-pkgsite">
+<a class="anchor" href="#standing-up-a-real-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Standing up a real pkgsite</h3>
+
+<p>We’ll need five things running:</p>
+
+<ul>
+  <li>A go proxy server.</li>
+  <li>A go index server.</li>
+  <li>A postgres database.</li>
+  <li>The pkgsite frontend.</li>
+  <li>The pkgsite worker.</li>
+</ul>
+
+<p>We’ll assume you already have a proxy server. But if not, check out
+https://github.com/goproxy/goproxy as one option.</p>
+
+<p>A simple index server is given at https://github.com/jeanbza/golang-index. You
+may wish to build your own, though. Its role is simple, and described at
+https://github.com/golang/pkgsite/blob/master/doc/design.md.</p>
+
+<p>There are numerous ways to run a postgres database. Here’s something quick,
+written for a Mac, to get you started:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew <span class="nb">install </span>postgresql@17
+brew services start postgresql@17
+createdb discovery-db
+<span class="c"># Your $USERNAME may be the username, not postgres.</span>
+</code></pre></div></div>
+
+<p>Now, let’s run the frontend:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>pkgsite
+<span class="c"># You may need to set GO_DISCOVERY_DATABASE_USER=myusername.</span>
+go run cmd/frontend/main.go <span class="se">\</span>
+    <span class="nt">-local</span> <span class="se">\</span>
+    <span class="nt">-proxy_url</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
+    <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div></div>
+
+<p>Finally, let’s run the worker:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># You may need to set GO_DISCOVERY_DATABASE_USER=myusername.</span>
+<span class="nv">GO_MODULE_PROXY_URL</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
+    <span class="nv">GO_MODULE_INDEX_URL</span><span class="o">=</span>https://url-to-my-index <span class="se">\</span>
+    go run cmd/worker/main.go <span class="se">\</span>
+    <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div></div>
+
+<p>Note: If you’re using <code class="language-plaintext highlighter-rouge">github.com/jeanbza/golang-index</code>, the proxy runs (as of
+this writing) at <code class="language-plaintext highlighter-rouge">http://localhost:8081</code>. You’ll note this is raw http. Trying
+to run the worker with a non-TLS’d GO_MODULE_INDEX_URL will result in an error.
+Get around this by making the worker accept a non-https index by commenting out
+the https validation at <code class="language-plaintext highlighter-rouge">pkgsite/internal/index/index.go</code>’s <code class="language-plaintext highlighter-rouge">New()</code> function.</p>
+
+<h3 id="poke-the-worker">
+<a class="anchor" href="#poke-the-worker" aria-hidden="true"><span class="octicon octicon-link"></span></a>Poke the worker</h3>
+
+<p>The worker will periodically do work, but you can poke it by either visiting
+http://localhost:8000 and clicking the poll/enqueue buttons, or by something
+like,</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Assuming the worker is running at localhost:8000.</span>
+<span class="k">while </span><span class="nb">true</span> <span class="p">;</span> <span class="k">do </span><span class="nb">date</span> <span class="o">&amp;&amp;</span> curl localhost:8000/enqueue <span class="o">&amp;&amp;</span> curl localhost:8000/poll <span class="o">&amp;&amp;</span> <span class="nb">sleep </span>20<span class="p">;</span> <span class="k">done</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="see-the-results">
+<a class="anchor" href="#see-the-results" aria-hidden="true"><span class="octicon octicon-link"></span></a>See the results</h3>
+
+<p>Check the “modules” page at http://localhost:8000 to see how the worker is
+getting along.</p>
+
+<p>As it progresses, it populates the postgres database. You should begin to start
+seeing modules through the frontend. To do so, navigate to
+http://localhost:8080, where the frontend is hosted.</p>
+
+  </div>
+<a class="u-url" href="/2025/01/29/pkgsite.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

@@ -19,7 +19,7 @@
 # in the templates via {{ site.myvariable }}.
 
 title: Jean Barkhuysen
-email: jbarkhuysen@google.com
+email: jbarkhuysen@netflix.com
 description: >-
   SWE at Netflix working on distributed media processing/storage. Former Googler
   working on distributed storage. Former surname de Klerk.

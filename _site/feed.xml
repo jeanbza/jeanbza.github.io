@@ -1,33 +1,160 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-03T20:05:01-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Goodbye Google, Hiya Netflix</title><link href="http://localhost:4000/2025/01/02/goodbye-google.html" rel="alternate" type="text/html" title="Goodbye Google, Hiya Netflix" /><published>2025-01-02T00:55:23-07:00</published><updated>2025-01-02T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/02/goodbye-google</id><content type="html" xml:base="http://localhost:4000/2025/01/02/goodbye-google.html"><![CDATA[<h1 id="a-goodbye-to-google">A goodbye to Google</h1>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T14:47:40-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
 
-<p>I left Google last month, after almost 7 years to the day.</p>
+<p>I’ve recently joined Netflix, and I’m doing a bit of Go. Go is not one of the
+main languages at Netflix, so it lacks a dedicated team supporting it, and lacks
+some common tooling.</p>
 
-<p>This comes from a desire to switch to remote work, which lets my wife, kids, and
-I move closer to our family.</p>
+<p>Netflix has a private enterprise GitHub (and goproxy), which means that
+<a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
+to run pkgsite myself against this private enterprise GitHub. This article is
+for anyone else setting out to do similarly.</p>
 
-<p>In my farewell letter to the team, I indulged in a bit of a tradition of writing
-a retrospective. I don’t think I’ll do so here, but I thought it was worth
-putting a marker in ~the sand~ my blog all the same.</p>
+<h2 id="understanding-pkgsite">Understanding pkgsite</h2>
 
-<p>I will share the last paragraph, though:</p>
+<p>https://github.com/golang/pkgsite/blob/master/doc/design.md describes pkgsite’s
+components. https://sum.golang.org/ describes the proxy and index that enables
+pkgsite.</p>
 
-<blockquote>
-  <p>I’ve been incredibly lucky to be surrounded by phenomenal managers, team
-leads, and incredibly talented peers. I’m indelibly grateful [to each of them].
-It has been an immense privilege and pleasure working and learning from [them].</p>
-</blockquote>
+<h3 id="code-layout">Code layout</h3>
 
-<p>Working at Google the past 7 years has been a total dream, and I’ve learned an
-immense amount from the challenges I’ve been lucky enough to work on, and moreso
-the peers I’ve been able to work with.</p>
+<p>pkgsite is canonically hosted at https://go.googlesource.com/pkgsite and can be
+cloned with <code class="language-plaintext highlighter-rouge">git clone https://go.googlesource.com/pkgsite</code>. The important parts
+for this article are,</p>
 
-<h2 id="a-hello-to-netflix">A hello to Netflix</h2>
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____cmd
+| |____frontend
+| | |____main.go
+| |____pkgsite
+| | |____main.go
+| |____worker
+| | |____main.go
+|____migrations
+| |____000073_create_documentation_symbols.down.sql
+| |____000018_add_module_version_states_status_index.up.sql
+| |____...etc...
+|____devtools
+| |____cmd
+| | |____seeddb
+| | | |____seed.txt
+| | | |____main.go
+</code></pre></div></div>
 
-<p>All that said, I am also very excited for my next chapter at Netflix. I’ve heard
-great things about the work that’s done at Netflix and look forward to see
-another way to do things, apply some of the things I’ve learned, and no doubt
-learn a great deal from the next set of challenges and great colleagues.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[A goodbye to Google]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
+<p>Let’s quickly describe each:</p>
+
+<ul>
+  <li><strong>cmd/pkgsite</strong>: The simplest and best documented. Running this lets you host
+a minimal pkgsite. It’s not connected to a database and doesn’t have a worker
+searching for modules. So, it doesn’t have a usable search feature. It’s useful
+for looking at one or two of your own projects but without search, it’s not good
+enough for an entire org.</li>
+  <li><strong>frontend</strong>: The web-serving frontend. When run, serves the frontend at
+<code class="language-plaintext highlighter-rouge">localhost:8080</code>.</li>
+  <li><strong>worker</strong>: The data-fetching backend that updates the database. When run,
+serves a work management page at <code class="language-plaintext highlighter-rouge">localhost:8000</code>.</li>
+  <li><strong>migrations</strong>: A series of sql scripts that when run in order will set up
+all the necessary tables and schemas.</li>
+  <li><strong>seeddb</strong>: A one-shot program that reads a <code class="language-plaintext highlighter-rouge">seed.txt</code> file, fetches modules
+listed there-in, and populates the database with the information.</li>
+</ul>
+
+<h3 id="modifiable-config">Modifiable config</h3>
+
+<p>The frontend and worker both use <code class="language-plaintext highlighter-rouge">internal/config/serverconfig/config.go</code>, which
+is modifiable with environment variables. Here’s a few you may care about:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Proxy config.
+ProxyURL:   GetEnv("GO_MODULE_PROXY_URL", "https://proxy.golang.org"),
+
+# Database config.
+DBHost:               chooseOne(GetEnv("GO_DISCOVERY_DATABASE_HOST", "localhost")),
+DBUser:               GetEnv("GO_DISCOVERY_DATABASE_USER", "postgres"),
+DBPassword:           os.Getenv("GO_DISCOVERY_DATABASE_PASSWORD"),
+DBSecondaryHost:      chooseOne(os.Getenv("GO_DISCOVERY_DATABASE_SECONDARY_HOST")),
+DBPort:               GetEnv("GO_DISCOVERY_DATABASE_PORT", "5432"),
+DBName:               GetEnv("GO_DISCOVERY_DATABASE_NAME", "discovery-db"),
+</code></pre></div></div>
+
+<h2 id="running-pkgsite">Running pkgsite</h2>
+
+<h3 id="a-simple-pkgsite">A simple pkgsite</h3>
+
+<p>You can run a simple pkgsite with <code class="language-plaintext highlighter-rouge">go run cmd/pkgsite/main.go -proxy=URL</code>, but
+it is only hosts documentation for a single repo. So, we’ll move on from this.</p>
+
+<h3 id="standing-up-a-real-pkgsite">Standing up a real pkgsite</h3>
+
+<p>We’ll need five things running:</p>
+
+<ul>
+  <li>A go proxy server.</li>
+  <li>A go index server.</li>
+  <li>A postgres database.</li>
+  <li>The pkgsite frontend.</li>
+  <li>The pkgsite worker.</li>
+</ul>
+
+<p>We’ll assume you already have a proxy server. But if not, check out
+https://github.com/goproxy/goproxy as one option.</p>
+
+<p>A simple index server is given at https://github.com/jeanbza/golang-index. You
+may wish to build your own, though. Its role is simple, and described at
+https://github.com/golang/pkgsite/blob/master/doc/design.md.</p>
+
+<p>There are numerous ways to run a postgres database. Here’s something quick,
+written for a Mac, to get you started:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew <span class="nb">install </span>postgresql@17
+brew services start postgresql@17
+createdb discovery-db
+<span class="c"># Your $USERNAME may be the username, not postgres.</span>
+</code></pre></div></div>
+
+<p>Now, let’s run the frontend:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>pkgsite
+<span class="c"># You may need to set GO_DISCOVERY_DATABASE_USER=myusername.</span>
+go run cmd/frontend/main.go <span class="se">\</span>
+    <span class="nt">-local</span> <span class="se">\</span>
+    <span class="nt">-proxy_url</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
+    <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div></div>
+
+<p>Finally, let’s run the worker:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># You may need to set GO_DISCOVERY_DATABASE_USER=myusername.</span>
+<span class="nv">GO_MODULE_PROXY_URL</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
+    <span class="nv">GO_MODULE_INDEX_URL</span><span class="o">=</span>https://url-to-my-index <span class="se">\</span>
+    go run cmd/worker/main.go <span class="se">\</span>
+    <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div></div>
+
+<p>Note: If you’re using <code class="language-plaintext highlighter-rouge">github.com/jeanbza/golang-index</code>, the proxy runs (as of
+this writing) at <code class="language-plaintext highlighter-rouge">http://localhost:8081</code>. You’ll note this is raw http. Trying
+to run the worker with a non-TLS’d GO_MODULE_INDEX_URL will result in an error.
+Get around this by making the worker accept a non-https index by commenting out
+the https validation at <code class="language-plaintext highlighter-rouge">pkgsite/internal/index/index.go</code>’s <code class="language-plaintext highlighter-rouge">New()</code> function.</p>
+
+<h3 id="poke-the-worker">Poke the worker</h3>
+
+<p>The worker will periodically do work, but you can poke it by either visiting
+http://localhost:8000 and clicking the poll/enqueue buttons, or by something
+like,</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Assuming the worker is running at localhost:8000.</span>
+<span class="k">while </span><span class="nb">true</span> <span class="p">;</span> <span class="k">do </span><span class="nb">date</span> <span class="o">&amp;&amp;</span> curl localhost:8000/enqueue <span class="o">&amp;&amp;</span> curl localhost:8000/poll <span class="o">&amp;&amp;</span> <span class="nb">sleep </span>20<span class="p">;</span> <span class="k">done</span><span class="p">;</span>
+</code></pre></div></div>
+
+<h3 id="see-the-results">See the results</h3>
+
+<p>Check the “modules” page at http://localhost:8000 to see how the worker is
+getting along.</p>
+
+<p>As it progresses, it populates the postgres database. You should begin to start
+seeing modules through the frontend. To do so, navigate to
+http://localhost:8080, where the frontend is hosted.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Who this is for]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
 
 <p>This is a collection of extremely useful internal resources, which are made
 publicly available. I thought I’d share these, since they are a bit hard to find
@@ -616,141 +743,7 @@ func (e *PathParseErrors) Unwrap() error {
 
 <p>This issue is exacerbated by the fact that it’s impossible for the author of PathParseErrors to document their Unwrap method in a way that will directly help users. Users often don’t interact with the Unwrap method directly: they use tools like As and Is, which themselves call the Unwrap method. And, this error may exist in a library that is several layers deep in a dependency tree: a user may have a very hard time finding the exact library whose documentation to go read when they’ve got an opaque stack of wrapped errors.</p>
 
-<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry><entry><title type="html">Don’t use assertion libraries in Go</title><link href="http://localhost:4000/2022/02/08/assertion-libraries.html" rel="alternate" type="text/html" title="Don’t use assertion libraries in Go" /><published>2022-02-08T14:55:23-07:00</published><updated>2022-02-08T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/08/assertion-libraries</id><content type="html" xml:base="http://localhost:4000/2022/02/08/assertion-libraries.html"><![CDATA[<p>Foreword #1: This is a very sensitive topic for many people. 🙂 I find that many people have never considered writing tests <em>without</em> assertion libraries. It might come as a shocking surprise to consider such a world. That shock and surprise might be painful. Steel yourself.</p>
-
-<p>Foreword #2: This is inspired by a long conversation the Google Go readability crowd recently, in which we collectively re-affirmed our position to ban assertion libraries in Google. Most of this post is my own responses, tidied up.</p>
-
-<h1 id="just-stop">Just stop</h1>
-
-<p>Assertion libraries are libraries that attempt to combine the validation and production of failure messages within a test.</p>
-
-<p>This post is not about mocking libraries, or comparison libraries. It is about assertion libraries. Examples of assertion libraries include <a href="https://pkg.go.dev/github.com/stretchr/testify">github.com/stretchr/testify</a>, <a href="https://pkg.go.dev/github.com/onsi/ginkgo">github.com/onsi/ginkgo</a>, <a href="https://pkg.go.dev/gopkg.in/check.v1">gopkg.in/check.v1</a>, and <a href="https://pkg.go.dev/github.com/franela/goblin">github.com/franela/goblin</a>.</p>
-
-<p>Don’t use these things. They provide little value over the stdlib, and tend to make your codebase (far) less readable. Use <a href="https://pkg.go.dev/testing">“testing”</a> for assertions, and comparison libraries like <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a> to perform the comparison (but not <em>the assertion</em>) for more complex objects that can’t be compared with basic operators (<code class="language-plaintext highlighter-rouge">==</code>, <code class="language-plaintext highlighter-rouge">&gt;</code>, etc).</p>
-
-<p>Sidenote: The <a href="https://pkg.go.dev/testing">testing</a> library is also an assertion library, but for the sake of this article we’ll just call it “the stdlib” or “testing”, and refer to all the non-stdlib assertion libraries as “assertion libraries”.</p>
-
-<h1 id="assertion-libraries-bring-incomprehensibility">Assertion libraries bring incomprehensibility</h1>
-
-<p>Consider the following Java code:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>assertParagraphElement(bodyStructuralElements.get(25).getParagraph().getElements().get(0), 311, 312, Person.class);
-</code></pre></div></div>
-
-<p>What the heck is going on here? I have no freaking idea what this line is asserting. This is <em>real code</em> pulled from a <em>real codebase</em> owned by a well respected team. It’s incomprehensible.</p>
-
-<p>Let me show you another one, in C++ this time:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> EXPECT_CALL(
-        *mock_quota_server_client_,
-        MultiGetTokens(
-            ::testing::AllOf(
-                ::testing::AllOfArray(
-                    experiment_ids |
-                    ::websitetools::feeds::range::transformed(
-                        [quota_group_suffix](ExperimentId experiment_id) {
-                          return dos_quotas::HasRequest(
-                              absl::StrFormat(kQuotaExperimentGroupId,
-                                              quota_group_suffix),
-                              absl::StrFormat("%s:%d",
-                                              kQuotaUserId,
-                                              experiment_id));
-                        })),
-                dos_quotas::HasRequest(
-                    absl::StrFormat(kQuotaUserGroupId, quota_group_suffix),
-                    kQuotaUserId)),
-            _, _))
-        .Times(times);
-</code></pre></div></div>
-
-<p>Again, real code. Respectable team. Completely incomprehensible.</p>
-
-<p>(editorial note: I’m using Java and C++ code because when I wrote my emails, I wanted to compare sister languages in Google - which do allow assertion libraries - with Go in Google, which does not. Confusing examples like these are fairly easy to search for on GitHub)</p>
-
-<p>The thing with assertion libraries is that it’s never just <code class="language-plaintext highlighter-rouge">assert.Equal(a, b)</code>, like the advertisement purports. There is a continual gravity towards complexity. There are <a href="https://pkg.go.dev/github.com/stretchr/testify/assert"><em>277 assertions in the testify library, as of this writing</em></a>. 277!!!! That’s before you even get into <a href="https://pkg.go.dev/github.com/stretchr/testify/assert">making your own assertions</a>. By the way, the likelihood of your developers - and you! - writing custom assertions approaches 100% as your codebase grows over time. In my experience it approaches 100% awfully quickly; we’re talking a few weeks.</p>
-
-<h1 id="assertion-libraries-dont-provide-value">Assertion libraries don’t provide value</h1>
-
-<p>Let’s take a look at the examples on the testify front page:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// assert equality
-assert.Equal(t, 123, 123, "they should be equal")
-
-// assert inequality
-assert.NotEqual(t, 123, 456, "they should not be equal")
-
-// assert for nil (good for errors)
-assert.Nil(t, object)
-
-// assert for not nil (good when you expect something)
-if assert.NotNil(t, object) {
-    // now we know that object isn't nil, we are safe to make
-    // further assertions without causing any errors
-    assert.Equal(t, "Something", object.Value)
-}
-</code></pre></div></div>
-
-<p>Seems super valuable, right? Well, not really. Let’s see what it’s like to rewrite those with the “testing” package:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// assert equality
-if 123 != 123 {
-    t.Errorf("they should be equal")
-}
-
-// assert inequality
-if 123 == 456 {
-    t.Errorf("they should not be equal")
-}
-
-// assert for nil (good for errors)
-if object == nil {
-    t.Errorf("...")
-}
-
-// assert for not nil (good when you expect something)
-// (and make further assertions without causing errors, because multi-clause conditionals are a thing)
-if object != nil &amp;&amp; object.Value != "Something" {
-    t.Errorf("...")
-}
-</code></pre></div></div>
-
-<p>Wow, we sure saved ourselves there from the dreaded <em>if statement</em>! Ok, maybe that’s a bit too much sarcasm. 🙂</p>
-
-<p>As you can see, ordinary Go code works just fine. Detractors will say, “it turns 1 line of code into 3” - and they’re right! I would say that’s a fair trade. Because what we gain in return is:</p>
-
-<ul>
-  <li>Very clear understanding of when we t.Error vs t.Fatal.</li>
-  <li>Very clear understanding of what our error messages will be; and the ability to customise them.</li>
-  <li>A tight, and very low bound on the complexity of our test assertions. It’s just ordinary Go code!</li>
-  <li>Readers don’t have to have knowledge of your testing framework to read the code. They just need to understand Go. It’s just ordinary Go code!</li>
-</ul>
-
-<p>As you consider these advantages of using ordinary Go code over assertion libraries consider who your code is for. Are you writing personal code, for yourself, that nobody will ever look at? Probably not: more than likely you’re writing code for a team, or a company; it will be maintained for a while, maybe even after your tenure.</p>
-
-<p>Remember: most code gets read far more than the time it took to write it. Optimise for the reader, not the writer. (<a href="https://www.goodreads.com/quotes/835238-indeed-the-ratio-of-time-spent-reading-versus-writing-is">1</a>, <a href="https://devblogs.microsoft.com/oldnewthing/20070406-00/?p=27343">2</a>)</p>
-
-<h1 id="random-other-musings-on-the-subject">Random other musings on the subject</h1>
-
-<p>Two quick notes I wanted to pick out of my emails, but which I couldn’t fit anywhere above:</p>
-
-<ul>
-  <li>
-    <p>Ruby is another good case study, btw: first you have to learn the language, then you have to learn the craaaaazy amount of magic in rails, activerecord, and the testing libraries - surprisingly little of which overlaps. It is shockingly slow to get going from scratch in ruby because of the many layers of magic. Building a team or a company around languages (and in this case, libraries) which dramatically reduce productivity just make no sense to me.</p>
-  </li>
-  <li>
-    <p>We get into some real contentious space here, but just to throw it out there: DRY is not always a great north star, and has many times been shown to be unhelpful. Don’t optimise your codebase for one line zingers. Optimise them for someone 5 years from now with no context coming in and having to debug an issue.</p>
-  </li>
-</ul>
-
-<h1 id="conclusion">Conclusion</h1>
-
-<p>Don’t use assertion libraries. You don’t need them. You never have. You’ve been optimising your codebase for 1 line zingers but making it less readable and more incomprehensible, which slows down debugging and slows down future maintainers.</p>
-
-<p>Use “testing”. It has all you need.</p>
-
-<p>Use “cmp” and other comparison libraries if you need to do more complex comparisons (on structs, for example).</p>
-
-<p>Don’t use assertion libraries.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Foreword #1: This is a very sensitive topic for many people. 🙂 I find that many people have never considered writing tests without assertion libraries. It might come as a shocking surprise to consider such a world. That shock and surprise might be painful. Steel yourself.]]></summary></entry><entry><title type="html">Error unwrapping for library authors</title><link href="http://localhost:4000/2022/02/08/error-unwrapping.html" rel="alternate" type="text/html" title="Error unwrapping for library authors" /><published>2022-02-08T14:55:23-07:00</published><updated>2022-02-08T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/08/error-unwrapping</id><content type="html" xml:base="http://localhost:4000/2022/02/08/error-unwrapping.html"><![CDATA[<h1 id="introduction">Introduction</h1>
+<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry><entry><title type="html">Error unwrapping for library authors</title><link href="http://localhost:4000/2022/02/08/error-unwrapping.html" rel="alternate" type="text/html" title="Error unwrapping for library authors" /><published>2022-02-08T14:55:23-07:00</published><updated>2022-02-08T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/08/error-unwrapping</id><content type="html" xml:base="http://localhost:4000/2022/02/08/error-unwrapping.html"><![CDATA[<h1 id="introduction">Introduction</h1>
 
 <p>In https://go.dev/blog/go1.13-errors, Go introduced new language changes that improved how errors are handled in Go programs. These changes include the concept of wrapping errors, as well as tools and semantics for unwrapping errors. They have enabled a rich ecosystem of detailed errors, and given users more ways to examine errors..</p>
 
@@ -891,73 +884,7 @@ func Decompress(name, path string) error {
 
 <p>Error wrapping is a powerful tool that provides upstream users a much richer set of functionality for understanding returned to them by downstream libraries. But, it’s important to be aware that supporting wrapped errors comes with responsibility for compatibility, like any other part of your API. And it’s important to consider whether your error type makes sense to be unwrapped at all.</p>
 
-<p>For most code, it’s best to start simple: use %v instead of %w when you annotate errors, and don’t provide Unwrap on your custom error types. Wait until you learn about specific use cases for providing unwrap mechanics, and then carefully consider how to support them. We hope the considerations highlighted in this article help guide that decision.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">4 years</title><link href="http://localhost:4000/2022/01/01/4years.html" rel="alternate" type="text/html" title="4 years" /><published>2022-01-01T00:55:23-07:00</published><updated>2022-01-01T00:55:23-07:00</updated><id>http://localhost:4000/2022/01/01/4years</id><content type="html" xml:base="http://localhost:4000/2022/01/01/4years.html"><![CDATA[<h2 id="reflecting-on-4-years-at-google">Reflecting on 4 years at Google</h2>
-
-<p>I’m stuck on an airplane with a new macbook, which has Steam (plus two games), Spotify, and Visual Studio Code installed. Steam won’t boot into offline mode, and I’m thoroughly bored, so I thought I’d listen to some music and write another “Reflecting on…” post. This is that post!</p>
-
-<p>(Sidenote: I also have a book and a copy of Foreign Affairs, but both got pretty boring after an hour each)</p>
-
-<h2 id="since-we-last-met">Since we last met</h2>
-
-<p>Since I wrote my last “Reflecting on … Google” post, I had role transferred from Developer Programs Engineer (DPE) to Software Engineer (SWE). DPEs are software engineers that are external facing; in my role, that meant a lot of open source programming, and speaking at conferences. SWEs, by contrast, are your traditional in-the-weeds engineers.</p>
-
-<p>I’ve been pretty in the weeds.</p>
-
-<p>As part of my role transfer, I joined NetInfra - network infrastructure. I spent 2 years on that team, and primarily spent my time designing and leading the development of workflow orchestration system. The system stringed (strang?) together various NetInfra forecast, design, execution, and planning systems into a cohesive whole that could forecast network growth, plan for it, and execute changes to Google data centers to handle the growth. Think: forecast YouTube grows by Xxx leads to purchasing X, Y, Z and the instructions for when and where to install them. Lots of bin packing and optimisation solving in that space.</p>
-
-<p>It was interesting, but it was time to move on. After 2 years, I’d had my fill, and moved on to my current team: object file system (ObjFS), the filesystem underpinning Google’s distributed build stack. It’s written in C++, handles significantly more than 1 million QPS, and the org has loads of fantastic mentors.</p>
-
-<p>It’s so far been intense, but good. A great deal of learning - in the domain, certainly, but also about C++ and build systems in general. I’ve thoroughly enjoyed being back in a growth/learning space. I look forward to what the next few years will bring on this team!</p>
-
-<h2 id="covid-and-remote-work">COVID and remote work</h2>
-
-<p>Like a lot of software engineering practices, Google shut offices and shifted to remote work the last two years. We’re slowly coming out of that; next month, most of us are mandated back to the office 3 of 5 days a week.</p>
-
-<p>I was fairly certain that I’d hate remote work prior to COVID. Looking back, it has had some surprising upsides. But, most of the upsides came with living in a house with ample space for a proper office. In constrast, prior to COVID my WFH experiences were almost all the laptop-on-couch sort of experiences that are only good for up to an hour. In short, the remote work experience was not as bad as expected, but I’m glad to be going back to the office. I far prefer the separation of work and personal life; the socialisation; and not having to cook and clean for myself constantly. 🙂</p>
-
-<h2 id="autonomy-and-20ing">Autonomy and 20%ing</h2>
-
-<p>At Google, there’s a “20% policy”: a policy that allows engineers to spend 20% of their time working on whatever they’d like. It has some caveats; the usual “don’t build a business with our resources” type stuff. Some 20% pessimistics will tell you that there is an opportunity cost: your expectations of output aren’t any lower, so you lose <em>time</em> that you could have spent working towards a promotion, or other goals. But, that’s about it: nothing concrete like a pay cut.</p>
-
-<p>I’ve 20%ed continuously since joining Google, and far from being a hindrance to my career, it’s been a huge positive aspect. I’d go so far as to say it’s helped me in my promotion a few years ago, contrary to what 20% pessimists will tell you.</p>
-
-<p>For the last 2 years, I’ve been 20%ing on various Go projects: primarily gorelease, and Google’s internal Go status package (vis-a-vis stubby, grpc). There are a lot of neat aspects of 20%ing, but the one I’ll highlight is the mental health benefit. When you’re working on a product or team for a long time, there are bound to be hard periods; boring periods; uninteresting periods; and so on. The really fantastic thing about 20%ing is that during those periods you always have a “cool” project to fall back on.</p>
-
-<p>I think that over the last 4 years, it’s really helped with burnout. During covid in particular, when I was dealing with the double burnout of uninteresting work and pandemic exhaustion, it was a huge help to have a really cool (to me) and impactful set of projects to look forward to working on. Some weeks I spent more than 20% of my time working on it; recently, on my new team, I’ve spent quite a bit less than 20%. It’s really great having that flexing room: leaning in when you need something fun, leaning out when your “day job” gives you more than enough. I really appreciate working here for that autonomy.</p>
-
-<p>I’ll also add that a subtle perk of 20%ing is not just that you get to work <em>on</em> what you want, but also <em>with whom</em> you want. I’ve had the absolute joy and pleasure of working with people across the world on my 20% work, with whom I would have never interacted normally. These people have taught me a huge amount, and those relationships have endured across the years and sprouted numerous new projects that I could not have foreseen.</p>
-
-<h2 id="breaking-the-go-at-google-world">Breaking the (Go at Google) world</h2>
-
-<p>The Go status project I briefly mentioned above, which I’ve been 20%ing on for the better part of the last year, has ended triumphantly but also very excitingly.</p>
-
-<p>Google’s internal repository is a monorepo: all the code lives in a single repository. And, there are no external dependencies: anything external has to be vendored in. And finally, there is only one version of all the code in that repo (including vendored code): HEAD.</p>
-
-<p>So, for example, all the Java apps that depend on Log4J, all depend on the exact same source code (effectively: version). If you need to update Log4J, you have to do it in such a way that none of the tens of thousands of dependors are broken.</p>
-
-<p>That sets the stage for my recent Go status project. The internal Go status library - whose external counterpart is called grpcstatus - is a core library depended upon by 62,000 projects. (Sidenote: really easy to count dependors when everything lives in one repo!)</p>
-
-<p>The Go status library handles extrapolating statuses from errors, and turning statuses into errors. Statuses are stubby and gRPC’s means of communicating error information between and across RPC boundaries. In short: it’s the library that you use to describe errors in RPC contexts.</p>
-
-<p>My project was to update this library to play nicely with Go 1.13 errors. It involved a substantial refactor of the library. It had to be done in such a way as not to break the 62,000 dependors. We (my reviewers and I) spent a lot of time (and effort) making sure the changes don’t break anyone. We were <em>very</em> close, but one small auxiliary change in a sister library, around a feature that was depressingly untested, led to catastrophe. The change caused services to lose data over the wire. <em>Realllll bad</em>.</p>
-
-<p>Well, I used the word catastrophe, but that’s a strong word. A handful of people - including myself - freaked out for a short period of time, quickly fixed things (in 25h), and wrote a post-mortem about it. Most of the library users didn’t notice anything.</p>
-
-<p>It took me a long time to describe the situation enough to reflect on it. 🙂</p>
-
-<p>I think that at many companies, the above would have led to firings. At some better companies, it would have only been some moderate yelling at. What happened at Google was fantastic: everyone took a problem solving attitude, identified and fixed the issue with professional demeanor, and wrote a blameless post-mortem whose action items will prevent it from happening again. My manager was extremely supportive and offered me several days off after the incident. My colleagues applauded the fast reaction time, and normalised the experience by commiserating with their own stories of “breaking Google”.</p>
-
-<p>The postmortem we wrote identified several non-human reasons for the failure (namely: severe under-testing, as in O(100s) more tests after we were done than when we started). It also identified several action items for avoiding this issue in the future.</p>
-
-<p>Knowing that even in <em>the worst case scenario</em>, you’re safe and secure in your job, and you’ll be supported to continue finding solutions and fixing problems, is a really special feeling. One of the things keeping me here is the sense of autonomy I described in the section above. But pairing that autonomy with this sense of safety is a very special circumstance.</p>
-
-<h2 id="airplane-writing">Airplane writing</h2>
-
-<p>This article ended up being a bit ramble-y, a side-of-fire story mix of recollection and reflection. I suppose that’s what aimless airplane writing looks like.</p>
-
-<p>I’m still very happy here; I’m learning and growing my technical skills a lot; and I’m having fun. And sometimes unintentionally breaking things, but then fixing them very quickly afterwards.</p>
-
-<p>I had hoped that I would be able to stick on the technical path through my whole career, growing and reaching new levels without having to dip into management. After 4 years at Google, 10 years working professionally, and 16 years programming, I’m very pleased to say that I still have that hope, am still enjoying learning, and doing so voraciously, and am still finding new levels of technical depth. I am overwhelmingly optimistic about continuing on this path. 🙂</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Reflecting on 4 years at Google]]></summary></entry><entry><title type="html">Contexts and Structs</title><link href="http://localhost:4000/2021/02/24/contexts-structs.html" rel="alternate" type="text/html" title="Contexts and Structs" /><published>2021-02-24T14:55:23-07:00</published><updated>2021-02-24T14:55:23-07:00</updated><id>http://localhost:4000/2021/02/24/contexts-structs</id><content type="html" xml:base="http://localhost:4000/2021/02/24/contexts-structs.html"><![CDATA[<p>Posted at <a href="https://go.dev/blog/context-and-structs">go.dev/blog/context-and-structs</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at go.dev/blog/context-and-structs.]]></summary></entry><entry><title type="html">Stubbing gRPC in Go</title><link href="http://localhost:4000/2020/10/08/stubbing-grpc.html" rel="alternate" type="text/html" title="Stubbing gRPC in Go" /><published>2020-10-08T15:55:23-06:00</published><updated>2020-10-08T15:55:23-06:00</updated><id>http://localhost:4000/2020/10/08/stubbing-grpc</id><content type="html" xml:base="http://localhost:4000/2020/10/08/stubbing-grpc.html"><![CDATA[<h1 id="introduction">Introduction</h1>
+<p>For most code, it’s best to start simple: use %v instead of %w when you annotate errors, and don’t provide Unwrap on your custom error types. Wait until you learn about specific use cases for providing unwrap mechanics, and then carefully consider how to support them. We hope the considerations highlighted in this article help guide that decision.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Contexts and Structs</title><link href="http://localhost:4000/2021/02/24/contexts-structs.html" rel="alternate" type="text/html" title="Contexts and Structs" /><published>2021-02-24T14:55:23-07:00</published><updated>2021-02-24T14:55:23-07:00</updated><id>http://localhost:4000/2021/02/24/contexts-structs</id><content type="html" xml:base="http://localhost:4000/2021/02/24/contexts-structs.html"><![CDATA[<p>Posted at <a href="https://go.dev/blog/context-and-structs">go.dev/blog/context-and-structs</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at go.dev/blog/context-and-structs.]]></summary></entry><entry><title type="html">Stubbing gRPC in Go</title><link href="http://localhost:4000/2020/10/08/stubbing-grpc.html" rel="alternate" type="text/html" title="Stubbing gRPC in Go" /><published>2020-10-08T15:55:23-06:00</published><updated>2020-10-08T15:55:23-06:00</updated><id>http://localhost:4000/2020/10/08/stubbing-grpc</id><content type="html" xml:base="http://localhost:4000/2020/10/08/stubbing-grpc.html"><![CDATA[<h1 id="introduction">Introduction</h1>
 
 <p>I’ve several times been met with the question, “How do you stub gRPC in Go”?</p>
 
@@ -1286,4 +1213,189 @@ gRPC server would look similar.</p>
 <h1 id="conclusion">Conclusion</h1>
 
 <p>Stubbing and mocking gRPC servers in Go is very easy, doesn’t require any
-libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry></feed>
+libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Keeping Your Modules Compatible</title><link href="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html" rel="alternate" type="text/html" title="Keeping Your Modules Compatible" /><published>2020-07-07T15:55:23-06:00</published><updated>2020-07-07T15:55:23-06:00</updated><id>http://localhost:4000/2020/07/07/keeping-your-modules-compatible</id><content type="html" xml:base="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html"><![CDATA[<p>Posted at <a href="https://blog.golang.org/module-compatibility">blog.golang.org/module-compatibility</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at blog.golang.org/module-compatibility.]]></summary></entry><entry><title type="html">Binary Search Tree Runtime Complexities</title><link href="http://localhost:4000/2019/11/23/binary-search-tree-runtime-complexity.html" rel="alternate" type="text/html" title="Binary Search Tree Runtime Complexities" /><published>2019-11-23T14:55:23-07:00</published><updated>2019-11-23T14:55:23-07:00</updated><id>http://localhost:4000/2019/11/23/binary-search-tree-runtime-complexity</id><content type="html" xml:base="http://localhost:4000/2019/11/23/binary-search-tree-runtime-complexity.html"><![CDATA[<h1 id="introduction">Introduction</h1>
+
+<p>I’ve recently inundated myself with interview preparation. Along the way, I
+thought a lot about how to intuit runtime complexities for various algorithms.
+I thought that it might be nice to cement it all with an article - both for the
+sake of others, as well as for my sake. This is the first article in that vein,
+strictly dealing with binary search trees.</p>
+
+<h1 id="terminology">Terminology</h1>
+
+<p>Note: This article frequently uses the abbreviation BST to describe binary
+search trees.</p>
+
+<p>Here are properties of trees that this article deals with:</p>
+
+<ul>
+  <li>Number of nodes in a tree is typically denoted <code class="language-plaintext highlighter-rouge">n</code>.</li>
+  <li>Height of a tree is typically denoted <code class="language-plaintext highlighter-rouge">k</code>.</li>
+  <li><a href="https://en.wikipedia.org/wiki/Binary_tree">Complete</a>: every level except
+possibly the last is completely filled.</li>
+  <li><a href="https://en.wikipedia.org/wiki/Binary_tree">Full</a>: every node has 0 or 2
+children. This is a subset of complete: every full tree is a complete tree.</li>
+  <li><a href="https://en.wikipedia.org/wiki/Binary_tree">Balanced</a>: the height of the left
+and right subtrees of every node differ by at most 1. Using the root node as
+our focus, we can intuit that any balanced tree has fairly uniform height.</li>
+  <li><a href="https://en.wikipedia.org/wiki/Binary_search_tree">Binary Search Tree</a>:
+A tree in which each element to the left of a node is guaranteed to be less,
+and to the right guaranteed to be greater. <em>BSTs may not be balanced</em>.</li>
+  <li><a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">Red-black Tree</a>: A BST
+that is balanced.</li>
+  <li><a href="https://en.wikipedia.org/wiki/AVL_tree">AVL Tree</a>: A BST that is balanced (in
+a different way than red-black trees).</li>
+  <li><a href="https://en.wikipedia.org/wiki/Branching_factor">Branching factor</a>: The number
+of children at each node.</li>
+</ul>
+
+<h1 id="searching-a-bst">Searching a BST</h1>
+
+<p>Everyone knows that searching a binary search tree has runtime complexity
+<code class="language-plaintext highlighter-rouge">O(logn)</code>, right? …right? Let’s take a second to tease apart some questions
+from that assertion to see if we really understand what we mean when we say that:</p>
+
+<ul>
+  <li>
+    <p>Q: What is the <a href="https://en.wikipedia.org/wiki/Logarithm">base</a> of the log?</p>
+
+    <p>A: Typically when we talk about the base of a log, we’re talking about 2 or 10.  In the case of a BST case it’s 2 (we’ll dive into why that is shortly).</p>
+  </li>
+  <li>
+    <p>Q: What does <code class="language-plaintext highlighter-rouge">n</code> represent?</p>
+
+    <p>A: <code class="language-plaintext highlighter-rouge">n</code> <em>usually</em> means “number of elements”. In this case, <code class="language-plaintext highlighter-rouge">n</code> does mean that: or, another way to put that is “number of nodes in the tree”.</p>
+  </li>
+</ul>
+
+<p>So, expanding <code class="language-plaintext highlighter-rouge">O(logn)</code>, we have: <code class="language-plaintext highlighter-rouge">O(log2(&lt;# nodes in tree&gt;))</code>.</p>
+
+<p>Well, searching a BST is not strictly <code class="language-plaintext highlighter-rouge">O(log2(n))</code>: it depends on whether the
+BST is balanced or not. An unbalanced BST may be <code class="language-plaintext highlighter-rouge">O(n)</code>. Let’s discover why by
+exploring how the <code class="language-plaintext highlighter-rouge">log2</code> comes about.</p>
+
+<h1 id="logarithms-and-exponents">Logarithms and exponents</h1>
+
+<p>Let’s look at the following <em>full</em> binary tree:</p>
+
+<p><img src="/assets/simple_complete.png" alt="Full Binary Tree" /></p>
+
+<p>We can tell the following about this tree:</p>
+
+<ul>
+  <li>It has height <code class="language-plaintext highlighter-rouge">k=4</code>.</li>
+  <li>It has nodes <code class="language-plaintext highlighter-rouge">n=15</code>.</li>
+</ul>
+
+<p>The number of nodes is the sum of the nodes at each level. The number of nodes
+at each level are powers of 2. So, at <code class="language-plaintext highlighter-rouge">k=4</code> there are,</p>
+
+\[\begin{align*}
+n=1+2+4+8 &amp;&amp; \text{The sum of the nodes at each level.} \\
+n=2^0+2^1+2^2+2^3 &amp;&amp; \text{Represented in powers of 2.} \\
+n=\sum\limits_{j=0}^{k-1} 2^j &amp;&amp; \text{Represented as a summation.} \\
+\end{align*}\]
+
+<p>The branching factor here is 2 - each node has 2 children. What if each child
+had 7 children, or 9, or 21? Let’s re-write the summation with a generic
+branching factor <code class="language-plaintext highlighter-rouge">b</code>:</p>
+
+\[\begin{align*}
+n=\sum\limits_{j=0}^{k-1} 2^j &amp;&amp; \text{Branching factor of 2, as before.} \\
+n=\sum\limits_{j=0}^{k-1} b^j &amp;&amp; \text{Branching factor of b.} \\
+\end{align*}\]
+
+<p>Sums are a bit of nuisance. Let’s convert this sum into a discrete formula:</p>
+
+\[\begin{align*}
+n=\sum\limits_{j=0}^{k-1} b^j \\
+n=b^{k-1}+b^{k-2}+...+1 &amp;&amp; \text{Expanding the sum.} \\
+n \cdot b=(b^{k-1}+b^{k-2}+...+1) \cdot b &amp;&amp; \text{Multiply by b.} \\
+n \cdot b=b^k+b^{k-1}+...+b &amp;&amp; \text{Distribute the b into the sum.} \\
+n \cdot b + 1=b^k+b^{k-1}+...+b+1 &amp;&amp; \text{Add 1 to each side.} \\
+n \cdot b + 1=b^k + n &amp;&amp; \text{Note that we can use n for the right side.} \\
+n \cdot b - n=b^k - 1 &amp;&amp; \text{Move n left; 1 right.} \\
+n \cdot (b - 1)=b^k - 1 &amp;&amp; \text{Factor out n.} \\
+n = \frac{b^k - 1}{b - 1} &amp;&amp; \text{Divide by n-1.} \\
+\end{align*}\]
+
+<p>Let’s test the formula by using <code class="language-plaintext highlighter-rouge">k=4</code> and <code class="language-plaintext highlighter-rouge">b=2</code> again, which we think should
+equal <code class="language-plaintext highlighter-rouge">n=15</code>:</p>
+
+\[\begin{align*}
+n=\frac{2^4-1}{2-1} \\
+n=\frac{16-1}{1} \\
+n=15 \\
+\end{align*}\]
+
+<p>What if we knew the amount of nodes, but not the height? We can rework the
+formula we just came up with to give us height using number of nodes,</p>
+
+\[\begin{align*}
+n=2^k-1 \\
+n+1=2^k &amp;&amp; \text{Move 1 to the left.} \\
+\log_2 {(n+1)}=\log_2 {(2^k)} &amp;&amp; \text{log2 both sides.} \\
+\log_2 {(n+1)}=k \cdot \log_2 2 &amp;&amp; \text{Power rule.} \\
+\log_2 {(n+1)}=k &amp;&amp; \text{Identity rule.} \\
+k=\log_2 {(n+1)}
+\end{align*}\]
+
+<h1 id="back-to-binary-search-trees">Back to binary search trees</h1>
+
+<p>How can we apply this knowledge? Consider again our original topic of a binary
+search tree: one property of a BST is that a search operation requires no
+backtracking. That is: the path to a node always going to go at most to a leaf
+node - it never reaches a leaf and then has to backtrack and try a different
+choice at a former node.</p>
+
+<p>If the BST is unbalanced, the worst case time complexity to search for a value
+is <code class="language-plaintext highlighter-rouge">O(n)</code>. We can easily show that this is the case with the following tree:</p>
+
+<p><img src="/assets/left_bst.png" alt="Left BST" /></p>
+
+<p>This BST is heavily weighted to the right. To search for the value 109, we’d have to
+look at each of the <code class="language-plaintext highlighter-rouge">n=15</code> elements. That is: the worst case time complexity is
+<code class="language-plaintext highlighter-rouge">O(n)</code>.</p>
+
+<p>What if this BST were balanced, instead?</p>
+
+<p><img src="/assets/balanced_bst.png" alt="Balanced BST" /></p>
+
+<p>Now, to search for <em>any</em> value in the BST, the maximum depth we’d need to
+traverse is <code class="language-plaintext highlighter-rouge">k</code>. We know that <code class="language-plaintext highlighter-rouge">k=log2(n)</code>, so we can say that the big-O runtime
+complexity in terms of <code class="language-plaintext highlighter-rouge">n</code> is <code class="language-plaintext highlighter-rouge">O(log2(n))</code>.</p>
+
+<h1 id="in-conclusion">In conclusion</h1>
+
+<p>There are at most <code class="language-plaintext highlighter-rouge">n=(b^k - 1)/(b - 1)</code> nodes in any tree with height <code class="language-plaintext highlighter-rouge">k</code> and
+branching factor <code class="language-plaintext highlighter-rouge">b</code>. In a binary tree, that simplifies to <code class="language-plaintext highlighter-rouge">n=2^k-1</code>, and can
+be re-written in terms of height as <code class="language-plaintext highlighter-rouge">k=log2(n+1)</code>.</p>
+
+<p>To conclude our original question: binary search trees don’t guarantee
+<code class="language-plaintext highlighter-rouge">O(log2(n))</code> search: <em>balanced</em> BSTs do.</p>
+
+<p>In a future article we’ll look at <a href="https://en.wikipedia.org/wiki/Heap_(data_structure)">Heap</a>
+runtime complexity, and how memoization affects that. In some other future
+article we’ll look at backtracking and permutation runtime complexities.</p>
+
+<script type="text/javascript" async="" src="/assets/MathJax-2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      extensions: [
+        "MathMenu.js",
+        "MathZoom.js",
+        "AssistiveMML.js"
+      ],
+      jax: ["input/TeX", "output/CommonHTML"],
+      TeX: {
+        extensions: [
+          "AMSmath.js",
+          "AMSsymbols.js",
+          "noErrors.js",
+          "noUndefined.js",
+        ]
+      }
+    });
+  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry></feed>
