@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Don't use assertion libraries in Go"
-date:   2022-02-08 15:55:23 -0600
+date:   2099-02-08 15:55:23 -0600
 categories: 
 toc: true
 ---
