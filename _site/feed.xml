@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T14:47:40-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T15:46:48-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
 
 <p>I’ve recently joined Netflix, and I’m doing a bit of Go. Go is not one of the
@@ -12,15 +12,16 @@ for anyone else setting out to do similarly.</p>
 
 <h2 id="understanding-pkgsite">Understanding pkgsite</h2>
 
-<p>https://github.com/golang/pkgsite/blob/master/doc/design.md describes pkgsite’s
-components. https://sum.golang.org/ describes the proxy and index that enables
-pkgsite.</p>
+<p><a href="https://github.com/golang/pkgsite/blob/master/doc/design.md">github.com/golang/pkgsite/blob/master/doc/design.md</a>
+describes pkgsite’s components.
+<a href="https://sum.golang.org/">sum.golang.org</a> describes the proxy and index that
+enables pkgsite.</p>
 
 <h3 id="code-layout">Code layout</h3>
 
-<p>pkgsite is canonically hosted at https://go.googlesource.com/pkgsite and can be
-cloned with <code class="language-plaintext highlighter-rouge">git clone https://go.googlesource.com/pkgsite</code>. The important parts
-for this article are,</p>
+<p>pkgsite is canonically hosted at <a href="https://go.googlesource.com/pkgsite">go.googlesource.com/pkgsite</a>
+and can be cloned with <code class="language-plaintext highlighter-rouge">git clone https://go.googlesource.com/pkgsite</code>. The
+important parts for this article are,</p>
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
 <span class="nb">.</span>
@@ -96,21 +97,39 @@ it is only hosts documentation for a single repo. So, we’ll move on from this.
   <li>The pkgsite worker.</li>
 </ul>
 
+<h4 id="proxy">Proxy</h4>
+
 <p>We’ll assume you already have a proxy server. But if not, check out
 https://github.com/goproxy/goproxy as one option.</p>
+
+<h4 id="index">Index</h4>
 
 <p>A simple index server is given at https://github.com/jeanbza/golang-index. You
 may wish to build your own, though. Its role is simple, and described at
 https://github.com/golang/pkgsite/blob/master/doc/design.md.</p>
 
+<h4 id="postgres">Postgres</h4>
+
 <p>There are numerous ways to run a postgres database. Here’s something quick,
 written for a Mac, to get you started:</p>
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew <span class="nb">install </span>postgresql@17
+<span class="c"># Note: Don't forget the part where homebrew asks you to add to your PATH.</span>
+<span class="c"># Note: homebrew may make $USERNAME the default username, not "postgres".</span>
 brew services start postgresql@17
 createdb discovery-db
-<span class="c"># Your $USERNAME may be the username, not postgres.</span>
+
+<span class="c"># Now, let's set up the tables necessary by running all the migrations.</span>
+<span class="k">for </span>f <span class="k">in</span> <span class="sb">`</span><span class="nb">ls </span>pkgsite/migrations<span class="sb">`</span><span class="p">;</span> <span class="k">do </span>psql <span class="nt">-d</span> discovery-db <span class="nt">-a</span> <span class="nt">-f</span> <span class="s2">"pkgsite/migrations/</span><span class="nv">$f</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span><span class="p">;</span>
 </code></pre></div></div>
+
+<p>Check out your tables with,</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>psql <span class="nt">-d</span> discovery-db
+<span class="se">\d</span>t
+</code></pre></div></div>
+
+<h4 id="frontend">Frontend</h4>
 
 <p>Now, let’s run the frontend:</p>
 
@@ -121,6 +140,8 @@ go run cmd/frontend/main.go <span class="se">\</span>
     <span class="nt">-proxy_url</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
     <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div></div>
+
+<h4 id="worker">Worker</h4>
 
 <p>Finally, let’s run the worker:</p>
 
@@ -154,7 +175,31 @@ getting along.</p>
 
 <p>As it progresses, it populates the postgres database. You should begin to start
 seeing modules through the frontend. To do so, navigate to
-http://localhost:8080, where the frontend is hosted.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Who this is for]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
+http://localhost:8080, where the frontend is hosted.</p>
+
+<h2 id="useful-debugging">Useful debugging</h2>
+
+<p>I found the following db commands useful:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">psql</span> <span class="o">-</span><span class="n">d</span> <span class="n">discovery</span><span class="o">-</span><span class="n">db</span>
+
+<span class="o">#</span> <span class="n">List</span> <span class="n">tables</span><span class="p">.</span>
+<span class="err">\</span><span class="n">dt</span>
+
+<span class="o">#</span> <span class="k">Show</span> <span class="n">upcoming</span> <span class="n">processing</span><span class="p">.</span>
+<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">module_version_states</span><span class="p">;</span>
+<span class="k">SELECT</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">last_processed_at</span><span class="p">,</span> <span class="n">next_processed_after</span> <span class="k">FROM</span> <span class="n">module_version_states</span> <span class="k">WHERE</span> <span class="n">module_path</span> <span class="k">LIKE</span> <span class="s1">'corp%'</span><span class="p">;</span>
+
+<span class="o">#</span> <span class="k">Update</span> <span class="n">processing</span> <span class="nb">time</span><span class="p">.</span>
+<span class="k">UPDATE</span> <span class="n">module_version_states</span> <span class="k">SET</span> <span class="n">next_processed_after</span> <span class="o">=</span> <span class="n">next_processed_after</span> <span class="o">-</span> <span class="n">INTERVAL</span> <span class="s1">'2 HOUR'</span> <span class="k">WHERE</span> <span class="n">module_path</span> <span class="o">=</span> <span class="s1">'corp/eas-protomd'</span><span class="p">;</span>
+
+<span class="o">#</span> <span class="n">How</span> <span class="n">many</span> <span class="n">we</span> <span class="n">know</span> <span class="n">about</span><span class="p">.</span>
+<span class="k">SELECT</span> <span class="k">DISTINCT</span><span class="p">(</span><span class="n">module_path</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">modules</span><span class="p">;</span>
+<span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="k">version</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">modules</span><span class="p">;</span>
+
+<span class="o">#</span> <span class="k">Drop</span> <span class="n">it</span> <span class="k">all</span> <span class="k">and</span> <span class="k">start</span> <span class="n">over</span><span class="p">.</span>
+<span class="k">TRUNCATE</span> <span class="n">documentation</span><span class="p">,</span> <span class="n">documentation_symbols</span><span class="p">,</span> <span class="n">excluded_prefixes</span><span class="p">,</span> <span class="n">imports</span><span class="p">,</span> <span class="n">imports_unique</span><span class="p">,</span> <span class="n">latest_module_versions</span><span class="p">,</span> <span class="n">legacy_documentation_symbols</span><span class="p">,</span> <span class="n">licenses</span><span class="p">,</span> <span class="n">module_version_states</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">package_symbols</span><span class="p">,</span> <span class="n">package_version_states</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">readmes</span><span class="p">,</span> <span class="n">search_documents</span><span class="p">,</span> <span class="n">symbol_history</span><span class="p">,</span> <span class="n">symbol_names</span><span class="p">,</span> <span class="n">symbol_search_documents</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">version_map</span><span class="p">;</span>
+</code></pre></div></div>]]></content><author><name></name></author><summary type="html"><![CDATA[Who this is for]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
 
 <p>This is a collection of extremely useful internal resources, which are made
 publicly available. I thought I’d share these, since they are a bit hard to find
