@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T15:48:01-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T15:52:44-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
 
 <p>Netflix has a private enterprise GitHub (and goproxy), which means that
@@ -97,13 +97,15 @@ it is only hosts documentation for a single repo. So, we’ll move on from this.
 <h4 id="proxy">Proxy</h4>
 
 <p>We’ll assume you already have a proxy server. But if not, check out
-https://github.com/goproxy/goproxy as one option.</p>
+<a href="https://github.com/goproxy/goproxy">github.com/goproxy/goproxy</a> as one
+option.</p>
 
 <h4 id="index">Index</h4>
 
-<p>A simple index server is given at https://github.com/jeanbza/golang-index. You
+<p>A simple index server is given at
+<a href="https://github.com/jeanbza/golang-index">github.com/jeanbza/golang-index</a>. You
 may wish to build your own, though. Its role is simple, and described at
-https://github.com/golang/pkgsite/blob/master/doc/design.md.</p>
+<a href="https://github.com/golang/pkgsite/blob/master/doc/design.md">github.com/golang/pkgsite/blob/master/doc/design.md</a>.</p>
 
 <h4 id="postgres">Postgres</h4>
 
