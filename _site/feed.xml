@@ -1,14 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T15:46:48-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-01-29T15:48:01-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
-
-<p>I’ve recently joined Netflix, and I’m doing a bit of Go. Go is not one of the
-main languages at Netflix, so it lacks a dedicated team supporting it, and lacks
-some common tooling.</p>
 
 <p>Netflix has a private enterprise GitHub (and goproxy), which means that
 <a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
-to run pkgsite myself against this private enterprise GitHub. This article is
-for anyone else setting out to do similarly.</p>
+to run pkgsite myself against this private enterprise GitHub.</p>
+
+<p>This article is for anyone else setting out to do similarly.</p>
 
 <h2 id="understanding-pkgsite">Understanding pkgsite</h2>
 
