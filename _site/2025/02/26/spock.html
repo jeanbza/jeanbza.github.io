@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Spock gripes | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Spock gripes" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="I’ve recently been using Spock, the Groovy test framework. I’ve got several gripes with it that I wanted to document. This is mostly for my future self, but may be interesting to others." />
+<meta property="og:description" content="I’ve recently been using Spock, the Groovy test framework. I’ve got several gripes with it that I wanted to document. This is mostly for my future self, but may be interesting to others." />
+<link rel="canonical" href="http://localhost:4000/2025/02/26/spock.html" />
+<meta property="og:url" content="http://localhost:4000/2025/02/26/spock.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-02-26T00:55:23-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Spock gripes" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-02-26T00:55:23-07:00","datePublished":"2025-02-26T00:55:23-07:00","description":"I’ve recently been using Spock, the Groovy test framework. I’ve got several gripes with it that I wanted to document. This is mostly for my future self, but may be interesting to others.","headline":"Spock gripes","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2025/02/26/spock.html"},"url":"http://localhost:4000/2025/02/26/spock.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#spock-gripes">Spock gripes</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#subtests">Subtests</a></li>
+<li class="toc-entry toc-h2"><a href="#fixed-parallelism">Fixed parallelism</a></li>
+<li class="toc-entry toc-h2"><a href="#poor-diff-quality">Poor diff quality</a></li>
+<li class="toc-entry toc-h2"><a href="#poor-logging-support">Poor logging support</a></li>
+<li class="toc-entry toc-h2"><a href="#dynamic-property-resolution">Dynamic property resolution</a></li>
+<li class="toc-entry toc-h2"><a href="#verbosity-magic-and-assertions">Verbosity, magic, and assertions</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#spock-gripes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Spock gripes</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-02-26T00:55:23-07:00" itemprop="datePublished">Feb 26, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>I’ve recently been using Spock, the Groovy test framework. I’ve got several
+gripes with it that I wanted to document. This is mostly for my future self,
+but may be interesting to others.</p>
+
+<h2 id="subtests">
+<a class="anchor" href="#subtests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Subtests</h2>
+
+<p><code class="language-plaintext highlighter-rouge">@Unroll</code> with a data provider is the way to run subtests. I have a major and a minor qualm with this:</p>
+
+<ul>
+  <li>
+    <p>Major: You can’t run a single subtest (for example with <code class="language-plaintext highlighter-rouge">./gradlew test --tests “*some test*”</code>).</p>
+  </li>
+  <li>
+    <p>Minor: For dynamic data providers you have to create a whole ‘nother class. It’s much more cumbersome than I’d prefer.</p>
+  </li>
+</ul>
+
+<h2 id="fixed-parallelism">
+<a class="anchor" href="#fixed-parallelism" aria-hidden="true"><span class="octicon octicon-link"></span></a>Fixed parallelism</h2>
+
+<p>I should be able to run any number of tests concurrently. Indeed with Spock I can do that as described <a href="https://spockframework.org/spock/docs/2.0-M4/parallel_execution.html">here</a>. But, despite the appearance of supporting fixed test parallelism, it actually supports fixed execution parallelism. This leads to very surprising behaviour, as documented at <a href="https://github.com/spockframework/spock/issues/2117">spockframework/spock/issues/2117</a>.</p>
+
+<h2 id="poor-diff-quality">
+<a class="anchor" href="#poor-diff-quality" aria-hidden="true"><span class="octicon octicon-link"></span></a>Poor diff quality</h2>
+
+<p>Here’s a Groovy diff comparing a want proto to a got proto:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Gradle Test Executor 102 &gt; EndToEndSpec &gt; assembleVideoForAimLow FAILED
+    Condition not satisfied:
+
+    GrpcUtils.invokeFunction(stub, in) == want
+    |         |              |     |   |  |
+    |         |              |     |   |  is_completed: true
+    |         |              |     |   |  is_successful: true
+    |         |              |     |   |  success_response {
+    |         |              |     |   |    class_name: "com.netflix.stratum.pod.functions.functions.protogen.HelloResponse"
+    |         |              |     |   |    value {
+    |         |              |     |   |      fields {
+    |         |              |     |   |        key: "response"
+    |         |              |     |   |        value {
+    |         |              |     |   |          string_value: "Hello from POD world, my name is red. Here is CosmosPode2eFunction"
+    |         |              |     |   |        }
+    |         |              |     |   |      }
+    |         |              |     |   |    }
+    |         |              |     |   |  }
+    |         |              |     |   false
+    |         |              |     {
+    |         |              |       "fullFunctionName": "com.netflix.stratum.pod.functions.AimLowVideoAssembler.assembleVideoForAimLow",
+    |         |              |       "arguments": [
+    |         |              |         {
+    |         |              |           "name": "listOfMountedEncodes",
+    |         |              |           "cloudObjects": {
+    |         |              |             "cloudObjects": [
+    |         |              |               {
+    |         |              |                 "url": "baggins://reloaded-test-temp/cosmos-e2e-tests/1730401804568/AIMLOWVIDEOENCODE_chunk.al"
+    |         |              |               }
+    |         |              |             ]
+    |         |              |           }
+    |         |              |         },
+    |         |              |         {
+    |         |              |           "name": "assembeledVideoOutput",
+    |         |              |           "direction": "OUTPUT_REF",
+    |         |              |           "cloudObject": {
+    |         |              |             "url": "baggins://reloaded-test-temp/cosmos-e2e-tests/1730401982908/assembledVideo.lo"
+    |         |              |           }
+    |         |              |         }
+    |         |              |       ],
+    |         |              |       "stack": ""
+    |         |              |     }
+    |         |              &lt;com.netflix.stratumintegtest.protogen.StratumIntegtestServiceGrpc$StratumIntegtestServiceBlockingStub@6f1dd321 channel=ManagedChannelOrphanWrapper{delegate=ManagedChannelImpl{logId=19, target=localhost:53139}} callOptions=CallOptions{deadline=null, authority=null, callCredentials=null, executor=null, compressorName=null, customOptions=[[internal-stub-type, BLOCKING]], waitForReady=false, maxInboundMessageSize=null, maxOutboundMessageSize=null, streamTracerFactories=[]}&gt;
+    |         is_completed: true
+    |         is_successful: true
+    |         success_response {
+    |           class_name: "com.google.protobuf.Empty"
+    |           value {
+    |           }
+    |         }
+    class GrpcUtils
+        at EndToEndSpec.assembleVideoForAimLow(EndToEndSpec.groovy:73)
+
+1 test completed, 1 failed
+</code></pre></div></div>
+
+<p>Can you tell the problem!? Nope! It’s inscrutable.</p>
+
+<p>Here’s the two side-by-side, by the way:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    ---------- got:
+    is_completed: true
+    is_successful: true
+    success_response {
+      class_name: "com.google.protobuf.Empty"
+      value {
+      }
+    }
+
+    ---------- want:
+    is_completed: true
+    is_successful: true
+    success_response {
+      class_name: "com.netflix.stratum.pod.functions.functions.protogen.HelloResponse"
+      value {
+        fields {
+          key: "response"
+          value {
+            string_value: "Hello from POD world, my name is red. Here is CosmosPode2eFunction"
+          }
+        }
+      }
+    }
+</code></pre></div></div>
+
+<p>See how much easier that is to understand? That Spock diff is inexcusably bad.</p>
+
+<h2 id="poor-logging-support">
+<a class="anchor" href="#poor-logging-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Poor logging support</h2>
+
+<p>Preface: This is not a Java-ecosystem issue that’s not specific to Spock.</p>
+
+<p>So you’ve got bad diffs, but you think you’ll <code class="language-plaintext highlighter-rouge">println(got, want)</code> to get around them, right? Nope! Because printlns don’t show up when you run your tests. That’s right! You have to turn on info logging first (for example, <code class="language-plaintext highlighter-rouge">./gradlew test --info</code>). But, the problem is, everything info logs.</p>
+
+<p>I ran a single test, whose project has 6 ~small dependencies. It generated 689 lines of output. So, good luck finding your println in several hundreds (on the low end?) lines of output.</p>
+
+<p>(FWIW for fun I ran the same test with <code class="language-plaintext highlighter-rouge">--debug</code> and got 32,313 lines. Nice!)</p>
+
+<h2 id="dynamic-property-resolution">
+<a class="anchor" href="#dynamic-property-resolution" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dynamic property resolution</h2>
+
+<p>Preface: This is a Groovy issue, not Spock.</p>
+
+<p>Groovy closures use dynamic property resolution. This has the effect of things that should be compilation issues only being surfaced during runtime.</p>
+
+<p>For example, if you want to retry until something happens, you might use Spock’s PollingConditions, whose <code class="language-plaintext highlighter-rouge">eventually</code> takes a closure. If you have compilations in that closure, you’re going to compile, run, retry until you time out, and only after that will your compilation error be surfaced. This is an insane loss of productivity considering that Groovy is built on a strongly typed language!</p>
+
+<h2 id="verbosity-magic-and-assertions">
+<a class="anchor" href="#verbosity-magic-and-assertions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Verbosity, magic, and assertions</h2>
+
+<p>Spock looks for any function that has an <code class="language-plaintext highlighter-rouge">expect:</code> or <code class="language-plaintext highlighter-rouge">then:</code> block, and calls it a test. This is needlessly magical, adds a lot of verbosity (what if I just want a <code class="language-plaintext highlighter-rouge">1==1</code> simple assertion? I need to go add <code class="language-plaintext highlighter-rouge">expect:</code> first), and restrain what you can do (it’s harder to have utility functions doing assertions, because it’d require an expect: block, which now means your utility function is a test!).</p>
+
+<p>The assertions are not particularly enjoyable, either. Groovy looks for any free boolean: whether a direct comparison like <code class="language-plaintext highlighter-rouge">1 == 1</code>, or a function that returns a boolean like <code class="language-plaintext highlighter-rouge">myOptional.isPresent</code>, and calls that an assertion. This is too magical and completely uncustomisable.</p>
+
+<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>
+
+  </div>
+<a class="u-url" href="/2025/02/26/spock.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

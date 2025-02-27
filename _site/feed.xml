@@ -1,5 +1,141 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-02-03T12:31:41-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-02-27T12:34:35-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Spock gripes</title><link href="http://localhost:4000/2025/02/26/spock.html" rel="alternate" type="text/html" title="Spock gripes" /><published>2025-02-26T00:55:23-07:00</published><updated>2025-02-26T00:55:23-07:00</updated><id>http://localhost:4000/2025/02/26/spock</id><content type="html" xml:base="http://localhost:4000/2025/02/26/spock.html"><![CDATA[<p>I’ve recently been using Spock, the Groovy test framework. I’ve got several
+gripes with it that I wanted to document. This is mostly for my future self,
+but may be interesting to others.</p>
+
+<h2 id="subtests">Subtests</h2>
+
+<p><code class="language-plaintext highlighter-rouge">@Unroll</code> with a data provider is the way to run subtests. I have a major and a minor qualm with this:</p>
+
+<ul>
+  <li>
+    <p>Major: You can’t run a single subtest (for example with <code class="language-plaintext highlighter-rouge">./gradlew test --tests “*some test*”</code>).</p>
+  </li>
+  <li>
+    <p>Minor: For dynamic data providers you have to create a whole ‘nother class. It’s much more cumbersome than I’d prefer.</p>
+  </li>
+</ul>
+
+<h2 id="fixed-parallelism">Fixed parallelism</h2>
+
+<p>I should be able to run any number of tests concurrently. Indeed with Spock I can do that as described <a href="https://spockframework.org/spock/docs/2.0-M4/parallel_execution.html">here</a>. But, despite the appearance of supporting fixed test parallelism, it actually supports fixed execution parallelism. This leads to very surprising behaviour, as documented at <a href="https://github.com/spockframework/spock/issues/2117">spockframework/spock/issues/2117</a>.</p>
+
+<h2 id="poor-diff-quality">Poor diff quality</h2>
+
+<p>Here’s a Groovy diff comparing a want proto to a got proto:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Gradle Test Executor 102 &gt; EndToEndSpec &gt; assembleVideoForAimLow FAILED
+    Condition not satisfied:
+
+    GrpcUtils.invokeFunction(stub, in) == want
+    |         |              |     |   |  |
+    |         |              |     |   |  is_completed: true
+    |         |              |     |   |  is_successful: true
+    |         |              |     |   |  success_response {
+    |         |              |     |   |    class_name: "com.netflix.stratum.pod.functions.functions.protogen.HelloResponse"
+    |         |              |     |   |    value {
+    |         |              |     |   |      fields {
+    |         |              |     |   |        key: "response"
+    |         |              |     |   |        value {
+    |         |              |     |   |          string_value: "Hello from POD world, my name is red. Here is CosmosPode2eFunction"
+    |         |              |     |   |        }
+    |         |              |     |   |      }
+    |         |              |     |   |    }
+    |         |              |     |   |  }
+    |         |              |     |   false
+    |         |              |     {
+    |         |              |       "fullFunctionName": "com.netflix.stratum.pod.functions.AimLowVideoAssembler.assembleVideoForAimLow",
+    |         |              |       "arguments": [
+    |         |              |         {
+    |         |              |           "name": "listOfMountedEncodes",
+    |         |              |           "cloudObjects": {
+    |         |              |             "cloudObjects": [
+    |         |              |               {
+    |         |              |                 "url": "baggins://reloaded-test-temp/cosmos-e2e-tests/1730401804568/AIMLOWVIDEOENCODE_chunk.al"
+    |         |              |               }
+    |         |              |             ]
+    |         |              |           }
+    |         |              |         },
+    |         |              |         {
+    |         |              |           "name": "assembeledVideoOutput",
+    |         |              |           "direction": "OUTPUT_REF",
+    |         |              |           "cloudObject": {
+    |         |              |             "url": "baggins://reloaded-test-temp/cosmos-e2e-tests/1730401982908/assembledVideo.lo"
+    |         |              |           }
+    |         |              |         }
+    |         |              |       ],
+    |         |              |       "stack": ""
+    |         |              |     }
+    |         |              &lt;com.netflix.stratumintegtest.protogen.StratumIntegtestServiceGrpc$StratumIntegtestServiceBlockingStub@6f1dd321 channel=ManagedChannelOrphanWrapper{delegate=ManagedChannelImpl{logId=19, target=localhost:53139}} callOptions=CallOptions{deadline=null, authority=null, callCredentials=null, executor=null, compressorName=null, customOptions=[[internal-stub-type, BLOCKING]], waitForReady=false, maxInboundMessageSize=null, maxOutboundMessageSize=null, streamTracerFactories=[]}&gt;
+    |         is_completed: true
+    |         is_successful: true
+    |         success_response {
+    |           class_name: "com.google.protobuf.Empty"
+    |           value {
+    |           }
+    |         }
+    class GrpcUtils
+        at EndToEndSpec.assembleVideoForAimLow(EndToEndSpec.groovy:73)
+
+1 test completed, 1 failed
+</code></pre></div></div>
+
+<p>Can you tell the problem!? Nope! It’s inscrutable.</p>
+
+<p>Here’s the two side-by-side, by the way:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    ---------- got:
+    is_completed: true
+    is_successful: true
+    success_response {
+      class_name: "com.google.protobuf.Empty"
+      value {
+      }
+    }
+
+    ---------- want:
+    is_completed: true
+    is_successful: true
+    success_response {
+      class_name: "com.netflix.stratum.pod.functions.functions.protogen.HelloResponse"
+      value {
+        fields {
+          key: "response"
+          value {
+            string_value: "Hello from POD world, my name is red. Here is CosmosPode2eFunction"
+          }
+        }
+      }
+    }
+</code></pre></div></div>
+
+<p>See how much easier that is to understand? That Spock diff is inexcusably bad.</p>
+
+<h2 id="poor-logging-support">Poor logging support</h2>
+
+<p>Preface: This is not a Java-ecosystem issue that’s not specific to Spock.</p>
+
+<p>So you’ve got bad diffs, but you think you’ll <code class="language-plaintext highlighter-rouge">println(got, want)</code> to get around them, right? Nope! Because printlns don’t show up when you run your tests. That’s right! You have to turn on info logging first (for example, <code class="language-plaintext highlighter-rouge">./gradlew test --info</code>). But, the problem is, everything info logs.</p>
+
+<p>I ran a single test, whose project has 6 ~small dependencies. It generated 689 lines of output. So, good luck finding your println in several hundreds (on the low end?) lines of output.</p>
+
+<p>(FWIW for fun I ran the same test with <code class="language-plaintext highlighter-rouge">--debug</code> and got 32,313 lines. Nice!)</p>
+
+<h2 id="dynamic-property-resolution">Dynamic property resolution</h2>
+
+<p>Preface: This is a Groovy issue, not Spock.</p>
+
+<p>Groovy closures use dynamic property resolution. This has the effect of things that should be compilation issues only being surfaced during runtime.</p>
+
+<p>For example, if you want to retry until something happens, you might use Spock’s PollingConditions, whose <code class="language-plaintext highlighter-rouge">eventually</code> takes a closure. If you have compilations in that closure, you’re going to compile, run, retry until you time out, and only after that will your compilation error be surfaced. This is an insane loss of productivity considering that Groovy is built on a strongly typed language!</p>
+
+<h2 id="verbosity-magic-and-assertions">Verbosity, magic, and assertions</h2>
+
+<p>Spock looks for any function that has an <code class="language-plaintext highlighter-rouge">expect:</code> or <code class="language-plaintext highlighter-rouge">then:</code> block, and calls it a test. This is needlessly magical, adds a lot of verbosity (what if I just want a <code class="language-plaintext highlighter-rouge">1==1</code> simple assertion? I need to go add <code class="language-plaintext highlighter-rouge">expect:</code> first), and restrain what you can do (it’s harder to have utility functions doing assertions, because it’d require an expect: block, which now means your utility function is a test!).</p>
+
+<p>The assertions are not particularly enjoyable, either. Groovy looks for any free boolean: whether a direct comparison like <code class="language-plaintext highlighter-rouge">1 == 1</code>, or a function that returns a boolean like <code class="language-plaintext highlighter-rouge">myOptional.isPresent</code>, and calls that an assertion. This is too magical and completely uncustomisable.</p>
+
+<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[I’ve recently been using Spock, the Groovy test framework. I’ve got several gripes with it that I wanted to document. This is mostly for my future self, but may be interesting to others.]]></summary></entry><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
 
 <p>Netflix has a private enterprise GitHub (and goproxy), which means that
 <a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
@@ -1257,189 +1393,4 @@ gRPC server would look similar.</p>
 <h1 id="conclusion">Conclusion</h1>
 
 <p>Stubbing and mocking gRPC servers in Go is very easy, doesn’t require any
-libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Keeping Your Modules Compatible</title><link href="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html" rel="alternate" type="text/html" title="Keeping Your Modules Compatible" /><published>2020-07-07T15:55:23-06:00</published><updated>2020-07-07T15:55:23-06:00</updated><id>http://localhost:4000/2020/07/07/keeping-your-modules-compatible</id><content type="html" xml:base="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html"><![CDATA[<p>Posted at <a href="https://blog.golang.org/module-compatibility">blog.golang.org/module-compatibility</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at blog.golang.org/module-compatibility.]]></summary></entry><entry><title type="html">Binary Search Tree Runtime Complexities</title><link href="http://localhost:4000/2019/11/23/binary-search-tree-runtime-complexity.html" rel="alternate" type="text/html" title="Binary Search Tree Runtime Complexities" /><published>2019-11-23T14:55:23-07:00</published><updated>2019-11-23T14:55:23-07:00</updated><id>http://localhost:4000/2019/11/23/binary-search-tree-runtime-complexity</id><content type="html" xml:base="http://localhost:4000/2019/11/23/binary-search-tree-runtime-complexity.html"><![CDATA[<h1 id="introduction">Introduction</h1>
-
-<p>I’ve recently inundated myself with interview preparation. Along the way, I
-thought a lot about how to intuit runtime complexities for various algorithms.
-I thought that it might be nice to cement it all with an article - both for the
-sake of others, as well as for my sake. This is the first article in that vein,
-strictly dealing with binary search trees.</p>
-
-<h1 id="terminology">Terminology</h1>
-
-<p>Note: This article frequently uses the abbreviation BST to describe binary
-search trees.</p>
-
-<p>Here are properties of trees that this article deals with:</p>
-
-<ul>
-  <li>Number of nodes in a tree is typically denoted <code class="language-plaintext highlighter-rouge">n</code>.</li>
-  <li>Height of a tree is typically denoted <code class="language-plaintext highlighter-rouge">k</code>.</li>
-  <li><a href="https://en.wikipedia.org/wiki/Binary_tree">Complete</a>: every level except
-possibly the last is completely filled.</li>
-  <li><a href="https://en.wikipedia.org/wiki/Binary_tree">Full</a>: every node has 0 or 2
-children. This is a subset of complete: every full tree is a complete tree.</li>
-  <li><a href="https://en.wikipedia.org/wiki/Binary_tree">Balanced</a>: the height of the left
-and right subtrees of every node differ by at most 1. Using the root node as
-our focus, we can intuit that any balanced tree has fairly uniform height.</li>
-  <li><a href="https://en.wikipedia.org/wiki/Binary_search_tree">Binary Search Tree</a>:
-A tree in which each element to the left of a node is guaranteed to be less,
-and to the right guaranteed to be greater. <em>BSTs may not be balanced</em>.</li>
-  <li><a href="https://en.wikipedia.org/wiki/Red%E2%80%93black_tree">Red-black Tree</a>: A BST
-that is balanced.</li>
-  <li><a href="https://en.wikipedia.org/wiki/AVL_tree">AVL Tree</a>: A BST that is balanced (in
-a different way than red-black trees).</li>
-  <li><a href="https://en.wikipedia.org/wiki/Branching_factor">Branching factor</a>: The number
-of children at each node.</li>
-</ul>
-
-<h1 id="searching-a-bst">Searching a BST</h1>
-
-<p>Everyone knows that searching a binary search tree has runtime complexity
-<code class="language-plaintext highlighter-rouge">O(logn)</code>, right? …right? Let’s take a second to tease apart some questions
-from that assertion to see if we really understand what we mean when we say that:</p>
-
-<ul>
-  <li>
-    <p>Q: What is the <a href="https://en.wikipedia.org/wiki/Logarithm">base</a> of the log?</p>
-
-    <p>A: Typically when we talk about the base of a log, we’re talking about 2 or 10.  In the case of a BST case it’s 2 (we’ll dive into why that is shortly).</p>
-  </li>
-  <li>
-    <p>Q: What does <code class="language-plaintext highlighter-rouge">n</code> represent?</p>
-
-    <p>A: <code class="language-plaintext highlighter-rouge">n</code> <em>usually</em> means “number of elements”. In this case, <code class="language-plaintext highlighter-rouge">n</code> does mean that: or, another way to put that is “number of nodes in the tree”.</p>
-  </li>
-</ul>
-
-<p>So, expanding <code class="language-plaintext highlighter-rouge">O(logn)</code>, we have: <code class="language-plaintext highlighter-rouge">O(log2(&lt;# nodes in tree&gt;))</code>.</p>
-
-<p>Well, searching a BST is not strictly <code class="language-plaintext highlighter-rouge">O(log2(n))</code>: it depends on whether the
-BST is balanced or not. An unbalanced BST may be <code class="language-plaintext highlighter-rouge">O(n)</code>. Let’s discover why by
-exploring how the <code class="language-plaintext highlighter-rouge">log2</code> comes about.</p>
-
-<h1 id="logarithms-and-exponents">Logarithms and exponents</h1>
-
-<p>Let’s look at the following <em>full</em> binary tree:</p>
-
-<p><img src="/assets/simple_complete.png" alt="Full Binary Tree" /></p>
-
-<p>We can tell the following about this tree:</p>
-
-<ul>
-  <li>It has height <code class="language-plaintext highlighter-rouge">k=4</code>.</li>
-  <li>It has nodes <code class="language-plaintext highlighter-rouge">n=15</code>.</li>
-</ul>
-
-<p>The number of nodes is the sum of the nodes at each level. The number of nodes
-at each level are powers of 2. So, at <code class="language-plaintext highlighter-rouge">k=4</code> there are,</p>
-
-\[\begin{align*}
-n=1+2+4+8 &amp;&amp; \text{The sum of the nodes at each level.} \\
-n=2^0+2^1+2^2+2^3 &amp;&amp; \text{Represented in powers of 2.} \\
-n=\sum\limits_{j=0}^{k-1} 2^j &amp;&amp; \text{Represented as a summation.} \\
-\end{align*}\]
-
-<p>The branching factor here is 2 - each node has 2 children. What if each child
-had 7 children, or 9, or 21? Let’s re-write the summation with a generic
-branching factor <code class="language-plaintext highlighter-rouge">b</code>:</p>
-
-\[\begin{align*}
-n=\sum\limits_{j=0}^{k-1} 2^j &amp;&amp; \text{Branching factor of 2, as before.} \\
-n=\sum\limits_{j=0}^{k-1} b^j &amp;&amp; \text{Branching factor of b.} \\
-\end{align*}\]
-
-<p>Sums are a bit of nuisance. Let’s convert this sum into a discrete formula:</p>
-
-\[\begin{align*}
-n=\sum\limits_{j=0}^{k-1} b^j \\
-n=b^{k-1}+b^{k-2}+...+1 &amp;&amp; \text{Expanding the sum.} \\
-n \cdot b=(b^{k-1}+b^{k-2}+...+1) \cdot b &amp;&amp; \text{Multiply by b.} \\
-n \cdot b=b^k+b^{k-1}+...+b &amp;&amp; \text{Distribute the b into the sum.} \\
-n \cdot b + 1=b^k+b^{k-1}+...+b+1 &amp;&amp; \text{Add 1 to each side.} \\
-n \cdot b + 1=b^k + n &amp;&amp; \text{Note that we can use n for the right side.} \\
-n \cdot b - n=b^k - 1 &amp;&amp; \text{Move n left; 1 right.} \\
-n \cdot (b - 1)=b^k - 1 &amp;&amp; \text{Factor out n.} \\
-n = \frac{b^k - 1}{b - 1} &amp;&amp; \text{Divide by n-1.} \\
-\end{align*}\]
-
-<p>Let’s test the formula by using <code class="language-plaintext highlighter-rouge">k=4</code> and <code class="language-plaintext highlighter-rouge">b=2</code> again, which we think should
-equal <code class="language-plaintext highlighter-rouge">n=15</code>:</p>
-
-\[\begin{align*}
-n=\frac{2^4-1}{2-1} \\
-n=\frac{16-1}{1} \\
-n=15 \\
-\end{align*}\]
-
-<p>What if we knew the amount of nodes, but not the height? We can rework the
-formula we just came up with to give us height using number of nodes,</p>
-
-\[\begin{align*}
-n=2^k-1 \\
-n+1=2^k &amp;&amp; \text{Move 1 to the left.} \\
-\log_2 {(n+1)}=\log_2 {(2^k)} &amp;&amp; \text{log2 both sides.} \\
-\log_2 {(n+1)}=k \cdot \log_2 2 &amp;&amp; \text{Power rule.} \\
-\log_2 {(n+1)}=k &amp;&amp; \text{Identity rule.} \\
-k=\log_2 {(n+1)}
-\end{align*}\]
-
-<h1 id="back-to-binary-search-trees">Back to binary search trees</h1>
-
-<p>How can we apply this knowledge? Consider again our original topic of a binary
-search tree: one property of a BST is that a search operation requires no
-backtracking. That is: the path to a node always going to go at most to a leaf
-node - it never reaches a leaf and then has to backtrack and try a different
-choice at a former node.</p>
-
-<p>If the BST is unbalanced, the worst case time complexity to search for a value
-is <code class="language-plaintext highlighter-rouge">O(n)</code>. We can easily show that this is the case with the following tree:</p>
-
-<p><img src="/assets/left_bst.png" alt="Left BST" /></p>
-
-<p>This BST is heavily weighted to the right. To search for the value 109, we’d have to
-look at each of the <code class="language-plaintext highlighter-rouge">n=15</code> elements. That is: the worst case time complexity is
-<code class="language-plaintext highlighter-rouge">O(n)</code>.</p>
-
-<p>What if this BST were balanced, instead?</p>
-
-<p><img src="/assets/balanced_bst.png" alt="Balanced BST" /></p>
-
-<p>Now, to search for <em>any</em> value in the BST, the maximum depth we’d need to
-traverse is <code class="language-plaintext highlighter-rouge">k</code>. We know that <code class="language-plaintext highlighter-rouge">k=log2(n)</code>, so we can say that the big-O runtime
-complexity in terms of <code class="language-plaintext highlighter-rouge">n</code> is <code class="language-plaintext highlighter-rouge">O(log2(n))</code>.</p>
-
-<h1 id="in-conclusion">In conclusion</h1>
-
-<p>There are at most <code class="language-plaintext highlighter-rouge">n=(b^k - 1)/(b - 1)</code> nodes in any tree with height <code class="language-plaintext highlighter-rouge">k</code> and
-branching factor <code class="language-plaintext highlighter-rouge">b</code>. In a binary tree, that simplifies to <code class="language-plaintext highlighter-rouge">n=2^k-1</code>, and can
-be re-written in terms of height as <code class="language-plaintext highlighter-rouge">k=log2(n+1)</code>.</p>
-
-<p>To conclude our original question: binary search trees don’t guarantee
-<code class="language-plaintext highlighter-rouge">O(log2(n))</code> search: <em>balanced</em> BSTs do.</p>
-
-<p>In a future article we’ll look at <a href="https://en.wikipedia.org/wiki/Heap_(data_structure)">Heap</a>
-runtime complexity, and how memoization affects that. In some other future
-article we’ll look at backtracking and permutation runtime complexities.</p>
-
-<script type="text/javascript" async="" src="/assets/MathJax-2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Config({
-      extensions: [
-        "MathMenu.js",
-        "MathZoom.js",
-        "AssistiveMML.js"
-      ],
-      jax: ["input/TeX", "output/CommonHTML"],
-      TeX: {
-        extensions: [
-          "AMSmath.js",
-          "AMSsymbols.js",
-          "noErrors.js",
-          "noUndefined.js",
-        ]
-      }
-    });
-  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry></feed>
+libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Keeping Your Modules Compatible</title><link href="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html" rel="alternate" type="text/html" title="Keeping Your Modules Compatible" /><published>2020-07-07T15:55:23-06:00</published><updated>2020-07-07T15:55:23-06:00</updated><id>http://localhost:4000/2020/07/07/keeping-your-modules-compatible</id><content type="html" xml:base="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html"><![CDATA[<p>Posted at <a href="https://blog.golang.org/module-compatibility">blog.golang.org/module-compatibility</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at blog.golang.org/module-compatibility.]]></summary></entry></feed>
