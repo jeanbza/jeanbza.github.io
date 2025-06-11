@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Storing protobuf-generated Go code without a registry | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Storing protobuf-generated Go code without a registry" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Before diving into this topic, you may want to familiarize yourself with Using Go Modules and subsequent posts, or the module spec. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on." />
+<meta property="og:description" content="Before diving into this topic, you may want to familiarize yourself with Using Go Modules and subsequent posts, or the module spec. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on." />
+<link rel="canonical" href="http://localhost:4000/2025/06/10/proto-storage.html" />
+<meta property="og:url" content="http://localhost:4000/2025/06/10/proto-storage.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-06-10T01:55:23-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Storing protobuf-generated Go code without a registry" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-06-10T01:55:23-07:00","datePublished":"2025-06-10T01:55:23-07:00","description":"Before diving into this topic, you may want to familiarize yourself with Using Go Modules and subsequent posts, or the module spec. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.","headline":"Storing protobuf-generated Go code without a registry","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2025/06/10/proto-storage.html"},"url":"http://localhost:4000/2025/06/10/proto-storage.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#storing-protobuf-generated-go-code-without-a-registry">Storing protobuf-generated Go code without a registry</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#local-protos">Local protos</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#that-you-expect-to-be-imported">That you expect to be imported</a></li>
+<li class="toc-entry toc-h3"><a href="#that-you-dont-expect-to-be-imported">That you don’t expect to be imported</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h2"><a href="#foreign-protos">Foreign protos</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#with-a-single-source-of-truth">With a single source of truth</a>
+<ul>
+<li class="toc-entry toc-h4"><a href="#looking-at-a-concrete-example">Looking at a concrete example</a></li>
+<li class="toc-entry toc-h4"><a href="#what-if-a-proto-declares-option-go_package-but-i-cant-import-it">What if a proto declares option go_package, but I can’t import it?</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h3"><a href="#without-a-single-source-of-truth">Without a single source of truth</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h2"><a href="#proto-global-registry">Proto global registry</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#storing-protobuf-generated-go-code-without-a-registry" aria-hidden="true"><span class="octicon octicon-link"></span></a>Storing protobuf-generated Go code without a registry</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-06-10T01:55:23-07:00" itemprop="datePublished">Jun 10, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
+
+<h2 id="local-protos">
+<a class="anchor" href="#local-protos" aria-hidden="true"><span class="octicon octicon-link"></span></a>Local protos</h2>
+
+<p>The following covers local protos that you own.</p>
+
+<h3 id="that-you-expect-to-be-imported">
+<a class="anchor" href="#that-you-expect-to-be-imported" aria-hidden="true"><span class="octicon octicon-link"></span></a>That you expect to be imported</h3>
+
+<p>If you expect others to import your proto, declare <code class="language-plaintext highlighter-rouge">option go_package</code> and generate Go bindings to that location.</p>
+
+<p>This defines the single source of truth for Go generated code for your proto, making it easy for others to use your proto without needing to generate and store the Go bindings themselves.</p>
+
+<p>For example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">head </span>protos/server/server.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package server<span class="p">;</span>
+
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/server"</span><span class="p">;</span>
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.pb.go
+| | |____server.proto
+</code></pre></div></div>
+
+<p>Note: Public directories and releasing a tag. Remember that these Go bindings are intended to be import-able, so they should be in a non-<code class="language-plaintext highlighter-rouge">internal/</code> directory. And, if your repo has tagged releases, remember to tag a new release when you generate for the first time, so that others can begin depending on your proto-generated code.</p>
+
+<h3 id="that-you-dont-expect-to-be-imported">
+<a class="anchor" href="#that-you-dont-expect-to-be-imported" aria-hidden="true"><span class="octicon octicon-link"></span></a>That you don’t expect to be imported</h3>
+
+<p>Even if you don’t expect others to import your proto, it’s still best to treat it as if it will be imported.</p>
+
+<p>But, if you’re certain you’ll never want anybody else to import it, give it an <code class="language-plaintext highlighter-rouge">option go_package</code> that generates to an <code class="language-plaintext highlighter-rouge">internal/</code> directory in your Go module and add a comment above explaining that it is not meant to be depended upon.</p>
+
+<p>For example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">head </span>protos/server/server.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package server<span class="p">;</span>
+
+// This proto is not intended to be depended upon, and as such always generates
+// into an internal/ directory.
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/internal/protogen/server"</span><span class="p">;</span>
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.proto
+|____internal
+| |____protogen
+| | |____server
+| | | |____server.pb.go
+</code></pre></div></div>
+
+<h2 id="foreign-protos">
+<a class="anchor" href="#foreign-protos" aria-hidden="true"><span class="octicon octicon-link"></span></a>Foreign protos</h2>
+
+<p>The following covers foreign protos that you don’t own.</p>
+
+<p>WARNING: Never copy <code class="language-plaintext highlighter-rouge">.protos</code>. What follows provides nuance about whether or not to store Go bindings for a proto in your module. However, you should never copy and store a foreign <code class="language-plaintext highlighter-rouge">.proto</code> in your repo.</p>
+
+<h3 id="with-a-single-source-of-truth">
+<a class="anchor" href="#with-a-single-source-of-truth" aria-hidden="true"><span class="octicon octicon-link"></span></a>With a single source of truth</h3>
+
+<p>If a proto declares <code class="language-plaintext highlighter-rouge">option go_package</code> and provides its Go bindings at that location, that is the single source of truth for its generated Go code and you should import the single source of truth instead of generating and storing your own Go bindings.</p>
+
+<p>If you are generating with <code class="language-plaintext highlighter-rouge">protoc</code>, that means you should not provide <code class="language-plaintext highlighter-rouge">--go_opt=M</code> for the proto.</p>
+
+<p>If you are generating with <code class="language-plaintext highlighter-rouge">buf</code>, that means you should not include the proto in <code class="language-plaintext highlighter-rouge">managed.override</code>.</p>
+
+<h4 id="looking-at-a-concrete-example">
+<a class="anchor" href="#looking-at-a-concrete-example" aria-hidden="true"><span class="octicon octicon-link"></span></a>Looking at a concrete example</h4>
+
+<p>Here’s a concrete example of that:</p>
+
+<ul>
+  <li>
+<a href="https://github.com/googleapis/googleapis/blob/c759e924aa786f3df0e64499daf97d46a27edb31/google/cloud/speech/v1/cloud_speech.proto"><code class="language-plaintext highlighter-rouge">github.com/googleapis/google/cloud/speech/v1/cloud_speech.proto</code></a> is a proto that defines <code class="language-plaintext highlighter-rouge">option go_package = "cloud.google.com/go/speech/apiv1/speechpb;speechpb";</code>.</li>
+  <li>Accordingly, its generated Go code exists at <a href="https://github.com/googleapis/google-cloud-go/tree/main/speech/apiv1/speechpb"><code class="language-plaintext highlighter-rouge">github.com/google-cloud-go/speech/apiv1/speechpb</code></a>.
+    <ul>
+      <li>Note: <code class="language-plaintext highlighter-rouge">cloud.google.com/go</code> is an alias for <code class="language-plaintext highlighter-rouge">github.com/google/google-cloud-go</code>.</li>
+    </ul>
+  </li>
+  <li>If you want to use it,
+    <ul>
+      <li>✅ You should import it as <code class="language-plaintext highlighter-rouge">speechpb cloud.google.com/go/speech/apiv1/speechpb</code>.</li>
+      <li>❌ You should not generate (or store) <code class="language-plaintext highlighter-rouge">cloud_speech.pb.go</code>.</li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="what-if-a-proto-declares-option-go_package-but-i-cant-import-it">
+<a class="anchor" href="#what-if-a-proto-declares-option-go_package-but-i-cant-import-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>What if a proto declares option go_package, but I can’t import it?</h4>
+
+<p>The proto is incorrectly configured. You should reach out to the proto owners to have them either remove the option go_package or generate the Go bindings at the expected location.</p>
+
+<h3 id="without-a-single-source-of-truth">
+<a class="anchor" href="#without-a-single-source-of-truth" aria-hidden="true"><span class="octicon octicon-link"></span></a>Without a single source of truth</h3>
+
+<p>If a foreign proto does not declare <code class="language-plaintext highlighter-rouge">option go_package</code>, you have two options:</p>
+
+<ol>
+  <li>
+    <p>If you can: convince the maintainers to add option go_package, generate their Go bindings at that location, and make it available in a Go module. This is the best option.</p>
+
+    <p>However, this can be a big ask for non-Go teams that aren’t used to maintaining any Go code.And, if it’s a widely used proto there may need to be considerable thought given to how to migrate all existing dependers. So, it may be more pragmatic to:</p>
+  </li>
+  <li>
+    <p>Otherwise: Generate and store their Go bindings in your module. This is risky, since it opens you and others up to the runtime panic described in Proto global registry.</p>
+
+    <p>To mitigate that, store the Go bindings an <code class="language-plaintext highlighter-rouge">internal/</code> directory. If any of your code depends on these Go bindings and is accessible to other modules (is not in <code class="language-plaintext highlighter-rouge">main</code> or <code class="language-plaintext highlighter-rouge">_test</code> package), then it should also be in an <code class="language-plaintext highlighter-rouge">internal/</code> directory. See the discussion on transitive dependencies in Proto global registry.</p>
+  </li>
+</ol>
+
+<p>Doing so won’t reduce your chance of running into this issue, but it does prevent anyone else accidentally depending on your copy of the Go bindings.</p>
+
+<h2 id="proto-global-registry">
+<a class="anchor" href="#proto-global-registry" aria-hidden="true"><span class="octicon octicon-link"></span></a>Proto global registry</h2>
+
+<p>All protocol buffers declarations linked into a Go binary are inserted into an <a href="https://protobuf.dev/reference/go/faq/#namespace-conflict">in-memory global registry</a>. If two protobuf declarations linked into a Go binary have the same name, then this leads to a namespace conflict. Worse, this error is a runtime error, making it easy to find its way into a deployment.</p>
+
+  </div>
+<a class="u-url" href="/2025/06/10/proto-storage.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

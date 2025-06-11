@@ -1,5 +1,458 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-02-27T12:34:35-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Spock gripes</title><link href="http://localhost:4000/2025/02/26/spock.html" rel="alternate" type="text/html" title="Spock gripes" /><published>2025-02-26T00:55:23-07:00</published><updated>2025-02-26T00:55:23-07:00</updated><id>http://localhost:4000/2025/02/26/spock</id><content type="html" xml:base="http://localhost:4000/2025/02/26/spock.html"><![CDATA[<p>I’ve recently been using Spock, the Groovy test framework. I’ve got several
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-06-11T13:16:14-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T01:55:23-07:00</published><updated>2025-06-10T01:55:23-07:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
+
+<h2 id="local-protos">Local protos</h2>
+
+<p>The following covers local protos that you own.</p>
+
+<h3 id="that-you-expect-to-be-imported">That you expect to be imported</h3>
+
+<p>If you expect others to import your proto, declare <code class="language-plaintext highlighter-rouge">option go_package</code> and generate Go bindings to that location.</p>
+
+<p>This defines the single source of truth for Go generated code for your proto, making it easy for others to use your proto without needing to generate and store the Go bindings themselves.</p>
+
+<p>For example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">head </span>protos/server/server.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package server<span class="p">;</span>
+
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/server"</span><span class="p">;</span>
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.pb.go
+| | |____server.proto
+</code></pre></div></div>
+
+<p>Note: Public directories and releasing a tag. Remember that these Go bindings are intended to be import-able, so they should be in a non-<code class="language-plaintext highlighter-rouge">internal/</code> directory. And, if your repo has tagged releases, remember to tag a new release when you generate for the first time, so that others can begin depending on your proto-generated code.</p>
+
+<h3 id="that-you-dont-expect-to-be-imported">That you don’t expect to be imported</h3>
+
+<p>Even if you don’t expect others to import your proto, it’s still best to treat it as if it will be imported.</p>
+
+<p>But, if you’re certain you’ll never want anybody else to import it, give it an <code class="language-plaintext highlighter-rouge">option go_package</code> that generates to an <code class="language-plaintext highlighter-rouge">internal/</code> directory in your Go module and add a comment above explaining that it is not meant to be depended upon.</p>
+
+<p>For example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">head </span>protos/server/server.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package server<span class="p">;</span>
+
+// This proto is not intended to be depended upon, and as such always generates
+// into an internal/ directory.
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/internal/protogen/server"</span><span class="p">;</span>
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.proto
+|____internal
+| |____protogen
+| | |____server
+| | | |____server.pb.go
+</code></pre></div></div>
+
+<h2 id="foreign-protos">Foreign protos</h2>
+
+<p>The following covers foreign protos that you don’t own.</p>
+
+<p>WARNING: Never copy <code class="language-plaintext highlighter-rouge">.protos</code>. What follows provides nuance about whether or not to store Go bindings for a proto in your module. However, you should never copy and store a foreign <code class="language-plaintext highlighter-rouge">.proto</code> in your repo.</p>
+
+<h3 id="with-a-single-source-of-truth">With a single source of truth</h3>
+
+<p>If a proto declares <code class="language-plaintext highlighter-rouge">option go_package</code> and provides its Go bindings at that location, that is the single source of truth for its generated Go code and you should import the single source of truth instead of generating and storing your own Go bindings.</p>
+
+<p>If you are generating with <code class="language-plaintext highlighter-rouge">protoc</code>, that means you should not provide <code class="language-plaintext highlighter-rouge">--go_opt=M</code> for the proto.</p>
+
+<p>If you are generating with <code class="language-plaintext highlighter-rouge">buf</code>, that means you should not include the proto in <code class="language-plaintext highlighter-rouge">managed.override</code>.</p>
+
+<h4 id="looking-at-a-concrete-example">Looking at a concrete example</h4>
+
+<p>Here’s a concrete example of that:</p>
+
+<ul>
+  <li><a href="https://github.com/googleapis/googleapis/blob/c759e924aa786f3df0e64499daf97d46a27edb31/google/cloud/speech/v1/cloud_speech.proto"><code class="language-plaintext highlighter-rouge">github.com/googleapis/google/cloud/speech/v1/cloud_speech.proto</code></a> is a proto that defines <code class="language-plaintext highlighter-rouge">option go_package = "cloud.google.com/go/speech/apiv1/speechpb;speechpb";</code>.</li>
+  <li>Accordingly, its generated Go code exists at <a href="https://github.com/googleapis/google-cloud-go/tree/main/speech/apiv1/speechpb"><code class="language-plaintext highlighter-rouge">github.com/google-cloud-go/speech/apiv1/speechpb</code></a>.
+    <ul>
+      <li>Note: <code class="language-plaintext highlighter-rouge">cloud.google.com/go</code> is an alias for <code class="language-plaintext highlighter-rouge">github.com/google/google-cloud-go</code>.</li>
+    </ul>
+  </li>
+  <li>If you want to use it,
+    <ul>
+      <li>✅ You should import it as <code class="language-plaintext highlighter-rouge">speechpb cloud.google.com/go/speech/apiv1/speechpb</code>.</li>
+      <li>❌ You should not generate (or store) <code class="language-plaintext highlighter-rouge">cloud_speech.pb.go</code>.</li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="what-if-a-proto-declares-option-go_package-but-i-cant-import-it">What if a proto declares option go_package, but I can’t import it?</h4>
+
+<p>The proto is incorrectly configured. You should reach out to the proto owners to have them either remove the option go_package or generate the Go bindings at the expected location.</p>
+
+<h3 id="without-a-single-source-of-truth">Without a single source of truth</h3>
+
+<p>If a foreign proto does not declare <code class="language-plaintext highlighter-rouge">option go_package</code>, you have two options:</p>
+
+<ol>
+  <li>
+    <p>If you can: convince the maintainers to add option go_package, generate their Go bindings at that location, and make it available in a Go module. This is the best option.</p>
+
+    <p>However, this can be a big ask for non-Go teams that aren’t used to maintaining any Go code.And, if it’s a widely used proto there may need to be considerable thought given to how to migrate all existing dependers. So, it may be more pragmatic to:</p>
+  </li>
+  <li>
+    <p>Otherwise: Generate and store their Go bindings in your module. This is risky, since it opens you and others up to the runtime panic described in Proto global registry.</p>
+
+    <p>To mitigate that, store the Go bindings an <code class="language-plaintext highlighter-rouge">internal/</code> directory. If any of your code depends on these Go bindings and is accessible to other modules (is not in <code class="language-plaintext highlighter-rouge">main</code> or <code class="language-plaintext highlighter-rouge">_test</code> package), then it should also be in an <code class="language-plaintext highlighter-rouge">internal/</code> directory. See the discussion on transitive dependencies in Proto global registry.</p>
+  </li>
+</ol>
+
+<p>Doing so won’t reduce your chance of running into this issue, but it does prevent anyone else accidentally depending on your copy of the Go bindings.</p>
+
+<h2 id="proto-global-registry">Proto global registry</h2>
+
+<p>All protocol buffers declarations linked into a Go binary are inserted into an <a href="https://protobuf.dev/reference/go/faq/#namespace-conflict">in-memory global registry</a>. If two protobuf declarations linked into a Go binary have the same name, then this leads to a namespace conflict. Worse, this error is a runtime error, making it easy to find its way into a deployment.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Before diving into this topic, you may want to familiarize yourself with Using Go Modules and subsequent posts, or the module spec. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.]]></summary></entry><entry><title type="html">Generating protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-generation.html" rel="alternate" type="text/html" title="Generating protobuf-generated Go code without a registry" /><published>2025-06-10T00:55:23-07:00</published><updated>2025-06-10T00:55:23-07:00</updated><id>http://localhost:4000/2025/06/10/proto-generation</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-generation.html"><![CDATA[<p>I’ve recently had to generate Go code from protos, without the aid of a proto
+registry. This article covers my advice for anyone needing to do the same.</p>
+
+<h2 id="generating-go-code-with-protoc">Generating Go code with protoc</h2>
+
+<p>Generating code with <code class="language-plaintext highlighter-rouge">protoc</code> is best for protos that have few or no
+dependencies.</p>
+
+<h3 id="simple-code-generation">Simple code generation</h3>
+
+<p>Imagine two simple protos:</p>
+
+<pre><code class="language-pb">// protos/user/user.proto
+syntax = "proto3";
+
+package user;
+
+option go_package = "github.com/username/myrepo/protos/user";
+
+message User {
+    string name = 1;
+}
+</code></pre>
+
+<pre><code class="language-pb">// protos/server/server.proto
+syntax = "proto3";
+
+package server;
+
+option go_package = "github.com/username/myrepo/protos/server";
+
+import "user/user.proto";
+
+message Server {
+    repeated user.User users = 1;
+}
+</code></pre>
+
+<p>Generate Go code (.pb.gos) from this simple proto with <code class="language-plaintext highlighter-rouge">protoc</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
+    <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
+    <span class="nt">-I</span> protos/ <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.pb.go
+| | |____server.proto
+| |____user
+| | |____user.pb.go
+| | |____user.proto
+</code></pre></div></div>
+
+<p>Warning: This approach allows others to depend on your generated Go code.</p>
+
+<p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
+
+<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go_grpc_opt</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
+    <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
+    <span class="nt">--go-grpc_out</span><span class="o">=</span>protos <span class="se">\</span>
+    <span class="nt">-I</span> protos/ <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative <span class="se">\</span>
+    <span class="nt">--go-grpc_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
+</code></pre></div></div>
+
+<h3 id="foreign-protos">Foreign protos</h3>
+
+<p>Part of your dependency graph may include protos in other repos:</p>
+
+<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// protos/user/user.proto</span>
+<span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kn">package</span> <span class="nn">user</span><span class="p">;</span>
+
+<span class="k">option</span> <span class="na">go_package</span> <span class="o">=</span> <span class="s">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
+
+<span class="c1">// Not in this repo. Also not repo-rooted, which we'll discuss below. We could</span>
+<span class="c1">// change this if we owned user.proto, but if this occurred in a foreign proto</span>
+<span class="c1">// that we can't change then we'd have to work around it.</span>
+<span class="k">import</span> <span class="s">"non/repo/rooted/import.proto"</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">User</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>You’ll need to git clone the foreign protos and include them with <code class="language-plaintext highlighter-rouge">-I</code> during your <code class="language-plaintext highlighter-rouge">protoc</code> invocation.</p>
+
+<p>You’ll may also need to account for quirks, such as:</p>
+
+<ul>
+  <li>
+    <p>Dealing with imports not rooted at its repo root. Consider your code A importing B, and B importing another proto C, but not at C’s repo root. Instead, B imports C at at <code class="language-plaintext highlighter-rouge">$REPO-ROOT/some/nested/dir</code>. Since you don’t own B (another team / company does), you can’t change B. Get around this with <code class="language-plaintext highlighter-rouge">-I</code> rooted at the place the import expects, as shown below.</p>
+  </li>
+  <li>
+    <p>Dealing with imports that do not define <code class="language-plaintext highlighter-rouge">option go_package</code>. When protos in your dependency graph don’t define <code class="language-plaintext highlighter-rouge">option go_package</code>, you’ll have to tell <code class="language-plaintext highlighter-rouge">protoc</code> which go_package to use with <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import path&gt;</code>. You’ll probably have to generate the foreign proto’s <code class="language-plaintext highlighter-rouge">.pb.go</code> into your module and point the aforementioned Go import path there, under the assumption that if they haven’t defined an option go_package then it’s also likely they are not generating and publishing Go bindings for you to use.</p>
+  </li>
+</ul>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">TMP</span><span class="o">=</span><span class="si">$(</span><span class="nb">mktemp</span> <span class="nt">-d</span><span class="si">)</span>
+git clone https://github.com/foreignorg/foreignrepo.git <span class="s2">"</span><span class="nv">$TMP</span><span class="s2">/foreign"</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> internal/protogen
+protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
+    non/repo/rooted/import.proto <span class="se">\</span>
+    <span class="nt">--go_out</span><span class="o">=</span>internal/protogen <span class="se">\</span>
+    <span class="nt">-I</span> protos <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span>Muser/user.proto<span class="o">=</span>github.com/username/myrepo/internal/protogen/user <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span>Mserver/server.proto<span class="o">=</span>github.com/username/myrepo/internal/protogen/server <span class="se">\</span>
+    <span class="nt">-I</span> <span class="nv">$TMP</span>/path/to/expected/import/root <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span>Mnon/repo/rooted/import.proto<span class="o">=</span>github.com/foreignorg/foreignrepo/path/to/expected/import/root <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
+</code></pre></div></div>
+
+<p>Which when run would generate:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____internal
+| |____protogen
+| | |____server
+| | | |____server.pb.go
+| | |____user
+| | | |____user.pb.go
+| | |____non
+| | | |____repo
+| | | | |____rooted
+| | | | | |____import.pb.go
+</code></pre></div></div>
+
+<p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
+
+<h3 id="large-dependency-graphs">Large dependency graphs</h3>
+
+<p>Using <code class="language-plaintext highlighter-rouge">protoc</code> becomes progressively more unwieldy the larger your proto dependency graph becomes, since you have to specify all transitive dependencies at <code class="language-plaintext highlighter-rouge">protoc</code> time.</p>
+
+<p>Let’s now look at a better tool for managing larger dependency graphs.</p>
+
+<h2 id="generating-go-code-with-buf">Generating Go code with buf</h2>
+
+<p>Generating code with <code class="language-plaintext highlighter-rouge">buf</code> is better for protos that have more than a few dependencies.</p>
+
+<h3 id="simple-code-generation-1">Simple code generation</h3>
+
+<p>Imagine two simple protos:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// protos/user/user.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package user<span class="p">;</span>
+
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
+
+message User <span class="o">{</span>
+    string name <span class="o">=</span> 1<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// protos/server/server.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package server<span class="p">;</span>
+
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/server"</span><span class="p">;</span>
+
+import <span class="s2">"user/user.proto"</span><span class="p">;</span>
+
+message Server <span class="o">{</span>
+    repeated user.User <span class="nb">users</span> <span class="o">=</span> 1<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Generate Go code (.pb.gos) from these protos with buf by adding:</p>
+
+<ul>
+  <li>
+    <p>A <code class="language-plaintext highlighter-rouge">buf.yaml</code>:</p>
+
+    <div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.yaml</span>
+  <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+  <span class="na">lint</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">STANDARD</span>
+  <span class="na">breaking</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">FILE</span>
+  <span class="na">modules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>A <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
+
+    <div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.gen.yaml</span>
+  <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+  <span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+      <span class="s">out</span><span class="err">:</span> <span class="s">protos</span>
+      <span class="s">opt</span><span class="err">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<p>Generate code with <code class="language-plaintext highlighter-rouge">buf generate</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>buf generate
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.pb.go
+| | |____server.proto
+| |____user
+| | |____user.pb.go
+| | |____user.proto
+</code></pre></div></div>
+
+<p>Warning: This approach allows others to depend on your generated Go code.</p>
+
+<p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
+
+<p>If you need to produce gRPC language bindings, add the gRPC plugin to <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
+
+<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.gen.yaml</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+    <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
+    <span class="na">opt</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/grpc/go:v1.5.1</span>
+    <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
+    <span class="na">opt</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+</code></pre></div></div>
+
+<h3 id="foreign-protos-1">Foreign protos</h3>
+
+<p>Part of your dependency graph may include protos in other repos:</p>
+
+<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// protos/user/user.proto</span>
+<span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kn">package</span> <span class="nn">user</span><span class="p">;</span>
+
+<span class="k">option</span> <span class="na">go_package</span> <span class="o">=</span> <span class="s">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
+
+<span class="c1">// Not in this repo. Also not repo-rooted, which we'll discuss below. We could</span>
+<span class="c1">// change this if we owned user.proto, but if this occurred in a foreign proto</span>
+<span class="c1">// that we can't change then we'd have to work around it.</span>
+<span class="k">import</span> <span class="s">"non/repo/rooted/import.proto"</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">User</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Foreign protos that are neither in your repo nor the Buf Schema Registry (BSR) can be imported, but in a roundabout way. You’ll need to git clone them yourself and include them as modules in buf.yaml.</p>
+
+<p>Before we do so, let’s quickly recap proto quirks you might run into, described above in “Generating code with protoc: Foreign protos”. We’ll need to contend with the fact that the <code class="language-plaintext highlighter-rouge">import.proto</code> import was not rooted at its repo root, and that <code class="language-plaintext highlighter-rouge">import.proto</code> does not define <code class="language-plaintext highlighter-rouge">option go_package</code>.</p>
+
+<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.yaml</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">lint</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">STANDARD</span>
+<span class="na">breaking</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">FILE</span>
+<span class="na">modules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
+  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">tmp/path/to/expected/import/root</span>
+</code></pre></div></div>
+
+<p>The non-repo rooted import is handled by specifying the path at which the <code class="language-plaintext highlighter-rouge">import "non/repo/rooted/...";</code> import works.</p>
+
+<p>To handle the lack of <code class="language-plaintext highlighter-rouge">option go_package</code>, we’ll need to turn on managed mode in <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
+
+<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.gen.yaml</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+    <span class="na">out</span><span class="pi">:</span> <span class="s">internal/protogen</span>
+    <span class="na">opt</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+<span class="na">managed</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">override</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">non/repo/rooted/</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/foreignorg/foreignrepo/path/to/expected/import/root</span>
+    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">user/user.proto</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/username/myrepo/internal/protogen</span>
+    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">server/server.proto</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/username/myrepo/internal/protogen</span>
+</code></pre></div></div>
+
+<p>Next, let’s perform the <code class="language-plaintext highlighter-rouge">git clone</code> and <code class="language-plaintext highlighter-rouge">tmp/</code> management:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/foreignorg/foreignrepo.git tmp/foreign
+buf generate
+</code></pre></div></div>
+
+<p>Which when run generates:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____internal
+| |____protogen
+| | |____server
+| | | |____server.pb.go
+| | |____user
+| | | |____user.pb.go
+| | |____non
+| | | |____repo
+| | | | |____rooted
+| | | | | |____import.pb.go
+</code></pre></div></div>
+
+<p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
+
+<h3 id="concurrent-git-clones">Concurrent git clones</h3>
+
+<p>If you have many <code class="language-plaintext highlighter-rouge">git clone</code> statements, consider using <code class="language-plaintext highlighter-rouge">&amp;</code> and <code class="language-plaintext highlighter-rouge">wait</code> to run them concurrently:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone ... &amp;
+git clone ... &amp;
+git clone ... &amp;
+<span class="nb">wait
+</span>buf generate
+</code></pre></div></div>]]></content><author><name></name></author><summary type="html"><![CDATA[I’ve recently had to generate Go code from protos, without the aid of a proto registry. This article covers my advice for anyone needing to do the same.]]></summary></entry><entry><title type="html">Spock gripes</title><link href="http://localhost:4000/2025/02/25/spock.html" rel="alternate" type="text/html" title="Spock gripes" /><published>2025-02-25T23:55:23-08:00</published><updated>2025-02-25T23:55:23-08:00</updated><id>http://localhost:4000/2025/02/25/spock</id><content type="html" xml:base="http://localhost:4000/2025/02/25/spock.html"><![CDATA[<p>I’ve recently been using Spock, the Groovy test framework. I’ve got several
 gripes with it that I wanted to document. This is mostly for my future self,
 but may be interesting to others.</p>
 
@@ -135,7 +588,7 @@ but may be interesting to others.</p>
 
 <p>The assertions are not particularly enjoyable, either. Groovy looks for any free boolean: whether a direct comparison like <code class="language-plaintext highlighter-rouge">1 == 1</code>, or a function that returns a boolean like <code class="language-plaintext highlighter-rouge">myOptional.isPresent</code>, and calls that an assertion. This is too magical and completely uncustomisable.</p>
 
-<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[I’ve recently been using Spock, the Groovy test framework. I’ve got several gripes with it that I wanted to document. This is mostly for my future self, but may be interesting to others.]]></summary></entry><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
+<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[I’ve recently been using Spock, the Groovy test framework. I’ve got several gripes with it that I wanted to document. This is mostly for my future self, but may be interesting to others.]]></summary></entry><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/2025/01/28/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-28T23:55:23-08:00</published><updated>2025-01-28T23:55:23-08:00</updated><id>http://localhost:4000/2025/01/28/pkgsite</id><content type="html" xml:base="http://localhost:4000/2025/01/28/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
 
 <p>Netflix has a private enterprise GitHub (and goproxy), which means that
 <a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
@@ -334,7 +787,7 @@ http://localhost:8080, where the frontend is hosted.</p>
 
 <span class="o">#</span> <span class="k">Drop</span> <span class="n">it</span> <span class="k">all</span> <span class="k">and</span> <span class="k">start</span> <span class="n">over</span><span class="p">.</span>
 <span class="k">TRUNCATE</span> <span class="n">documentation</span><span class="p">,</span> <span class="n">documentation_symbols</span><span class="p">,</span> <span class="n">excluded_prefixes</span><span class="p">,</span> <span class="n">imports</span><span class="p">,</span> <span class="n">imports_unique</span><span class="p">,</span> <span class="n">latest_module_versions</span><span class="p">,</span> <span class="n">legacy_documentation_symbols</span><span class="p">,</span> <span class="n">licenses</span><span class="p">,</span> <span class="n">module_version_states</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">package_symbols</span><span class="p">,</span> <span class="n">package_version_states</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">readmes</span><span class="p">,</span> <span class="n">search_documents</span><span class="p">,</span> <span class="n">symbol_history</span><span class="p">,</span> <span class="n">symbol_names</span><span class="p">,</span> <span class="n">symbol_search_documents</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">version_map</span><span class="p">;</span>
-</code></pre></div></div>]]></content><author><name></name></author><summary type="html"><![CDATA[Who this is for]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
+</code></pre></div></div>]]></content><author><name></name></author><summary type="html"><![CDATA[Who this is for]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/2022/12/06/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-06T23:55:23-08:00</published><updated>2022-12-06T23:55:23-08:00</updated><id>http://localhost:4000/2022/12/06/google-resources</id><content type="html" xml:base="http://localhost:4000/2022/12/06/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
 
 <p>This is a collection of extremely useful internal resources, which are made
 publicly available. I thought I’d share these, since they are a bit hard to find
@@ -388,7 +841,7 @@ but I expect them all to be of a very high quality.</p>
 
 <p>I will continue editing this article as I find more. Stay tuned!</p>
 
-<p>(I wonder if this will turn into a “How to re-create Google’s engineering department in your company”… 🤔)</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Engineering resources from Google]]></summary></entry><entry><title type="html">Interfaces in depth</title><link href="http://localhost:4000/2022/12/05/interfaces.html" rel="alternate" type="text/html" title="Interfaces in depth" /><published>2022-12-05T00:55:23-07:00</published><updated>2022-12-05T00:55:23-07:00</updated><id>http://localhost:4000/2022/12/05/interfaces</id><content type="html" xml:base="http://localhost:4000/2022/12/05/interfaces.html"><![CDATA[<h2 id="foreword">Foreword</h2>
+<p>(I wonder if this will turn into a “How to re-create Google’s engineering department in your company”… 🤔)</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Engineering resources from Google]]></summary></entry><entry><title type="html">Interfaces in depth</title><link href="http://localhost:4000/2022/12/04/interfaces.html" rel="alternate" type="text/html" title="Interfaces in depth" /><published>2022-12-04T23:55:23-08:00</published><updated>2022-12-04T23:55:23-08:00</updated><id>http://localhost:4000/2022/12/04/interfaces</id><content type="html" xml:base="http://localhost:4000/2022/12/04/interfaces.html"><![CDATA[<h2 id="foreword">Foreword</h2>
 
 <p>A conversation with a colleague inspired a deep dive into the refspec, to gain
 concrete understanding on some things I had until then only had intuitions
@@ -592,7 +1045,7 @@ mis-use.</p>
   <li><a href="https://research.swtch.com/interfaces">Go Data Structures: Interfaces</a> by rsc@</li>
   <li><a href="https://www.airs.com/blog/archives/277">Go Interfaces</a> by iant@</li>
   <li><a href="https://go.dev/blog/laws-of-reflection">Laws of Reflection</a> by r@</li>
-</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Foreword]]></summary></entry><entry><title type="html">Graceful degradation with the logistic function</title><link href="http://localhost:4000/2022/05/05/logistic-function-backoff.html" rel="alternate" type="text/html" title="Graceful degradation with the logistic function" /><published>2022-05-05T15:55:23-06:00</published><updated>2022-05-05T15:55:23-06:00</updated><id>http://localhost:4000/2022/05/05/logistic-function-backoff</id><content type="html" xml:base="http://localhost:4000/2022/05/05/logistic-function-backoff.html"><![CDATA[<h1 id="graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</h1>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Foreword]]></summary></entry><entry><title type="html">Graceful degradation with the logistic function</title><link href="http://localhost:4000/2022/05/05/logistic-function-backoff.html" rel="alternate" type="text/html" title="Graceful degradation with the logistic function" /><published>2022-05-05T14:55:23-07:00</published><updated>2022-05-05T14:55:23-07:00</updated><id>http://localhost:4000/2022/05/05/logistic-function-backoff</id><content type="html" xml:base="http://localhost:4000/2022/05/05/logistic-function-backoff.html"><![CDATA[<h1 id="graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</h1>
 
 <p>I recently worked on a server throttling feature in one of our build stack’s busiest binaries. We serve files from this binary, which is deployed as tens of thousands of tasks, which cumulatively serve millions of QPS.</p>
 
@@ -882,7 +1335,7 @@ f(x) = 0.98999999158
         ]
       }
     });
-  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Graceful degradation with the logistic function]]></summary></entry><entry><title type="html">Wrapped errors are stacks</title><link href="http://localhost:4000/2022/02/09/wrapped-errors-are-stacks.html" rel="alternate" type="text/html" title="Wrapped errors are stacks" /><published>2022-02-09T14:55:23-07:00</published><updated>2022-02-09T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/09/wrapped-errors-are-stacks</id><content type="html" xml:base="http://localhost:4000/2022/02/09/wrapped-errors-are-stacks.html"><![CDATA[<h1 id="wrapped-errors-are-stacks">Wrapped errors are stacks</h1>
+  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Graceful degradation with the logistic function]]></summary></entry><entry><title type="html">Wrapped errors are stacks</title><link href="http://localhost:4000/2022/02/09/wrapped-errors-are-stacks.html" rel="alternate" type="text/html" title="Wrapped errors are stacks" /><published>2022-02-09T13:55:23-08:00</published><updated>2022-02-09T13:55:23-08:00</updated><id>http://localhost:4000/2022/02/09/wrapped-errors-are-stacks</id><content type="html" xml:base="http://localhost:4000/2022/02/09/wrapped-errors-are-stacks.html"><![CDATA[<h1 id="wrapped-errors-are-stacks">Wrapped errors are stacks</h1>
 
 <p>Wrapping an error creates a stack: a linked list of error pointing to the next error, where newly wrapped errors are added to the head, and the stack is traversed from head to tail during As, Is, and with the Unwrap interface.</p>
 
@@ -923,7 +1376,7 @@ func (e *PathParseErrors) Unwrap() error {
 
 <p>This issue is exacerbated by the fact that it’s impossible for the author of PathParseErrors to document their Unwrap method in a way that will directly help users. Users often don’t interact with the Unwrap method directly: they use tools like As and Is, which themselves call the Unwrap method. And, this error may exist in a library that is several layers deep in a dependency tree: a user may have a very hard time finding the exact library whose documentation to go read when they’ve got an opaque stack of wrapped errors.</p>
 
-<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry><entry><title type="html">Error unwrapping for library authors</title><link href="http://localhost:4000/2022/02/08/error-unwrapping.html" rel="alternate" type="text/html" title="Error unwrapping for library authors" /><published>2022-02-08T14:55:23-07:00</published><updated>2022-02-08T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/08/error-unwrapping</id><content type="html" xml:base="http://localhost:4000/2022/02/08/error-unwrapping.html"><![CDATA[<h1 id="introduction">Introduction</h1>
+<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry><entry><title type="html">Error unwrapping for library authors</title><link href="http://localhost:4000/2022/02/08/error-unwrapping.html" rel="alternate" type="text/html" title="Error unwrapping for library authors" /><published>2022-02-08T13:55:23-08:00</published><updated>2022-02-08T13:55:23-08:00</updated><id>http://localhost:4000/2022/02/08/error-unwrapping</id><content type="html" xml:base="http://localhost:4000/2022/02/08/error-unwrapping.html"><![CDATA[<h1 id="introduction">Introduction</h1>
 
 <p>In https://go.dev/blog/go1.13-errors, Go introduced new language changes that improved how errors are handled in Go programs. These changes include the concept of wrapping errors, as well as tools and semantics for unwrapping errors. They have enabled a rich ecosystem of detailed errors, and given users more ways to examine errors..</p>
 
@@ -1064,333 +1517,4 @@ func Decompress(name, path string) error {
 
 <p>Error wrapping is a powerful tool that provides upstream users a much richer set of functionality for understanding returned to them by downstream libraries. But, it’s important to be aware that supporting wrapped errors comes with responsibility for compatibility, like any other part of your API. And it’s important to consider whether your error type makes sense to be unwrapped at all.</p>
 
-<p>For most code, it’s best to start simple: use %v instead of %w when you annotate errors, and don’t provide Unwrap on your custom error types. Wait until you learn about specific use cases for providing unwrap mechanics, and then carefully consider how to support them. We hope the considerations highlighted in this article help guide that decision.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Contexts and Structs</title><link href="http://localhost:4000/2021/02/24/contexts-structs.html" rel="alternate" type="text/html" title="Contexts and Structs" /><published>2021-02-24T14:55:23-07:00</published><updated>2021-02-24T14:55:23-07:00</updated><id>http://localhost:4000/2021/02/24/contexts-structs</id><content type="html" xml:base="http://localhost:4000/2021/02/24/contexts-structs.html"><![CDATA[<p>Posted at <a href="https://go.dev/blog/context-and-structs">go.dev/blog/context-and-structs</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at go.dev/blog/context-and-structs.]]></summary></entry><entry><title type="html">Stubbing gRPC in Go</title><link href="http://localhost:4000/2020/10/08/stubbing-grpc.html" rel="alternate" type="text/html" title="Stubbing gRPC in Go" /><published>2020-10-08T15:55:23-06:00</published><updated>2020-10-08T15:55:23-06:00</updated><id>http://localhost:4000/2020/10/08/stubbing-grpc</id><content type="html" xml:base="http://localhost:4000/2020/10/08/stubbing-grpc.html"><![CDATA[<h1 id="introduction">Introduction</h1>
-
-<p>I’ve several times been met with the question, “How do you stub gRPC in Go”?</p>
-
-<p>This is a short blog post about how to do that.</p>
-
-<h1 id="mocking">Mocking</h1>
-
-<p>Mocking gRPC clients is <em>super easy</em> and doesn’t require a separate mocking
-library. Given some proto with service,</p>
-
-<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">service</span> <span class="n">Greeter</span> <span class="p">{</span>
-    <span class="k">rpc</span> <span class="n">SayHello</span> <span class="p">(</span><span class="n">HelloRequest</span><span class="p">)</span> <span class="k">returns</span> <span class="p">(</span><span class="n">HelloReply</span><span class="p">)</span> <span class="p">{}</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>This will generate a <code class="language-plaintext highlighter-rouge">greeter.pb.go</code> with,</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span> <span class="n">GreeterClient</span> <span class="k">interface</span> <span class="p">{</span>
-    <span class="n">SayHello</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">in</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="n">opts</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>That interface is all we need to mock away. Our code that communicates with
-<code class="language-plaintext highlighter-rouge">Greeter</code> will take the <code class="language-plaintext highlighter-rouge">GreeterClient</code> interface, per usual dependency
-injection. In our real code (<code class="language-plaintext highlighter-rouge">main.go</code>, etc) we’ll give it a real client,
-and our tests we’ll give it a fake client:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// Code that uses GreeterClient</span>
-
-<span class="k">type</span> <span class="n">SomeService</span> <span class="k">struct</span> <span class="p">{</span>
-    <span class="n">gc</span> <span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">GreeterClient</span>
-<span class="p">}</span>
-<span class="c">// Inject me with either a real GreeterClient or a fake one!</span>
-<span class="k">func</span> <span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span> <span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">GreeterClient</span><span class="p">)</span> <span class="o">*</span><span class="n">SomeService</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="o">&amp;</span><span class="n">SomeService</span><span class="p">{</span><span class="n">gc</span><span class="o">:</span> <span class="n">gc</span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>Here’s our real code:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">var</span> <span class="n">greeterAddr</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="s">"greeterAddr"</span><span class="p">,</span> <span class="s">""</span><span class="p">,</span> <span class="s">"--greeterAddr=greeter:12345"</span><span class="p">)</span>
-
-<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
-    <span class="n">conn</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">Dial</span><span class="p">(</span><span class="o">*</span><span class="n">GreeterAddr</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="c">// Handle err.</span>
-    <span class="p">}</span>
-    <span class="k">defer</span> <span class="n">conn</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-    <span class="n">gc</span> <span class="o">:=</span> <span class="n">greeter</span><span class="o">.</span><span class="n">NewGreeterClient</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
-    <span class="n">serv</span> <span class="o">:=</span> <span class="n">someservice</span><span class="o">.</span><span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
-    <span class="n">_</span> <span class="o">=</span> <span class="n">serv</span> <span class="c">// Use SomeService with real GreeterClient.</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>And, here’s our test version using a fake GreeterClient for testing:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span> <span class="n">fakeGreeterClient</span> <span class="k">struct</span> <span class="p">{</span>
-    <span class="n">sayHelloFn</span> <span class="k">func</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="p">(</span><span class="n">gc</span> <span class="o">*</span><span class="n">fakeGreeterClient</span><span class="p">)</span> <span class="n">SayHello</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">in</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="n">opts</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">in</span><span class="p">,</span> <span class="n">opts</span><span class="o">...</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="no">nil</span><span class="p">,</span> <span class="n">errors</span><span class="o">.</span><span class="n">New</span><span class="p">(</span><span class="s">"fakeGreeterClient was not set up with a response - must set gc.sayHelloFn"</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="n">TestSomeService</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">var</span> <span class="n">requests</span> <span class="p">[]</span><span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloReply</span>
-    <span class="n">gc</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">fakeGreeterClient</span><span class="p">{}</span>
-    <span class="c">// Set up the fake greeter to return a canned message.</span>
-    <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span> <span class="o">=</span> <span class="k">func</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">in</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="n">opts</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-        <span class="n">requests</span> <span class="o">=</span> <span class="nb">append</span><span class="p">(</span><span class="n">requests</span><span class="p">,</span> <span class="n">in</span><span class="p">)</span> <span class="c">// Record requests.</span>
-        <span class="k">return</span> <span class="o">&amp;</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloReply</span><span class="p">{</span><span class="n">Message</span><span class="o">:</span> <span class="s">"hello world"</span><span class="p">},</span> <span class="no">nil</span>
-    <span class="p">}</span>
-    <span class="n">serv</span> <span class="o">:=</span> <span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
-    <span class="n">_</span> <span class="o">=</span> <span class="n">serv</span> <span class="c">// Test serv.</span>
-    <span class="n">_</span> <span class="o">=</span> <span class="n">requests</span> <span class="c">// Assert on expected requests.</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>Simple! And, of course, <code class="language-plaintext highlighter-rouge">fakeGreeterClient</code> can be more or less complicated:
-perhaps it always returns the same thing (less complicated), or perhaps it tries
-to mimic the behavior of the real <code class="language-plaintext highlighter-rouge">Greeter</code> (more complicated).</p>
-
-<h1 id="stubbing">Stubbing</h1>
-
-<p>Sometimes we aren’t able to use dependency injection, but we <em>can</em> choose which
-connection we’re using. For example, this is the case with
-<a href="https://pkg.go.dev/cloud.google.com/go/pubsub">cloud.google.com/go/pubsub</a>,
-whose <a href="https://pkg.go.dev/cloud.google.com/go/pubsub#NewClient">NewClient</a> does
-not allow passing the underlying <a href="https://pkg.go.dev/google.golang.org/api/pubsub/v1">google.golang.org/api/pubsub/v1 raw proto-generated client interface</a> but <a href="https://pkg.go.dev/google.golang.org/api/option#WithGRPCConn"><em>does</em> allow passing in a conn</a>.</p>
-
-<p>Another example where passing a mock is not good enough, and you have to rely
-on some connection, is integration tests! For integration tests, you’d want your
-real binary to talk to a <code class="language-plaintext highlighter-rouge">Greeter</code> running locally, which you can
-stub/set up/view interactions in the test itself. You’ll want this stub
-<code class="language-plaintext highlighter-rouge">Greeter</code> to have some address like <code class="language-plaintext highlighter-rouge">localhost:12345</code> that you can pass to your
-binary through a flag, like <code class="language-plaintext highlighter-rouge">--greeterAddr=localhost:12345</code>.</p>
-
-<p>These are just two small examples, but this problem of needing stubbing
-capabilities beyond a simple interface mock comes up enough that it justifies
-its own section.</p>
-
-<p>It turns out to be very similar to the above mocking strategy, with a few small
-differences. Let’s dive in! We’ll use the second example - the integration test -
-though the principles apply equally to any opaque gRPC client situation.</p>
-
-<p>So, here’s our main from before, but we’re going to make it callable from our
-test by sticking it in a non-main package:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">main</span>
-
-<span class="k">var</span> <span class="n">greeterAddr</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="s">"greeterAddr"</span><span class="p">,</span> <span class="s">""</span><span class="p">,</span> <span class="s">"--greeterAddr=greeter:12345"</span><span class="p">)</span>
-
-<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
-    <span class="n">myapp</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="o">*</span><span class="n">greeterAddr</span><span class="p">)</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">myapp</span>
-
-<span class="c">// Start starts the app. It is like main, but tests can call it.</span>
-<span class="k">func</span> <span class="n">Start</span><span class="p">(</span><span class="n">greeterAddr</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">conn</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">Dial</span><span class="p">(</span><span class="n">greeterAddr</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="c">// Handle err.</span>
-    <span class="p">}</span>
-    <span class="k">defer</span> <span class="n">conn</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-    <span class="n">gc</span> <span class="o">:=</span> <span class="n">greeter</span><span class="o">.</span><span class="n">NewGreeterClient</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
-    <span class="n">serv</span> <span class="o">:=</span> <span class="n">someservice</span><span class="o">.</span><span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
-    <span class="n">_</span> <span class="o">=</span> <span class="n">serv</span> <span class="c">// Use SomeService with real GreeterClient.</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>This is one of <em>many</em> ways to start an integration. It allows us to run <code class="language-plaintext highlighter-rouge">main</code>
-from our test, since <code class="language-plaintext highlighter-rouge">main</code> itself is unexported and not run-able from a test.</p>
-
-<p>Sidenote: this method may seem hacky, but why? It’s just sticking your main into
-another, callable method. It’s used by large projects <a href="https://github.com/etcd-io/etcd/blob/00e49d0c10bb931f596d801d7368b5e0ae539fbd/main.go">like etcd</a> if you need further assurance. 🙂</p>
-
-<p>There are other ways to test main. For example, you might spin up the binary by
-executing shell using os.Cmd and the like. That’s fine! The same principles
-apply.</p>
-
-<p>Anyways, we have a way to run <code class="language-plaintext highlighter-rouge">main</code> - how do we get <code class="language-plaintext highlighter-rouge">main</code> to talk to our stub?
-We clearly can’t pass in a <code class="language-plaintext highlighter-rouge">GreeterClient</code> interface. So, instead, we’ll spin up
-<code class="language-plaintext highlighter-rouge">Greeter</code> as an in-memory server, and pass the in-memory server address to
-<code class="language-plaintext highlighter-rouge">Start</code>.</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="s">"net"</span>
-<span class="k">import</span> <span class="s">"google.golang.org/grpc"</span>
-
-<span class="k">type</span> <span class="n">FakeGreeterClient</span> <span class="k">struct</span> <span class="p">{</span>
-    <span class="n">sayHelloFn</span> <span class="k">func</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="p">(</span><span class="n">gc</span> <span class="o">*</span><span class="n">FakeGreeterClient</span><span class="p">)</span> <span class="n">SayHello</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">in</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="n">opts</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">in</span><span class="p">,</span> <span class="n">opts</span><span class="o">...</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="no">nil</span><span class="p">,</span> <span class="n">errors</span><span class="o">.</span><span class="n">New</span><span class="p">(</span><span class="s">"fakeGreeterClient was not set up with a response - must set gc.sayHelloFn"</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="n">TestIntegration</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">ctx</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-
-    <span class="c">// Start FakeGreeterClient in an in-memory process.</span>
-    <span class="n">gc</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">FakeGreeterClient</span><span class="p">{}</span>
-    <span class="n">l</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="s">"localhost:0"</span><span class="p">)</span> <span class="c">// IIRC 0 == "first available port"</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="n">t</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="n">gsrv</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">NewServer</span><span class="p">(</span><span class="n">opts</span><span class="o">...</span><span class="p">)</span>
-    <span class="n">greeter</span><span class="o">.</span><span class="n">RegisterGreeterServer</span><span class="p">(</span><span class="n">gsrv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">gc</span><span class="p">)</span>
-    <span class="n">fakeGreeterAddr</span> <span class="o">:=</span> <span class="n">l</span><span class="o">.</span><span class="n">Addr</span><span class="p">()</span><span class="o">.</span><span class="n">String</span><span class="p">()</span>
-    <span class="k">go</span> <span class="k">func</span><span class="p">()</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">gsrv</span><span class="o">.</span><span class="n">Serve</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">l</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-            <span class="nb">panic</span><span class="p">(</span><span class="n">err</span><span class="p">)</span> <span class="c">// We're in a goroutine - we can't t.Fatal/t.Error.</span>
-        <span class="p">}</span>
-    <span class="p">}()</span>
-
-    <span class="n">myapp</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="n">fakeGreeterAddr</span><span class="p">)</span>
-    <span class="c">// Test your app, which is now hooked up to FakeGreeterClient!</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>Ta-da! Very easy to start an in-memory gRPC fake.</p>
-
-<h1 id="bonus-actually-testing-main-forreal">Bonus: actually testing main, forreal</h1>
-
-<p>Ok, the above might be a bit arcane if you have the usual HTTP/gRPC API. You’re
-now able to hook your app up to the fake in-memory server, but how do you
-actually get your test to talk to <em>your</em> app?</p>
-
-<p>However you want! But, we’ll walk through one example.</p>
-
-<p>Imagine our app has some HTTP endpoints, and we want to send requests to them
-from our test, and see that our app appropriately talks to <code class="language-plaintext highlighter-rouge">Greeter</code> when those
-endpoints get hit. Well, in order to do that we need an address that our test
-can send requests to. Let’s make that happen!</p>
-
-<p>Let’s look at <code class="language-plaintext highlighter-rouge">main</code> and <code class="language-plaintext highlighter-rouge">Start</code> again:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">main</span>
-
-<span class="k">var</span> <span class="n">port</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">Int</span><span class="p">(</span><span class="s">"port"</span><span class="p">,</span> <span class="m">8080</span><span class="p">,</span> <span class="s">"the port this app will run on, ex --port=8080"</span><span class="p">)</span>
-<span class="k">var</span> <span class="n">greeterAddr</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="s">"greeterAddr"</span><span class="p">,</span> <span class="s">""</span><span class="p">,</span> <span class="s">"--greeterAddr=greeter:12345"</span><span class="p">)</span>
-
-<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
-
-    <span class="c">// When user kills this process, close the server.</span>
-    <span class="k">defer</span> <span class="n">myapp</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="o">*</span><span class="n">port</span><span class="p">,</span> <span class="o">*</span><span class="n">greeterAddr</span><span class="p">)</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-
-    <span class="c">// Wait forever, until a user kills this process.</span>
-    <span class="n">wg</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">sync</span><span class="o">.</span><span class="n">WaitGroup</span><span class="p">{}</span>
-    <span class="n">wg</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="m">1</span><span class="p">)</span>
-    <span class="n">wg</span><span class="o">.</span><span class="n">Wait</span><span class="p">()</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">myapp</span>
-
-<span class="c">// Start starts the app. Call Shutdown on the returned Server when done.</span>
-<span class="k">func</span> <span class="n">Start</span><span class="p">(</span><span class="n">port</span> <span class="kt">int</span><span class="p">,</span> <span class="n">greeterAddr</span> <span class="kt">string</span><span class="p">)</span> <span class="o">*</span><span class="n">http</span><span class="o">.</span><span class="n">Server</span> <span class="p">{</span>
-    <span class="n">conn</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">Dial</span><span class="p">(</span><span class="n">greeterAddr</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="c">// Handle err.</span>
-    <span class="p">}</span>
-    <span class="k">defer</span> <span class="n">conn</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-    <span class="n">gc</span> <span class="o">:=</span> <span class="n">greeter</span><span class="o">.</span><span class="n">NewGreeterClient</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
-    <span class="n">serv</span> <span class="o">:=</span> <span class="n">someservice</span><span class="o">.</span><span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
-    <span class="n">_</span> <span class="o">=</span> <span class="n">serv</span> <span class="c">// Use SomeService with real GreeterClient.</span>
-
-    <span class="n">http</span><span class="o">.</span><span class="n">HandleFunc</span><span class="p">(</span><span class="s">"/sayhello"</span><span class="p">,</span> <span class="k">func</span><span class="p">(</span><span class="n">w</span> <span class="n">http</span><span class="o">.</span><span class="n">ResponseWriter</span><span class="p">,</span> <span class="n">r</span> <span class="o">*</span><span class="n">http</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="n">_</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">serv</span><span class="o">.</span><span class="n">SayHello</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloRequest</span><span class="p">{</span><span class="n">Name</span><span class="o">:</span> <span class="s">"world"</span><span class="p">});</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-            <span class="n">http</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">err</span><span class="o">.</span><span class="n">String</span><span class="p">(),</span> <span class="m">500</span><span class="p">)</span>
-        <span class="p">}</span>
-    <span class="p">})</span>
-    
-    <span class="n">srv</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">http</span><span class="o">.</span><span class="n">Server</span><span class="p">{</span><span class="n">Addr</span><span class="o">:</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">":%d"</span><span class="p">,</span> <span class="n">port</span><span class="p">)}</span>
-    <span class="k">go</span> <span class="k">func</span><span class="p">()</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">srv</span><span class="o">.</span><span class="n">ListenAndServe</span><span class="p">();</span> <span class="n">err</span> <span class="o">!=</span> <span class="n">http</span><span class="o">.</span><span class="n">ErrServerClosed</span> <span class="p">{</span>
-            <span class="n">log</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-        <span class="p">}</span>
-    <span class="p">}()</span>
-    <span class="k">return</span> <span class="n">srv</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>Mostly the same, except we now have an HTTP API. This is just an example - a
-gRPC server would look similar.</p>
-
-<p>Onto the integration test!</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="s">"net"</span>
-<span class="k">import</span> <span class="s">"google.golang.org/grpc"</span>
-
-<span class="k">type</span> <span class="n">FakeGreeterClient</span> <span class="k">struct</span> <span class="p">{</span>
-    <span class="n">sayHelloFn</span> <span class="k">func</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="p">(</span><span class="n">gc</span> <span class="o">*</span><span class="n">FakeGreeterClient</span><span class="p">)</span> <span class="n">SayHello</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">in</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="n">opts</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">if</span> <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="k">return</span> <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">in</span><span class="p">,</span> <span class="n">opts</span><span class="o">...</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="no">nil</span><span class="p">,</span> <span class="n">errors</span><span class="o">.</span><span class="n">New</span><span class="p">(</span><span class="s">"fakeGreeterClient was not set up with a response - must set gc.sayHelloFn"</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="n">TestIntegration</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">ctx</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-
-    <span class="c">// Start FakeGreeterClient in an in-memory process.</span>
-    <span class="n">gc</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">FakeGreeterClient</span><span class="p">{}</span>
-    <span class="n">l</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="s">"localhost:0"</span><span class="p">)</span> <span class="c">// IIRC 0 == "first available port"</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="n">t</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="n">gsrv</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">NewServer</span><span class="p">(</span><span class="n">opts</span><span class="o">...</span><span class="p">)</span>
-    <span class="n">greeter</span><span class="o">.</span><span class="n">RegisterGreeterServer</span><span class="p">(</span><span class="n">gsrv</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">gc</span><span class="p">)</span>
-    <span class="n">fakeGreeterAddr</span> <span class="o">:=</span> <span class="n">l</span><span class="o">.</span><span class="n">Addr</span><span class="p">()</span><span class="o">.</span><span class="n">String</span><span class="p">()</span>
-    <span class="k">go</span> <span class="k">func</span><span class="p">()</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">gsrv</span><span class="o">.</span><span class="n">Serve</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">l</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-            <span class="nb">panic</span><span class="p">(</span><span class="n">err</span><span class="p">)</span> <span class="c">// We're in a goroutine - we can't t.Fatal/t.Error.</span>
-        <span class="p">}</span>
-    <span class="p">}()</span>
-
-    <span class="n">myappPort</span> <span class="o">:=</span> <span class="n">openPort</span><span class="p">()</span>
-    <span class="n">myappAddr</span> <span class="o">:=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"localhost:%d"</span><span class="p">,</span> <span class="n">myappPort</span><span class="p">)</span>
-
-    <span class="n">srv</span> <span class="o">:=</span> <span class="n">myapp</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="n">myappPort</span><span class="p">,</span> <span class="n">fakeGreeterAddr</span><span class="p">)</span>
-    <span class="k">defer</span> <span class="n">srv</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-    
-    <span class="c">// Test your app, which is now hooked up to FakeGreeterClient, by sending</span>
-    <span class="c">// requests to myappAddr!</span>
-<span class="p">}</span>
-
-<span class="c">// openPort returns an open port.</span>
-<span class="k">func</span> <span class="n">openPort</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
-    <span class="n">t</span><span class="o">.</span><span class="n">Helper</span><span class="p">()</span>
-    <span class="n">l</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="s">":0"</span><span class="p">)</span>
-    <span class="k">defer</span> <span class="n">l</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="n">t</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-    <span class="p">}</span>
-
-    <span class="n">u</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">url</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">Addr</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="n">t</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="k">if</span> <span class="n">u</span><span class="o">.</span><span class="n">Port</span><span class="p">()</span> <span class="o">==</span> <span class="s">""</span> <span class="p">{</span>
-        <span class="n">t</span><span class="o">.</span><span class="n">Fatalf</span><span class="p">(</span><span class="s">"unable to parse a port from %s"</span><span class="p">,</span> <span class="n">l</span><span class="o">.</span><span class="n">Addr</span><span class="p">())</span>
-    <span class="p">}</span>
-
-    <span class="n">p</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">strconv</span><span class="o">.</span><span class="n">Atoi</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">Port</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-        <span class="n">t</span><span class="o">.</span><span class="n">Fatal</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-    <span class="p">}</span>
-    <span class="k">return</span> <span class="n">p</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<h1 id="conclusion">Conclusion</h1>
-
-<p>Stubbing and mocking gRPC servers in Go is very easy, doesn’t require any
-libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Keeping Your Modules Compatible</title><link href="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html" rel="alternate" type="text/html" title="Keeping Your Modules Compatible" /><published>2020-07-07T15:55:23-06:00</published><updated>2020-07-07T15:55:23-06:00</updated><id>http://localhost:4000/2020/07/07/keeping-your-modules-compatible</id><content type="html" xml:base="http://localhost:4000/2020/07/07/keeping-your-modules-compatible.html"><![CDATA[<p>Posted at <a href="https://blog.golang.org/module-compatibility">blog.golang.org/module-compatibility</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at blog.golang.org/module-compatibility.]]></summary></entry></feed>
+<p>For most code, it’s best to start simple: use %v instead of %w when you annotate errors, and don’t provide Unwrap on your custom error types. Wait until you learn about specific use cases for providing unwrap mechanics, and then carefully consider how to support them. We hope the considerations highlighted in this article help guide that decision.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Contexts and Structs</title><link href="http://localhost:4000/2021/02/24/contexts-structs.html" rel="alternate" type="text/html" title="Contexts and Structs" /><published>2021-02-24T13:55:23-08:00</published><updated>2021-02-24T13:55:23-08:00</updated><id>http://localhost:4000/2021/02/24/contexts-structs</id><content type="html" xml:base="http://localhost:4000/2021/02/24/contexts-structs.html"><![CDATA[<p>Posted at <a href="https://go.dev/blog/context-and-structs">go.dev/blog/context-and-structs</a>.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Posted at go.dev/blog/context-and-structs.]]></summary></entry></feed>

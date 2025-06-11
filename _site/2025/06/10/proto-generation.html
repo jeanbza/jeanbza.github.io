@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Generating protobuf-generated Go code without a registry | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Generating protobuf-generated Go code without a registry" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="I’ve recently had to generate Go code from protos, without the aid of a proto registry. This article covers my advice for anyone needing to do the same." />
+<meta property="og:description" content="I’ve recently had to generate Go code from protos, without the aid of a proto registry. This article covers my advice for anyone needing to do the same." />
+<link rel="canonical" href="http://localhost:4000/2025/06/10/proto-generation.html" />
+<meta property="og:url" content="http://localhost:4000/2025/06/10/proto-generation.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-06-10T00:55:23-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Generating protobuf-generated Go code without a registry" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-06-10T00:55:23-07:00","datePublished":"2025-06-10T00:55:23-07:00","description":"I’ve recently had to generate Go code from protos, without the aid of a proto registry. This article covers my advice for anyone needing to do the same.","headline":"Generating protobuf-generated Go code without a registry","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2025/06/10/proto-generation.html"},"url":"http://localhost:4000/2025/06/10/proto-generation.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#generating-protobuf-generated-go-code-without-a-registry">Generating protobuf-generated Go code without a registry</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#generating-go-code-with-protoc">Generating Go code with protoc</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#simple-code-generation">Simple code generation</a></li>
+<li class="toc-entry toc-h3"><a href="#foreign-protos">Foreign protos</a></li>
+<li class="toc-entry toc-h3"><a href="#large-dependency-graphs">Large dependency graphs</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h2"><a href="#generating-go-code-with-buf">Generating Go code with buf</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#simple-code-generation-1">Simple code generation</a></li>
+<li class="toc-entry toc-h3"><a href="#foreign-protos-1">Foreign protos</a></li>
+<li class="toc-entry toc-h3"><a href="#concurrent-git-clones">Concurrent git clones</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#generating-protobuf-generated-go-code-without-a-registry" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating protobuf-generated Go code without a registry</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-06-10T00:55:23-07:00" itemprop="datePublished">Jun 10, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>I’ve recently had to generate Go code from protos, without the aid of a proto
+registry. This article covers my advice for anyone needing to do the same.</p>
+
+<h2 id="generating-go-code-with-protoc">
+<a class="anchor" href="#generating-go-code-with-protoc" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating Go code with protoc</h2>
+
+<p>Generating code with <code class="language-plaintext highlighter-rouge">protoc</code> is best for protos that have few or no
+dependencies.</p>
+
+<h3 id="simple-code-generation">
+<a class="anchor" href="#simple-code-generation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Simple code generation</h3>
+
+<p>Imagine two simple protos:</p>
+
+<pre><code class="language-pb">// protos/user/user.proto
+syntax = "proto3";
+
+package user;
+
+option go_package = "github.com/username/myrepo/protos/user";
+
+message User {
+    string name = 1;
+}
+</code></pre>
+
+<pre><code class="language-pb">// protos/server/server.proto
+syntax = "proto3";
+
+package server;
+
+option go_package = "github.com/username/myrepo/protos/server";
+
+import "user/user.proto";
+
+message Server {
+    repeated user.User users = 1;
+}
+</code></pre>
+
+<p>Generate Go code (.pb.gos) from this simple proto with <code class="language-plaintext highlighter-rouge">protoc</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
+    <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
+    <span class="nt">-I</span> protos/ <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.pb.go
+| | |____server.proto
+| |____user
+| | |____user.pb.go
+| | |____user.proto
+</code></pre></div></div>
+
+<p>Warning: This approach allows others to depend on your generated Go code.</p>
+
+<p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
+
+<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go_grpc_opt</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
+    <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
+    <span class="nt">--go-grpc_out</span><span class="o">=</span>protos <span class="se">\</span>
+    <span class="nt">-I</span> protos/ <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative <span class="se">\</span>
+    <span class="nt">--go-grpc_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
+</code></pre></div></div>
+
+<h3 id="foreign-protos">
+<a class="anchor" href="#foreign-protos" aria-hidden="true"><span class="octicon octicon-link"></span></a>Foreign protos</h3>
+
+<p>Part of your dependency graph may include protos in other repos:</p>
+
+<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// protos/user/user.proto</span>
+<span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kn">package</span> <span class="nn">user</span><span class="p">;</span>
+
+<span class="k">option</span> <span class="na">go_package</span> <span class="o">=</span> <span class="s">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
+
+<span class="c1">// Not in this repo. Also not repo-rooted, which we'll discuss below. We could</span>
+<span class="c1">// change this if we owned user.proto, but if this occurred in a foreign proto</span>
+<span class="c1">// that we can't change then we'd have to work around it.</span>
+<span class="k">import</span> <span class="s">"non/repo/rooted/import.proto"</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">User</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>You’ll need to git clone the foreign protos and include them with <code class="language-plaintext highlighter-rouge">-I</code> during your <code class="language-plaintext highlighter-rouge">protoc</code> invocation.</p>
+
+<p>You’ll may also need to account for quirks, such as:</p>
+
+<ul>
+  <li>
+    <p>Dealing with imports not rooted at its repo root. Consider your code A importing B, and B importing another proto C, but not at C’s repo root. Instead, B imports C at at <code class="language-plaintext highlighter-rouge">$REPO-ROOT/some/nested/dir</code>. Since you don’t own B (another team / company does), you can’t change B. Get around this with <code class="language-plaintext highlighter-rouge">-I</code> rooted at the place the import expects, as shown below.</p>
+  </li>
+  <li>
+    <p>Dealing with imports that do not define <code class="language-plaintext highlighter-rouge">option go_package</code>. When protos in your dependency graph don’t define <code class="language-plaintext highlighter-rouge">option go_package</code>, you’ll have to tell <code class="language-plaintext highlighter-rouge">protoc</code> which go_package to use with <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import path&gt;</code>. You’ll probably have to generate the foreign proto’s <code class="language-plaintext highlighter-rouge">.pb.go</code> into your module and point the aforementioned Go import path there, under the assumption that if they haven’t defined an option go_package then it’s also likely they are not generating and publishing Go bindings for you to use.</p>
+  </li>
+</ul>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">TMP</span><span class="o">=</span><span class="si">$(</span><span class="nb">mktemp</span> <span class="nt">-d</span><span class="si">)</span>
+git clone https://github.com/foreignorg/foreignrepo.git <span class="s2">"</span><span class="nv">$TMP</span><span class="s2">/foreign"</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> internal/protogen
+protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
+    non/repo/rooted/import.proto <span class="se">\</span>
+    <span class="nt">--go_out</span><span class="o">=</span>internal/protogen <span class="se">\</span>
+    <span class="nt">-I</span> protos <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span>Muser/user.proto<span class="o">=</span>github.com/username/myrepo/internal/protogen/user <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span>Mserver/server.proto<span class="o">=</span>github.com/username/myrepo/internal/protogen/server <span class="se">\</span>
+    <span class="nt">-I</span> <span class="nv">$TMP</span>/path/to/expected/import/root <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span>Mnon/repo/rooted/import.proto<span class="o">=</span>github.com/foreignorg/foreignrepo/path/to/expected/import/root <span class="se">\</span>
+    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
+</code></pre></div></div>
+
+<p>Which when run would generate:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____internal
+| |____protogen
+| | |____server
+| | | |____server.pb.go
+| | |____user
+| | | |____user.pb.go
+| | |____non
+| | | |____repo
+| | | | |____rooted
+| | | | | |____import.pb.go
+</code></pre></div></div>
+
+<p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
+
+<h3 id="large-dependency-graphs">
+<a class="anchor" href="#large-dependency-graphs" aria-hidden="true"><span class="octicon octicon-link"></span></a>Large dependency graphs</h3>
+
+<p>Using <code class="language-plaintext highlighter-rouge">protoc</code> becomes progressively more unwieldy the larger your proto dependency graph becomes, since you have to specify all transitive dependencies at <code class="language-plaintext highlighter-rouge">protoc</code> time.</p>
+
+<p>Let’s now look at a better tool for managing larger dependency graphs.</p>
+
+<h2 id="generating-go-code-with-buf">
+<a class="anchor" href="#generating-go-code-with-buf" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating Go code with buf</h2>
+
+<p>Generating code with <code class="language-plaintext highlighter-rouge">buf</code> is better for protos that have more than a few dependencies.</p>
+
+<h3 id="simple-code-generation-1">
+<a class="anchor" href="#simple-code-generation-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Simple code generation</h3>
+
+<p>Imagine two simple protos:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// protos/user/user.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package user<span class="p">;</span>
+
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
+
+message User <span class="o">{</span>
+    string name <span class="o">=</span> 1<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// protos/server/server.proto
+syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
+
+package server<span class="p">;</span>
+
+option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/server"</span><span class="p">;</span>
+
+import <span class="s2">"user/user.proto"</span><span class="p">;</span>
+
+message Server <span class="o">{</span>
+    repeated user.User <span class="nb">users</span> <span class="o">=</span> 1<span class="p">;</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Generate Go code (.pb.gos) from these protos with buf by adding:</p>
+
+<ul>
+  <li>
+    <p>A <code class="language-plaintext highlighter-rouge">buf.yaml</code>:</p>
+
+    <div class="language-yml highlighter-rouge">
+<div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.yaml</span>
+  <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+  <span class="na">lint</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">STANDARD</span>
+  <span class="na">breaking</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">FILE</span>
+  <span class="na">modules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>A <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
+
+    <div class="language-yml highlighter-rouge">
+<div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.gen.yaml</span>
+  <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml</span>
+  <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+  <span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+      <span class="s">out</span><span class="err">:</span> <span class="s">protos</span>
+      <span class="s">opt</span><span class="err">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<p>Generate code with <code class="language-plaintext highlighter-rouge">buf generate</code>:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>buf generate
+<span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____protos
+| |____server
+| | |____server.pb.go
+| | |____server.proto
+| |____user
+| | |____user.pb.go
+| | |____user.proto
+</code></pre></div></div>
+
+<p>Warning: This approach allows others to depend on your generated Go code.</p>
+
+<p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
+
+<p>If you need to produce gRPC language bindings, add the gRPC plugin to <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
+
+<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.gen.yaml</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+    <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
+    <span class="na">opt</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/grpc/go:v1.5.1</span>
+    <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
+    <span class="na">opt</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+</code></pre></div></div>
+
+<h3 id="foreign-protos-1">
+<a class="anchor" href="#foreign-protos-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Foreign protos</h3>
+
+<p>Part of your dependency graph may include protos in other repos:</p>
+
+<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// protos/user/user.proto</span>
+<span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
+
+<span class="kn">package</span> <span class="nn">user</span><span class="p">;</span>
+
+<span class="k">option</span> <span class="na">go_package</span> <span class="o">=</span> <span class="s">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
+
+<span class="c1">// Not in this repo. Also not repo-rooted, which we'll discuss below. We could</span>
+<span class="c1">// change this if we owned user.proto, but if this occurred in a foreign proto</span>
+<span class="c1">// that we can't change then we'd have to work around it.</span>
+<span class="k">import</span> <span class="s">"non/repo/rooted/import.proto"</span><span class="p">;</span>
+
+<span class="kd">message</span> <span class="nc">User</span> <span class="p">{</span>
+    <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Foreign protos that are neither in your repo nor the Buf Schema Registry (BSR) can be imported, but in a roundabout way. You’ll need to git clone them yourself and include them as modules in buf.yaml.</p>
+
+<p>Before we do so, let’s quickly recap proto quirks you might run into, described above in “Generating code with protoc: Foreign protos”. We’ll need to contend with the fact that the <code class="language-plaintext highlighter-rouge">import.proto</code> import was not rooted at its repo root, and that <code class="language-plaintext highlighter-rouge">import.proto</code> does not define <code class="language-plaintext highlighter-rouge">option go_package</code>.</p>
+
+<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.yaml</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">lint</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">STANDARD</span>
+<span class="na">breaking</span><span class="pi">:</span>
+  <span class="na">use</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="s">FILE</span>
+<span class="na">modules</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
+  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">tmp/path/to/expected/import/root</span>
+</code></pre></div></div>
+
+<p>The non-repo rooted import is handled by specifying the path at which the <code class="language-plaintext highlighter-rouge">import "non/repo/rooted/...";</code> import works.</p>
+
+<p>To handle the lack of <code class="language-plaintext highlighter-rouge">option go_package</code>, we’ll need to turn on managed mode in <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
+
+<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.gen.yaml</span>
+<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
+<span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+    <span class="na">out</span><span class="pi">:</span> <span class="s">internal/protogen</span>
+    <span class="na">opt</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+<span class="na">managed</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">override</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">non/repo/rooted/</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/foreignorg/foreignrepo/path/to/expected/import/root</span>
+    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">user/user.proto</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/username/myrepo/internal/protogen</span>
+    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s">server/server.proto</span>
+      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/username/myrepo/internal/protogen</span>
+</code></pre></div></div>
+
+<p>Next, let’s perform the <code class="language-plaintext highlighter-rouge">git clone</code> and <code class="language-plaintext highlighter-rouge">tmp/</code> management:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/foreignorg/foreignrepo.git tmp/foreign
+buf generate
+</code></pre></div></div>
+
+<p>Which when run generates:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
+<span class="nb">.</span>
+|____internal
+| |____protogen
+| | |____server
+| | | |____server.pb.go
+| | |____user
+| | | |____user.pb.go
+| | |____non
+| | | |____repo
+| | | | |____rooted
+| | | | | |____import.pb.go
+</code></pre></div></div>
+
+<p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
+
+<h3 id="concurrent-git-clones">
+<a class="anchor" href="#concurrent-git-clones" aria-hidden="true"><span class="octicon octicon-link"></span></a>Concurrent git clones</h3>
+
+<p>If you have many <code class="language-plaintext highlighter-rouge">git clone</code> statements, consider using <code class="language-plaintext highlighter-rouge">&amp;</code> and <code class="language-plaintext highlighter-rouge">wait</code> to run them concurrently:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone ... &amp;
+git clone ... &amp;
+git clone ... &amp;
+<span class="nb">wait
+</span>buf generate
+</code></pre></div></div>
+
+  </div>
+<a class="u-url" href="/2025/06/10/proto-generation.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
