@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>A jj plugin for bash-it | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="A jj plugin for bash-it" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="I’ve been using jj instead of git, and it’s been great. One thing I really miss using git, though, is a nice terminal prompt that I get from bash-it. So, I whipped up one for jj." />
+<meta property="og:description" content="I’ve been using jj instead of git, and it’s been great. One thing I really miss using git, though, is a nice terminal prompt that I get from bash-it. So, I whipped up one for jj." />
+<link rel="canonical" href="http://localhost:4000/2025/10/06/jj-bash-it.html" />
+<meta property="og:url" content="http://localhost:4000/2025/10/06/jj-bash-it.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-10-06T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="A jj plugin for bash-it" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-10-06T02:55:23-06:00","datePublished":"2025-10-06T02:55:23-06:00","description":"I’ve been using jj instead of git, and it’s been great. One thing I really miss using git, though, is a nice terminal prompt that I get from bash-it. So, I whipped up one for jj.","headline":"A jj plugin for bash-it","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2025/10/06/jj-bash-it.html"},"url":"http://localhost:4000/2025/10/06/jj-bash-it.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#a-jj-plugin-for-bash-it">A jj plugin for bash-it</a></li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#a-jj-plugin-for-bash-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>A jj plugin for bash-it</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-10-06T02:55:23-06:00" itemprop="datePublished">Oct 6, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>I’ve been using <a href="https://github.com/jj-vcs/jj"><code class="language-plaintext highlighter-rouge">jj</code></a> instead of <code class="language-plaintext highlighter-rouge">git</code>, and it’s
+been great. One thing I really miss using <code class="language-plaintext highlighter-rouge">git</code>, though, is a nice terminal
+prompt that I get from <a href="https://github.com/Bash-it/bash-it"><code class="language-plaintext highlighter-rouge">bash-it</code></a>. So, I
+whipped up one for <code class="language-plaintext highlighter-rouge">jj</code>.</p>
+
+<p><img src="/assets/jj.png" alt="jj prompt"></p>
+
+<p><em>Notice:</em> The prompt now prints |jj:<strong>ty</strong>mnqrpn - readme| and
+|jj:<strong>s</strong>ttyyssy|. The coloured short letters (ty, s) are the <code class="language-plaintext highlighter-rouge">jj</code> short prefix,
+the full 8 characters are the short rev, and the optional <code class="language-plaintext highlighter-rouge">- readme</code> show the
+bookmark associated with the rev if one exists.</p>
+
+<p>I thought I’d post it here if anyone else is looking for this:</p>
+
+<ol>
+  <li>
+    <p>Create <code class="language-plaintext highlighter-rouge">~/.bash_it/custom/jj.plugins.bash</code> with:</p>
+
+    <div class="language-sh highlighter-rouge">
+<div class="highlight"><pre class="highlight"><code> <span class="c"># Set jj prompt to be enabled by default</span>
+ <span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="k">:-</span><span class="nv">true</span><span class="k">}</span><span class="s2">"</span>
+
+ <span class="c"># jj repo check</span>
+ <span class="k">function </span>is_jj_repo <span class="o">{</span>
+ <span class="k">if</span> <span class="o">[</span> <span class="nt">-d</span> <span class="s2">".jj"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+     return </span>0
+ <span class="k">else
+     return </span>1
+ <span class="k">fi</span>
+ <span class="o">}</span>
+
+ <span class="c"># jj prompt</span>
+ <span class="k">function </span>jj_prompt_info <span class="o">{</span>
+ <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="s2">"</span> <span class="o">=</span> <span class="s2">"true"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then
+     </span><span class="nb">local </span>jj_info
+     <span class="nb">local </span>short_hash
+     <span class="nb">local </span>jj_bookmarks
+
+     <span class="c"># Get an 8-character short hash and bookmarks</span>
+     <span class="nv">short_hash</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'change_id.short(8)'</span> 2&gt;/dev/null<span class="si">)</span>
+     <span class="nv">jj_bookmarks</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'bookmarks.map(|b| b.name())'</span> 2&gt;/dev/null<span class="si">)</span>
+
+     <span class="c"># Exit if we couldn't get a hash</span>
+     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-z</span> <span class="s2">"</span><span class="nv">$short_hash</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+     return
+     fi</span>
+
+     <span class="c"># --- DYNAMIC HIGHLIGHTING ---</span>
+     <span class="c"># Get the shortest unique prefix using the template you found</span>
+     <span class="nb">local </span><span class="nv">prefix</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'self.change_id().shortest()'</span> 2&gt;/dev/null<span class="si">)</span>
+
+     <span class="c"># Fallback: if the command fails, default to the first character. Maybe</span>
+     <span class="c"># unnecessary.</span>
+     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-z</span> <span class="s2">"</span><span class="nv">$prefix</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+     </span><span class="nv">prefix</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">short_hash</span>:0:1<span class="k">}</span><span class="s2">"</span>
+     <span class="k">fi</span>
+
+     <span class="c"># Determine the rest of the hash by removing the prefix</span>
+     <span class="nb">local </span><span class="nv">rest_of_hash</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">short_hash</span><span class="p">#</span><span class="nv">$prefix</span><span class="k">}</span><span class="s2">"</span>
+     <span class="nb">local </span><span class="nv">colored_hash</span><span class="o">=</span><span class="s2">"</span><span class="nv">$MAGENTA$prefix$WHITE$rest_of_hash</span><span class="s2">"</span>
+
+     <span class="c"># Build the base info string: always start with the hash</span>
+     <span class="nv">jj_info</span><span class="o">=</span><span class="s2">"</span><span class="nv">$colored_hash</span><span class="s2">"</span>
+
+     <span class="c"># If bookmarks exist, append them</span>
+     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$jj_bookmarks</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+     </span><span class="nv">jj_info</span><span class="o">=</span><span class="s2">"</span><span class="nv">$jj_info</span><span class="s2"> - </span><span class="nv">$jj_bookmarks</span><span class="s2">"</span>
+     <span class="k">fi</span>
+
+     <span class="c"># Wrap in parentheses</span>
+     <span class="nv">jj_info</span><span class="o">=</span><span class="s2">"(</span><span class="nv">$jj_info</span><span class="s2">)"</span>
+
+     <span class="c"># --- ASTERISK LOGIC ---</span>
+     <span class="nb">local </span><span class="nv">first_bookmark</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">jj_bookmarks</span><span class="p">%% *</span><span class="k">}</span><span class="s2">"</span>
+     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$first_bookmark</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+     </span><span class="nb">local </span>any_diff
+     <span class="nv">any_diff</span><span class="o">=</span><span class="si">$(</span>jj diff <span class="nt">--summary</span> <span class="nt">--from</span> <span class="s2">"</span><span class="k">${</span><span class="nv">first_bookmark</span><span class="k">}</span><span class="s2">@origin"</span> 2&gt;/dev/null<span class="si">)</span>
+     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$any_diff</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+         </span><span class="nv">jj_info</span><span class="o">=</span><span class="s2">"</span><span class="nv">$jj_info</span><span class="s2">*"</span>
+     <span class="k">fi
+     fi
+
+     </span><span class="nb">echo</span> <span class="nt">-e</span> <span class="s2">"</span><span class="k">${</span><span class="nv">SCM_THEME_PROMPT_PREFIX</span><span class="k">}</span><span class="s2">jj:</span><span class="k">${</span><span class="nv">jj_info</span><span class="k">}${</span><span class="nv">SCM_THEME_PROMPT_SUFFIX</span><span class="k">}</span><span class="s2">"</span>
+ <span class="k">fi</span>
+ <span class="o">}</span>
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>Update <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/&lt;theme&gt;/&lt;theme&gt;.bash</code> (ex
+<code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>) to include your prompt next to the <code class="language-plaintext highlighter-rouge">git</code>
+prompt:</p>
+  </li>
+</ol>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
+  <span class="c"># Old</span>
+  <span class="c"># PS1="\[${BOLD}${MAGENTA}\]\u \[$WHITE\]at \[$ORANGE\]\h \[$WHITE\]in \[$GREEN\]\w\[$WHITE\]\$([[ -n \$(git branch 2&gt; /dev/null) ]] &amp;&amp; echo \" on \")\[$PURPLE\]\$(parse_git_branch)\[$WHITE\]\n\$ \[$RESET\]"</span>
+
+  <span class="c"># New</span>
+  <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]\$</span><span class="s2">([[ -n </span><span class="se">\$</span><span class="s2">(git branch 2&gt; /dev/null) ]] &amp;&amp; echo </span><span class="se">\"</span><span class="s2"> on </span><span class="se">\"</span><span class="s2">)</span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]</span><span class="si">$(</span>jj_prompt_info<span class="si">)</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>
+
+  </div>
+<a class="u-url" href="/2025/10/06/jj-bash-it.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
