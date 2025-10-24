@@ -1,5 +1,42 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T09:06:07-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-bash-it.html"><![CDATA[<p>I’ve been using <a href="https://github.com/jj-vcs/jj"><code class="language-plaintext highlighter-rouge">jj</code></a> instead of <code class="language-plaintext highlighter-rouge">git</code>, and it’s
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T09:15:33-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A jj script to lint your entire graph</title><link href="http://localhost:4000/2025/10/06/jj-cleanall.html" rel="alternate" type="text/html" title="A jj script to lint your entire graph" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-cleanall</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-cleanall.html"><![CDATA[<p>This is the second of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The first is
+<a href="/2025/10/06/jj-bash-it.html">A jj plugin for bash-it</a>.</p>
+
+<hr />
+
+<p>At Netflix, we use <a href="https://github.com/diffplug/spotless">the spotless linter</a>.
+The main gripe I have with it is that it’s not integrated with any of our IDEs.
+In contrast, in Go, <code class="language-plaintext highlighter-rouge">gofmt</code> is integrated with all my IDEs and linting happens
+as I program; with spotless I have to remember to run <code class="language-plaintext highlighter-rouge">./gradlew spotlessApply</code>
+before I push my changes, or else my PR’s build will break when it gets to the
+lint check step.</p>
+
+<p>When I’m working with <code class="language-plaintext highlighter-rouge">jj</code> rev chains, it’s annoying to
+<code class="language-plaintext highlighter-rouge">jj edit &lt;rev&gt; &amp;&amp; ./gradlew spotlessApply</code> each and every rev before sending
+them all off to be CI/CD’d with <code class="language-plaintext highlighter-rouge">jj git push --all</code>.</p>
+
+<p>So, I made this little script. I hope you’ll find it useful too:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">set</span> <span class="nt">-e</span>
+<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
+  </span>jj edit <span class="nv">$i</span>
+  ./gradlew spotlessApply
+  ./gradlew spotbugsMain
+<span class="k">done
+</span>jj log
+</code></pre></div></div>
+
+<p>Of course, sub out the for loop with whatever you want to do at each rev.</p>
+
+<p>It makes use of <code class="language-plaintext highlighter-rouge">jj</code>’s
+<a href="https://jj-vcs.github.io/jj/latest/templates/">fantastic templating language</a>
+to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the second of a series of posts about jj. The first is A jj plugin for bash-it.]]></summary></entry><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-bash-it.html"><![CDATA[<p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
+<a href="/2025/10/16/jj-cleanall.html">A jj script to lint your entire graph</a>.</p>
+
+<hr />
+
+<p>I’ve been using <a href="https://github.com/jj-vcs/jj"><code class="language-plaintext highlighter-rouge">jj</code></a> instead of <code class="language-plaintext highlighter-rouge">git</code>, and it’s
 been great. One thing I really miss using <code class="language-plaintext highlighter-rouge">git</code>, though, is a nice terminal
 prompt that I get from <a href="https://github.com/Bash-it/bash-it"><code class="language-plaintext highlighter-rouge">bash-it</code></a>. So, I
 whipped up one for <code class="language-plaintext highlighter-rouge">jj</code>.</p>
@@ -100,7 +137,7 @@ prompt:</p>
   <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]\$</span><span class="s2">([[ -n </span><span class="se">\$</span><span class="s2">(git branch 2&gt; /dev/null) ]] &amp;&amp; echo </span><span class="se">\"</span><span class="s2"> on </span><span class="se">\"</span><span class="s2">)</span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]</span><span class="si">$(</span>jj_prompt_info<span class="si">)</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
 </code></pre></div></div>
 
-<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[I’ve been using jj instead of git, and it’s been great. One thing I really miss using git, though, is a nice terminal prompt that I get from bash-it. So, I whipped up one for jj.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
+<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the first of a series of posts about jj. The next is A jj script to lint your entire graph.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
 
 <h2 id="local-protos">Local protos</h2>
 
@@ -1478,145 +1515,4 @@ func (e *PathParseErrors) Unwrap() error {
 
 <p>This issue is exacerbated by the fact that it’s impossible for the author of PathParseErrors to document their Unwrap method in a way that will directly help users. Users often don’t interact with the Unwrap method directly: they use tools like As and Is, which themselves call the Unwrap method. And, this error may exist in a library that is several layers deep in a dependency tree: a user may have a very hard time finding the exact library whose documentation to go read when they’ve got an opaque stack of wrapped errors.</p>
 
-<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry><entry><title type="html">Error unwrapping for library authors</title><link href="http://localhost:4000/2022/02/08/error-unwrapping.html" rel="alternate" type="text/html" title="Error unwrapping for library authors" /><published>2022-02-08T14:55:23-07:00</published><updated>2022-02-08T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/08/error-unwrapping</id><content type="html" xml:base="http://localhost:4000/2022/02/08/error-unwrapping.html"><![CDATA[<h1 id="introduction">Introduction</h1>
-
-<p>In https://go.dev/blog/go1.13-errors, Go introduced new language changes that improved how errors are handled in Go programs. These changes include the concept of wrapping errors, as well as tools and semantics for unwrapping errors. They have enabled a rich ecosystem of detailed errors, and given users more ways to examine errors..</p>
-
-<p>Having had a few years to learn about how these tools can be used, let’s discuss some of the subtleties of wrapping and unwrapping, with an eye towards compatibility of our APIs. Accordingly, this article is particularly relevant to library authors, as we will often view wrapped errors through the lens of API compatibility.</p>
-
-<h1 id="wrapped-errors-are-part-of-your-public-api">Wrapped errors are part of your public API</h1>
-
-<p>In “Working with Errors in Go 1.13”, the authors wrote that “When adding additional context to an error, either with fmt.Errorf or by implementing a custom type, you need to decide whether the new error should wrap the original.”. There are numerous considerations that factor into whether to wrap an error, but library authors should specifically consider that wrapped errors become part of their public API.</p>
-
-<p>Let’s re-examine one of the examples from that article:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>func Decompress(name, path string) error {
-  // ...
-  if err != nil {
-    return fmt.Errorf("decompress %v: %v", name, err)
-  }
-  // ...
-</code></pre></div></div>
-
-<p>When we write error returns like this in our public APIs, users are given textual information but no structured information. They have no way of inspecting more than the string contents of the error handed to them: as the article states, “Creating a new error with fmt.Errorf discards everything from the original error except the text.”. We are therefore able to change any part of the error returned without causing any backwards incompatible changes, assuming users aren’t relying on the string contents of these errors.</p>
-
-<p>Let’s now alter this example to return a structured, unwrappable error:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>type PathParseError struct {
-  Path string
-}
-func (e *PathParseError) Error() string {
-  return e.Path + ": could not be parsed"
-}
-
-// ...
-
-func Decompress(name, path string) error {
-  err := &amp;PathParseError{Path: path}
-  if err != nil {
-    return fmt.Errorf("decompress %v: %w", name, err)
-  }
-  // ...
-}
-</code></pre></div></div>
-
-<p><code class="language-plaintext highlighter-rouge">We've now given</code> users powerful new capabilities for introspecting the returned error. Users now have structured information that they can rely on at runtime, such as the existence of PathParseError, and its fields; whereas before they could only string match the error contents, a practice that is usually discouraged.</p>
-
-<p>But exposing that information to users comes with responsibility. When we only return unstructured errors, we often can be liberal in changing the string-only contents of our errors. However, when we return structured errors to users, we have to be more careful: removing the %w, or changing its value, will be noticeable behavior changes that affect how user code will interpret the returned error.</p>
-
-<p>The subtlety here is that though the structure of the returned error changes when we remove %w or change its value, the type information remains the same - we still just return an error, not noticing that its underlying information has changed. Therefore users won’t observe these changes at compile time: they’ll observe them at run time.</p>
-
-<p>To combat this, here are some tips:</p>
-
-<ul>
-  <li>Users should only rely on structured errors from stable libraries that they trust not to change.</li>
-  <li>Authors of stable libraries should aim to preserve the behavior of their structured error returns. They should write tests that exercise all observable behavior to aid in that goal, and document which structured errors users can expect to interpret the returned error as.</li>
-</ul>
-
-<h1 id="wrapping-external-library-errors">Wrapping external library errors</h1>
-
-<p>Let’s take this example a bit further by wrapping errors from external libraries in our code:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>package externaldep
-
-type PathParseError struct {
-  Path string
-}
-
-func ParsePath(path string) (string, error) {
-  // ...
-}
-</code></pre></div></div>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>package mycode
-
-func Decompress(name, path string) error {
-  _, err := externaldep.ParsePath(path)
-  if err != nil {
-      return fmt.Errorf("decompress %v: %w", name, err)
-  }
-  // ...
-}
-</code></pre></div></div>
-
-<p>As before, we have added to our public API by wrapping <code class="language-plaintext highlighter-rouge">externaldep.PathParseError</code> and returning it as our error. And as before, users can introspect the error we return and get an <code class="language-plaintext highlighter-rouge">externaldep.PathParseError</code>. But, <code class="language-plaintext highlighter-rouge">externaldep.PathParseError</code> lives in an external library - we have no control over it! Our users can now be broken by those external authors in the same ways we described above, without any type information changing.</p>
-
-<p>These behavior changes can cause user breakages. The further that breakage happens from the user code, the harder it will be for the user to understand and debug. Each successive layer of external library error wrapping is an entirely different codebase that the debugger has to understand in the context of all the other codebases. The complexity increases quickly!</p>
-
-<p>To combat this, here are some tips:</p>
-
-<ul>
-  <li>Users should prefer relying on structured errors closer to them than farther from them. A structured error that is 5 levels of libraries’ wrapping below them has a far greater chance of a breaking behavior change occurring than a structured error 1 level below them.</li>
-  <li>Users should prefer relying on structured errors whose chain never relies on an unstable library.</li>
-  <li>Authors of libraries should prefer not to wrap external library errors, unless the use case has well understood value and the external library is stable.</li>
-</ul>
-
-<h1 id="unwrap-is-part-of-your-public-api">Unwrap is part of your public API</h1>
-
-<p>We’ve talked about the fact that wrapping errors changes the behavior of your public API. Let’s now discuss Unwrap, and how it can subtly become part of your public API.</p>
-
-<p>When you return a structured error with an Unwrap method, users can use As, Is, and the Unwrap interface to introspect it and errors below it:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>err := Decompress(name, path)
-if errors.Is(err, PathParseError) {
-    // err, or some error that it wraps, is a path parse problem
-}
-</code></pre></div></div>
-
-<p>Users may not be aware of new layers being added to the chain of errors:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>type decompressErr struct {
-  name string
-  err error
-}
-
-func (e *decompressErr) Error() string {
-  return fmt.Sprintf("decompress %s: %s", e.name, e.err)  
-}
-
-func (e *decompressErr) Unwrap() error { return e.err }
-
-func Decompress(name, path string) error {
-  _, err := externaldep.ParsePath(path)
-  if err != nil {
-      return &amp;decompressErr{name: name, err: err}
-  }
-  // ...
-}
-</code></pre></div></div>
-
-<p>Here, we’ve added an intermediary decompressErr. This might be useful somewhere else in our code that calls Decompress, but since it’s un-exported, users have no way to use it for introspection.</p>
-
-<p>But, even though it’s un-exported, the Unwrap method is part of our public API. If we remove the Unwrap method, for example, the errors.Is example breaks: there is no Unwrap link between the returned error and the externaldep.PathParseError. Similarly, if we change Unwrap to behave differently, it will constitute a behavior change in our library.</p>
-
-<p>To combat this, here is a tip:</p>
-
-<ul>
-  <li>In general, keep Unwrap simple and deterministic. It should just return the underlying error. If you find that your Unwrap logic is non-deterministic, or you need logic in Unwrap, it might be a signal that you shouldn’t be unwrapping.</li>
-</ul>
-
-<h1 id="conclusion">Conclusion</h1>
-
-<p>Error wrapping is a powerful tool that provides upstream users a much richer set of functionality for understanding returned to them by downstream libraries. But, it’s important to be aware that supporting wrapped errors comes with responsibility for compatibility, like any other part of your API. And it’s important to consider whether your error type makes sense to be unwrapped at all.</p>
-
-<p>For most code, it’s best to start simple: use %v instead of %w when you annotate errors, and don’t provide Unwrap on your custom error types. Wait until you learn about specific use cases for providing unwrap mechanics, and then carefully consider how to support them. We hope the considerations highlighted in this article help guide that decision.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Introduction]]></summary></entry></feed>
+<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry></feed>
