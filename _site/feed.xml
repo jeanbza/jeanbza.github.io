@@ -1,37 +1,100 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T09:15:33-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A jj script to lint your entire graph</title><link href="http://localhost:4000/2025/10/06/jj-cleanall.html" rel="alternate" type="text/html" title="A jj script to lint your entire graph" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-cleanall</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-cleanall.html"><![CDATA[<p>This is the second of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The first is
-<a href="/2025/10/06/jj-bash-it.html">A jj plugin for bash-it</a>.</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T09:41:19-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Inlining function code</title><link href="http://localhost:4000/2025/10/06/function-spectrum.html" rel="alternate" type="text/html" title="Inlining function code" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/function-spectrum</id><content type="html" xml:base="http://localhost:4000/2025/10/06/function-spectrum.html"><![CDATA[<p><em>Preface: John Carmack’s
+<a href="https://cbarrete.com/carmack.html">email on inlining code</a> on this subject was
+a really impactful read for me. I highly recommend it.</em></p>
 
-<hr />
+<p>I’ve lately been working with a new college grad on my team, and he asked a good
+question about how often we should be abstracting code into functions. I thought
+about it a while and came up with this answer. I’m somewhat satisfied by it, but
+if you have a better way to frame this, please reach out to let me know.</p>
 
-<p>At Netflix, we use <a href="https://github.com/diffplug/spotless">the spotless linter</a>.
-The main gripe I have with it is that it’s not integrated with any of our IDEs.
-In contrast, in Go, <code class="language-plaintext highlighter-rouge">gofmt</code> is integrated with all my IDEs and linting happens
-as I program; with spotless I have to remember to run <code class="language-plaintext highlighter-rouge">./gradlew spotlessApply</code>
-before I push my changes, or else my PR’s build will break when it gets to the
-lint check step.</p>
+<h2 id="cost">Cost</h2>
 
-<p>When I’m working with <code class="language-plaintext highlighter-rouge">jj</code> rev chains, it’s annoying to
-<code class="language-plaintext highlighter-rouge">jj edit &lt;rev&gt; &amp;&amp; ./gradlew spotlessApply</code> each and every rev before sending
-them all off to be CI/CD’d with <code class="language-plaintext highlighter-rouge">jj git push --all</code>.</p>
+<p>All abstractions come with a <strong>cost</strong>:</p>
 
-<p>So, I made this little script. I hope you’ll find it useful too:</p>
+<ul>
+  <li>They introduce complexity.</li>
+  <li>They demand context switching.
+    <ul>
+      <li>For functions: This cost can be very high when trying to understand a
+  high-level function that requires context switching between many nested
+  sub-, sub-sub-, sub-sub-sub-, […] -functions.</li>
+    </ul>
+  </li>
+  <li>They increase the size of the mental map required to understand the code.</li>
+  <li>They may make debugging harder (mostly as a result of all the above).</li>
+  <li>They may impact build and runtime performance.</li>
+  <li>See also: <a href="https://www.youtube.com/watch?v=rHIkrotSwcc">there are no zero-cost abstractions</a>.</li>
+</ul>
 
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">set</span> <span class="nt">-e</span>
-<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
-  </span>jj edit <span class="nv">$i</span>
-  ./gradlew spotlessApply
-  ./gradlew spotbugsMain
-<span class="k">done
-</span>jj log
-</code></pre></div></div>
+<p>So, their cost should be justified by their value.</p>
 
-<p>Of course, sub out the for loop with whatever you want to do at each rev.</p>
+<h2 id="objective-value">Objective value</h2>
 
-<p>It makes use of <code class="language-plaintext highlighter-rouge">jj</code>’s
-<a href="https://jj-vcs.github.io/jj/latest/templates/">fantastic templating language</a>
-to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the second of a series of posts about jj. The first is A jj plugin for bash-it.]]></summary></entry><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-bash-it.html"><![CDATA[<p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
+<p>Functions are <strong>objectively valuable</strong> in a few situations:</p>
+
+<ul>
+  <li>When they’re used to deduplicate logic (my personal bar is logic found in
+3 places, but some people go for 2).</li>
+  <li>When they’re used to extract some logic that needs to be called from
+elsewhere (ex a library; although this often falls into the prior bullet).</li>
+  <li>When they’re used to extract some logic that you want to individually
+test.</li>
+  <li>(There are probably a few other objectively useful cases)</li>
+</ul>
+
+<h2 id="subjective-value">Subjective value</h2>
+
+<p>Functions are <strong>subjectively valuable</strong> when they’re used just for the sake of
+abstraction. That subjectivity is what this article is about. Let’s dive into
+that subjectivity.</p>
+
+<p>Let’s imagine a 1000 line program whose logic has no objective reasons to
+introduce functions: there’s no duplication, there’s no logic that needs to be
+called from elsewhere, there are no tests, etc.</p>
+
+<p>One type of person might prefer 0 functions: a single main func that is 1000
+lines long, each line a valuable statement of business logic. Every thing the
+program does can immediately be grokked in perfect context. Debugging is
+extremely easy: you can go to the faulting line and perfectly work backwards to
+see how you arrived at the fault. And, it’s hard to misuse sub-functions: there are none!</p>
+
+<p>Another type of person might prefer so many functions that every business logic
+line gets its own function, the caller of which gets its own function, the
+caller of which gets its own function, […], and main is just 2-5 function
+calls long. (This used to be a really popular thing in Javascript and Ruby, but
+I’ve noticed
+<a href="https://rubystyle.guide/#no-single-line-methods">a lot of pushback on that kind of thing recently</a>)
+The advantage here is that it’s really easy to get a quick, vague sense of what
+main does: A, B, C. Ok but what <em>actually</em> does A do? Oh, it does x, y, z. Ok…
+but what does x <em>actually</em> do? Oh, it does i, ii, iii, and iv. Ok….. what does
+i <em>actually</em> do? […] Oh, it sends a GET request to /foo.</p>
+
+<p>So those are two extremes. In between the extremes is a spectrum.</p>
+
+<p>I think the people who tend to want to understand a program <em>completely</em> are
+more on the top part of the spectrum (less abstractions to dig through when
+trying to understand <em>completely</em>) and people who tend to want to understand a
+program <em>quickly</em> are more on the bottom part of the spectrum (more abstractions
+to gain vague understanding quickly).</p>
+
+<h2 id="illustrating-subjectivity">Illustrating subjectivity</h2>
+
+<p>To illustrate that a little more:</p>
+
+<p>Person #1 wants to understand program #2 <em>completely</em>. Because of all the
+abstractions, he has to do a depth first search and collect all leaf nodes (the
+valuable business logic) into a mental list before he’s able to follow a path
+from main start to main end. (And, every time he returns, he has to perform some
+of that DFS again as the mapping inevitably falls out of his mind each time he
+context switches)</p>
+
+<p>Person #2 wants to understand program #1 <em>quickly</em>. Because of the lack of
+abstractions, she has to try to map sections of code into logical groupings in
+her mind, and can only reason about the order of those groupings mentally. (She
+may make a series of notes or flow charts outside of code to help cope) (And,
+every time she returns, she has to perform some re-grouping as the mapping
+inevitably falls out of her head each time she context switches)</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Preface: John Carmack’s email on inlining code on this subject was a really impactful read for me. I highly recommend it.]]></summary></entry><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-bash-it.html"><![CDATA[<p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
 <a href="/2025/10/16/jj-cleanall.html">A jj script to lint your entire graph</a>.</p>
 
 <hr />
@@ -137,7 +200,39 @@ prompt:</p>
   <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]\$</span><span class="s2">([[ -n </span><span class="se">\$</span><span class="s2">(git branch 2&gt; /dev/null) ]] &amp;&amp; echo </span><span class="se">\"</span><span class="s2"> on </span><span class="se">\"</span><span class="s2">)</span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]</span><span class="si">$(</span>jj_prompt_info<span class="si">)</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
 </code></pre></div></div>
 
-<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the first of a series of posts about jj. The next is A jj script to lint your entire graph.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
+<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the first of a series of posts about jj. The next is A jj script to lint your entire graph.]]></summary></entry><entry><title type="html">A jj script to lint your entire graph</title><link href="http://localhost:4000/2025/10/06/jj-cleanall.html" rel="alternate" type="text/html" title="A jj script to lint your entire graph" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-cleanall</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-cleanall.html"><![CDATA[<p>This is the second of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The first is
+<a href="/2025/10/06/jj-bash-it.html">A jj plugin for bash-it</a>.</p>
+
+<hr />
+
+<p>At Netflix, we use <a href="https://github.com/diffplug/spotless">the spotless linter</a>.
+The main gripe I have with it is that it’s not integrated with any of our IDEs.
+In contrast, in Go, <code class="language-plaintext highlighter-rouge">gofmt</code> is integrated with all my IDEs and linting happens
+as I program; with spotless I have to remember to run <code class="language-plaintext highlighter-rouge">./gradlew spotlessApply</code>
+before I push my changes, or else my PR’s build will break when it gets to the
+lint check step.</p>
+
+<p>When I’m working with <code class="language-plaintext highlighter-rouge">jj</code> rev chains, it’s annoying to
+<code class="language-plaintext highlighter-rouge">jj edit &lt;rev&gt; &amp;&amp; ./gradlew spotlessApply</code> each and every rev before sending
+them all off to be CI/CD’d with <code class="language-plaintext highlighter-rouge">jj git push --all</code>.</p>
+
+<p>So, I made this little script. I hope you’ll find it useful too:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">set</span> <span class="nt">-e</span>
+<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
+  </span>jj edit <span class="nv">$i</span>
+  ./gradlew spotlessApply
+  ./gradlew spotbugsMain
+<span class="k">done
+</span>jj log
+</code></pre></div></div>
+
+<p>Of course, sub out the for loop with whatever you want to do at each rev.</p>
+
+<p>It makes use of <code class="language-plaintext highlighter-rouge">jj</code>’s
+<a href="https://jj-vcs.github.io/jj/latest/templates/">fantastic templating language</a>
+to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the second of a series of posts about jj. The first is A jj plugin for bash-it.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
 
 <h2 id="local-protos">Local protos</h2>
 
@@ -1474,45 +1569,4 @@ f(x) = 0.98999999158
         ]
       }
     });
-  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Graceful degradation with the logistic function]]></summary></entry><entry><title type="html">Wrapped errors are stacks</title><link href="http://localhost:4000/2022/02/09/wrapped-errors-are-stacks.html" rel="alternate" type="text/html" title="Wrapped errors are stacks" /><published>2022-02-09T14:55:23-07:00</published><updated>2022-02-09T14:55:23-07:00</updated><id>http://localhost:4000/2022/02/09/wrapped-errors-are-stacks</id><content type="html" xml:base="http://localhost:4000/2022/02/09/wrapped-errors-are-stacks.html"><![CDATA[<h1 id="wrapped-errors-are-stacks">Wrapped errors are stacks</h1>
-
-<p>Wrapping an error creates a stack: a linked list of error pointing to the next error, where newly wrapped errors are added to the head, and the stack is traversed from head to tail during As, Is, and with the Unwrap interface.</p>
-
-<p>It’s important to keep this in mind when you’re designing the internal representation for your unwrappable structured error. The simplest representation is a single error:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>type decompressErr struct {
-  name string
-  err error // Points to the next error down the stack.
-}
-
-func (e *decompressErr) Error() string {
-  return fmt.Sprintf("decompress %s: %s", e.name, e.err)  
-}
-
-func (e *decompressErr) Unwrap() error { return e.err }
-</code></pre></div></div>
-
-<p>Most unwrappable structured errors should only contain a single error. They have obvious semantics and are easy to use.</p>
-
-<p>Unwrappable structured errors that contain multiple errors have much less clear semantics. Consider:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// We recommend against this approach.
-type PathParseErrors struct {
-  // A map of path to parse error for that path.
-  errors map[string]error
-}
-
-func (e *PathParseErrors) Error() string {
-  return fmt.Sprintf("%v", e.errors)
-}
-
-func (e *PathParseErrors) Unwrap() error {
-  // Nothing we return here will be obvious.
-}
-</code></pre></div></div>
-
-<p>In this example, the stack semantics are broken: we have an unwrappable structured error that contains a map of errors. But, which error will Unwrap return? There’s no right answer: any choice would be non-obvious to the user. A slice has the same issue as a map: there’s no obvious error to return.</p>
-
-<p>This issue is exacerbated by the fact that it’s impossible for the author of PathParseErrors to document their Unwrap method in a way that will directly help users. Users often don’t interact with the Unwrap method directly: they use tools like As and Is, which themselves call the Unwrap method. And, this error may exist in a library that is several layers deep in a dependency tree: a user may have a very hard time finding the exact library whose documentation to go read when they’ve got an opaque stack of wrapped errors.</p>
-
-<p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Wrapped errors are stacks]]></summary></entry></feed>
+  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Graceful degradation with the logistic function]]></summary></entry></feed>

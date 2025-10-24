@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Inlining function code | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Inlining function code" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Preface: John Carmack’s email on inlining code on this subject was a really impactful read for me. I highly recommend it." />
+<meta property="og:description" content="Preface: John Carmack’s email on inlining code on this subject was a really impactful read for me. I highly recommend it." />
+<link rel="canonical" href="http://localhost:4000/2025/10/06/function-spectrum.html" />
+<meta property="og:url" content="http://localhost:4000/2025/10/06/function-spectrum.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-10-06T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Inlining function code" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-10-06T02:55:23-06:00","datePublished":"2025-10-06T02:55:23-06:00","description":"Preface: John Carmack’s email on inlining code on this subject was a really impactful read for me. I highly recommend it.","headline":"Inlining function code","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2025/10/06/function-spectrum.html"},"url":"http://localhost:4000/2025/10/06/function-spectrum.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#inlining-function-code">Inlining function code</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#cost">Cost</a></li>
+<li class="toc-entry toc-h2"><a href="#objective-value">Objective value</a></li>
+<li class="toc-entry toc-h2"><a href="#subjective-value">Subjective value</a></li>
+<li class="toc-entry toc-h2"><a href="#illustrating-subjectivity">Illustrating subjectivity</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#inlining-function-code" aria-hidden="true"><span class="octicon octicon-link"></span></a>Inlining function code</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-10-06T02:55:23-06:00" itemprop="datePublished">Oct 6, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p><em>Preface: John Carmack’s
+<a href="https://cbarrete.com/carmack.html">email on inlining code</a> on this subject was
+a really impactful read for me. I highly recommend it.</em></p>
+
+<p>I’ve lately been working with a new college grad on my team, and he asked a good
+question about how often we should be abstracting code into functions. I thought
+about it a while and came up with this answer. I’m somewhat satisfied by it, but
+if you have a better way to frame this, please reach out to let me know.</p>
+
+<h2 id="cost">
+<a class="anchor" href="#cost" aria-hidden="true"><span class="octicon octicon-link"></span></a>Cost</h2>
+
+<p>All abstractions come with a <strong>cost</strong>:</p>
+
+<ul>
+  <li>They introduce complexity.</li>
+  <li>They demand context switching.
+    <ul>
+      <li>For functions: This cost can be very high when trying to understand a
+  high-level function that requires context switching between many nested
+  sub-, sub-sub-, sub-sub-sub-, […] -functions.</li>
+    </ul>
+  </li>
+  <li>They increase the size of the mental map required to understand the code.</li>
+  <li>They may make debugging harder (mostly as a result of all the above).</li>
+  <li>They may impact build and runtime performance.</li>
+  <li>See also: <a href="https://www.youtube.com/watch?v=rHIkrotSwcc">there are no zero-cost abstractions</a>.</li>
+</ul>
+
+<p>So, their cost should be justified by their value.</p>
+
+<h2 id="objective-value">
+<a class="anchor" href="#objective-value" aria-hidden="true"><span class="octicon octicon-link"></span></a>Objective value</h2>
+
+<p>Functions are <strong>objectively valuable</strong> in a few situations:</p>
+
+<ul>
+  <li>When they’re used to deduplicate logic (my personal bar is logic found in
+3 places, but some people go for 2).</li>
+  <li>When they’re used to extract some logic that needs to be called from
+elsewhere (ex a library; although this often falls into the prior bullet).</li>
+  <li>When they’re used to extract some logic that you want to individually
+test.</li>
+  <li>(There are probably a few other objectively useful cases)</li>
+</ul>
+
+<h2 id="subjective-value">
+<a class="anchor" href="#subjective-value" aria-hidden="true"><span class="octicon octicon-link"></span></a>Subjective value</h2>
+
+<p>Functions are <strong>subjectively valuable</strong> when they’re used just for the sake of
+abstraction. That subjectivity is what this article is about. Let’s dive into
+that subjectivity.</p>
+
+<p>Let’s imagine a 1000 line program whose logic has no objective reasons to
+introduce functions: there’s no duplication, there’s no logic that needs to be
+called from elsewhere, there are no tests, etc.</p>
+
+<p>One type of person might prefer 0 functions: a single main func that is 1000
+lines long, each line a valuable statement of business logic. Every thing the
+program does can immediately be grokked in perfect context. Debugging is
+extremely easy: you can go to the faulting line and perfectly work backwards to
+see how you arrived at the fault. And, it’s hard to misuse sub-functions: there are none!</p>
+
+<p>Another type of person might prefer so many functions that every business logic
+line gets its own function, the caller of which gets its own function, the
+caller of which gets its own function, […], and main is just 2-5 function
+calls long. (This used to be a really popular thing in Javascript and Ruby, but
+I’ve noticed
+<a href="https://rubystyle.guide/#no-single-line-methods">a lot of pushback on that kind of thing recently</a>)
+The advantage here is that it’s really easy to get a quick, vague sense of what
+main does: A, B, C. Ok but what <em>actually</em> does A do? Oh, it does x, y, z. Ok…
+but what does x <em>actually</em> do? Oh, it does i, ii, iii, and iv. Ok….. what does
+i <em>actually</em> do? […] Oh, it sends a GET request to /foo.</p>
+
+<p>So those are two extremes. In between the extremes is a spectrum.</p>
+
+<p>I think the people who tend to want to understand a program <em>completely</em> are
+more on the top part of the spectrum (less abstractions to dig through when
+trying to understand <em>completely</em>) and people who tend to want to understand a
+program <em>quickly</em> are more on the bottom part of the spectrum (more abstractions
+to gain vague understanding quickly).</p>
+
+<h2 id="illustrating-subjectivity">
+<a class="anchor" href="#illustrating-subjectivity" aria-hidden="true"><span class="octicon octicon-link"></span></a>Illustrating subjectivity</h2>
+
+<p>To illustrate that a little more:</p>
+
+<p>Person #1 wants to understand program #2 <em>completely</em>. Because of all the
+abstractions, he has to do a depth first search and collect all leaf nodes (the
+valuable business logic) into a mental list before he’s able to follow a path
+from main start to main end. (And, every time he returns, he has to perform some
+of that DFS again as the mapping inevitably falls out of his mind each time he
+context switches)</p>
+
+<p>Person #2 wants to understand program #1 <em>quickly</em>. Because of the lack of
+abstractions, she has to try to map sections of code into logical groupings in
+her mind, and can only reason about the order of those groupings mentally. (She
+may make a series of notes or flow charts outside of code to help cope) (And,
+every time she returns, she has to perform some re-grouping as the mapping
+inevitably falls out of her head each time she context switches)</p>
+
+  </div>
+<a class="u-url" href="/2025/10/06/function-spectrum.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
