@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T09:41:19-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Inlining function code</title><link href="http://localhost:4000/2025/10/06/function-spectrum.html" rel="alternate" type="text/html" title="Inlining function code" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/function-spectrum</id><content type="html" xml:base="http://localhost:4000/2025/10/06/function-spectrum.html"><![CDATA[<p><em>Preface: John Carmack’s
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T15:28:56-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Inlining function code</title><link href="http://localhost:4000/2025/10/23/function-spectrum.html" rel="alternate" type="text/html" title="Inlining function code" /><published>2025-10-23T02:55:23-06:00</published><updated>2025-10-23T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/23/function-spectrum</id><content type="html" xml:base="http://localhost:4000/2025/10/23/function-spectrum.html"><![CDATA[<p><em>Preface: John Carmack’s
 <a href="https://cbarrete.com/carmack.html">email on inlining code</a> on this subject was
 a really impactful read for me. I highly recommend it.</em></p>
 
@@ -94,7 +94,39 @@ abstractions, she has to try to map sections of code into logical groupings in
 her mind, and can only reason about the order of those groupings mentally. (She
 may make a series of notes or flow charts outside of code to help cope) (And,
 every time she returns, she has to perform some re-grouping as the mapping
-inevitably falls out of her head each time she context switches)</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Preface: John Carmack’s email on inlining code on this subject was a really impactful read for me. I highly recommend it.]]></summary></entry><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-bash-it.html"><![CDATA[<p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
+inevitably falls out of her head each time she context switches)</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Preface: John Carmack’s email on inlining code on this subject was a really impactful read for me. I highly recommend it.]]></summary></entry><entry><title type="html">A jj script to lint your entire graph</title><link href="http://localhost:4000/2025/10/17/jj-cleanall.html" rel="alternate" type="text/html" title="A jj script to lint your entire graph" /><published>2025-10-17T02:55:23-06:00</published><updated>2025-10-17T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/17/jj-cleanall</id><content type="html" xml:base="http://localhost:4000/2025/10/17/jj-cleanall.html"><![CDATA[<p>This is the second of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The first is
+<a href="/2025/10/06/jj-bash-it.html">A jj plugin for bash-it</a>.</p>
+
+<hr />
+
+<p>At Netflix, we use <a href="https://github.com/diffplug/spotless">the spotless linter</a>.
+The main gripe I have with it is that it’s not integrated with any of our IDEs.
+In contrast, in Go, <code class="language-plaintext highlighter-rouge">gofmt</code> is integrated with all my IDEs and linting happens
+as I program; with spotless I have to remember to run <code class="language-plaintext highlighter-rouge">./gradlew spotlessApply</code>
+before I push my changes, or else my PR’s build will break when it gets to the
+lint check step.</p>
+
+<p>When I’m working with <code class="language-plaintext highlighter-rouge">jj</code> rev chains, it’s annoying to
+<code class="language-plaintext highlighter-rouge">jj edit &lt;rev&gt; &amp;&amp; ./gradlew spotlessApply</code> each and every rev before sending
+them all off to be CI/CD’d with <code class="language-plaintext highlighter-rouge">jj git push --all</code>.</p>
+
+<p>So, I made this little script. I hope you’ll find it useful too:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">set</span> <span class="nt">-e</span>
+<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
+  </span>jj edit <span class="nv">$i</span>
+  ./gradlew spotlessApply
+  ./gradlew spotbugsMain
+<span class="k">done
+</span>jj log
+</code></pre></div></div>
+
+<p>Of course, sub out the for loop with whatever you want to do at each rev.</p>
+
+<p>It makes use of <code class="language-plaintext highlighter-rouge">jj</code>’s
+<a href="https://jj-vcs.github.io/jj/latest/templates/">fantastic templating language</a>
+to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the second of a series of posts about jj. The first is A jj plugin for bash-it.]]></summary></entry><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-bash-it.html"><![CDATA[<p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
 <a href="/2025/10/16/jj-cleanall.html">A jj script to lint your entire graph</a>.</p>
 
 <hr />
@@ -200,39 +232,7 @@ prompt:</p>
   <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]\$</span><span class="s2">([[ -n </span><span class="se">\$</span><span class="s2">(git branch 2&gt; /dev/null) ]] &amp;&amp; echo </span><span class="se">\"</span><span class="s2"> on </span><span class="se">\"</span><span class="s2">)</span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]</span><span class="si">$(</span>jj_prompt_info<span class="si">)</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
 </code></pre></div></div>
 
-<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the first of a series of posts about jj. The next is A jj script to lint your entire graph.]]></summary></entry><entry><title type="html">A jj script to lint your entire graph</title><link href="http://localhost:4000/2025/10/06/jj-cleanall.html" rel="alternate" type="text/html" title="A jj script to lint your entire graph" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/06/jj-cleanall</id><content type="html" xml:base="http://localhost:4000/2025/10/06/jj-cleanall.html"><![CDATA[<p>This is the second of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The first is
-<a href="/2025/10/06/jj-bash-it.html">A jj plugin for bash-it</a>.</p>
-
-<hr />
-
-<p>At Netflix, we use <a href="https://github.com/diffplug/spotless">the spotless linter</a>.
-The main gripe I have with it is that it’s not integrated with any of our IDEs.
-In contrast, in Go, <code class="language-plaintext highlighter-rouge">gofmt</code> is integrated with all my IDEs and linting happens
-as I program; with spotless I have to remember to run <code class="language-plaintext highlighter-rouge">./gradlew spotlessApply</code>
-before I push my changes, or else my PR’s build will break when it gets to the
-lint check step.</p>
-
-<p>When I’m working with <code class="language-plaintext highlighter-rouge">jj</code> rev chains, it’s annoying to
-<code class="language-plaintext highlighter-rouge">jj edit &lt;rev&gt; &amp;&amp; ./gradlew spotlessApply</code> each and every rev before sending
-them all off to be CI/CD’d with <code class="language-plaintext highlighter-rouge">jj git push --all</code>.</p>
-
-<p>So, I made this little script. I hope you’ll find it useful too:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">set</span> <span class="nt">-e</span>
-<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
-  </span>jj edit <span class="nv">$i</span>
-  ./gradlew spotlessApply
-  ./gradlew spotbugsMain
-<span class="k">done
-</span>jj log
-</code></pre></div></div>
-
-<p>Of course, sub out the for loop with whatever you want to do at each rev.</p>
-
-<p>It makes use of <code class="language-plaintext highlighter-rouge">jj</code>’s
-<a href="https://jj-vcs.github.io/jj/latest/templates/">fantastic templating language</a>
-to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the second of a series of posts about jj. The first is A jj plugin for bash-it.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
+<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the first of a series of posts about jj. The next is A jj script to lint your entire graph.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
 
 <h2 id="local-protos">Local protos</h2>
 

@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Inlining function code"
-date:   2025-10-06 02:55:23 -0600
+date:   2025-10-23 02:55:23 -0600
 categories: 
 toc: true
 ---

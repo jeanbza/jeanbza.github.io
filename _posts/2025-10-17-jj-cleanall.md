@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "A jj script to lint your entire graph"
-date:   2025-10-06 02:55:23 -0600
+date:   2025-10-17 02:55:23 -0600
 categories: 
 toc: true
 ---
