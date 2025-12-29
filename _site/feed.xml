@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-10-24T15:28:56-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-12-28T18:51:04-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Inlining function code</title><link href="http://localhost:4000/2025/10/23/function-spectrum.html" rel="alternate" type="text/html" title="Inlining function code" /><published>2025-10-23T02:55:23-06:00</published><updated>2025-10-23T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/23/function-spectrum</id><content type="html" xml:base="http://localhost:4000/2025/10/23/function-spectrum.html"><![CDATA[<p><em>Preface: John Carmack’s
 <a href="https://cbarrete.com/carmack.html">email on inlining code</a> on this subject was
 a really impactful read for me. I highly recommend it.</em></p>
@@ -1031,45 +1031,27 @@ of computer science.</p>
 
 <p>So, enjoy, as I have:</p>
 
-<h2 id="the-swe-book">The “SWE book”</h2>
-
-<p><a href="https://abseil.io/resources/swe-book">https://abseil.io/resources/swe-book</a></p>
-
-<p>The “SWE book” - Google Engineering Practices Documentation. A classic.</p>
-
-<h2 id="the-sre-book">The “SRE book”</h2>
-
-<p><a href="https://sre.google/sre-book/table-of-contents/">https://sre.google/sre-book/table-of-contents/</a></p>
-
-<p>Another classic, more on the operation side of things.</p>
-
-<h2 id="how-to-code-review">How to code review</h2>
-
-<p><a href="https://google.github.io/eng-practices/">https://google.github.io/eng-practices/</a></p>
-
-<p>The page is called “Google Engineering Practices Documentation” because the
-internal version is more broad, but the external version has the bits about how
-reviewers and reviewees of code changes should interact. These are <em>fantastic</em>
-guidelines for a healthy engineering culture.</p>
-
-<h2 id="the-go-style-guide">The Go style guide</h2>
-
-<p><a href="https://google.github.io/styleguide/go/">https://google.github.io/styleguide/go/</a></p>
-
-<p>How to write “good” Go code at Google. Some of it is convention, but a lot of it
-is sensical and very well thought out rules of the road when writing Go code.</p>
-
-<p>(I’m biased, having contributed some of these sections!)</p>
-
-<h2 id="other-language-style-guides">Other language style guides</h2>
-
-<p><a href="https://google.github.io/styleguide/">https://google.github.io/styleguide/</a></p>
-
-<p>Well, I mostly care about Go, hence the callout, but here are the other language
-styleguide.</p>
-
-<p>I’ll also call out the C++ as being fantastic. I’ve not used the others as much
-but I expect them all to be of a very high quality.</p>
+<ul>
+  <li><a href="https://abseil.io/resources/swe-book">The SWE book</a></li>
+  <li><a href="https://sre.google/sre-book/table-of-contents/">The SRE book</a></li>
+  <li><a href="https://abseil.io/fast/">Fast TotW</a></li>
+  <li><a href="https://abseil.io/fast/hints.html">Jeff &amp; Sanjay’s fast tips</a></li>
+  <li><a href="https://google.github.io/eng-practices/">Code review guide</a></li>
+  <li><a href="https://google.github.io/styleguide/">Style guides</a>
+    <ul>
+      <li><a href="https://google.github.io/styleguide/go/">Go</a></li>
+      <li><a href="https://google.github.io/styleguide/cppguide.html">C++</a></li>
+      <li><a href="https://google.github.io/styleguide/javaguide.html">Java</a></li>
+      <li><a href="https://google.github.io/styleguide/pyguide.html">Python</a></li>
+    </ul>
+  </li>
+  <li>Guides
+    <ul>
+      <li><a href="https://abseil.io/docs/cpp/">C++</a></li>
+      <li><a href="https://abseil.io/docs/python/">Python</a></li>
+    </ul>
+  </li>
+</ul>
 
 <h1 id="post-note">Post-note</h1>
 
