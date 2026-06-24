@@ -6,7 +6,7 @@ categories:
 toc: true
 ---
 
-Foreword: At Google, [the definition of an assertion library](https://google.github.io/styleguide/go/decisions#assert) is a library that combines the validation and production of failure messages within a test. ["testing"](https://pkg.go.dev/testing) is also kind of an assertion library, but it is much more concerned with providing primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I'm talking about "assertion libraries", I'm talking about third-party assertion libraries that sit above "testing".
+Foreword: At Google, [the definition of an assertion library](https://google.github.io/styleguide/go/decisions#assert) is a library that combines the validation and production of failure messages within a test. ["testing"](https://pkg.go.dev/testing) is also kind of an assertion library, but it is much more concerned with providing low-level primitives for marking tests failed, writing to test logs, and so on. It leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I'm talking about "assertion libraries", I'm talking about third-party assertion libraries that sit above "testing".
 
 ---
 

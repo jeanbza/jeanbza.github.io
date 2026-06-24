@@ -7,8 +7,8 @@
 <meta name="generator" content="Jekyll v4.3.4" />
 <meta property="og:title" content="Don’t use assertion libraries in Go" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages." />
-<meta property="og:description" content="Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages." />
+<meta name="description" content="Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is also kind of an assertion library, but it is much more concerned with providing low-level primitives for marking tests failed, writing to test logs, and so on. It leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I’m talking about “assertion libraries”, I’m talking about third-party assertion libraries that sit above “testing”." />
+<meta property="og:description" content="Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is also kind of an assertion library, but it is much more concerned with providing low-level primitives for marking tests failed, writing to test logs, and so on. It leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I’m talking about “assertion libraries”, I’m talking about third-party assertion libraries that sit above “testing”." />
 <link rel="canonical" href="http://localhost:4000/2022/02/08/assertion-libraries.html" />
 <meta property="og:url" content="http://localhost:4000/2022/02/08/assertion-libraries.html" />
 <meta property="og:site_name" content="Jean Barkhuysen" />
@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Don’t use assertion libraries in Go" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-02-08T14:55:23-07:00","datePublished":"2022-02-08T14:55:23-07:00","description":"Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.","headline":"Don’t use assertion libraries in Go","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2022/02/08/assertion-libraries.html"},"url":"http://localhost:4000/2022/02/08/assertion-libraries.html"}</script>
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-02-08T14:55:23-07:00","datePublished":"2022-02-08T14:55:23-07:00","description":"Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is also kind of an assertion library, but it is much more concerned with providing low-level primitives for marking tests failed, writing to test logs, and so on. It leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I’m talking about “assertion libraries”, I’m talking about third-party assertion libraries that sit above “testing”.","headline":"Don’t use assertion libraries in Go","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2022/02/08/assertion-libraries.html"},"url":"http://localhost:4000/2022/02/08/assertion-libraries.html"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
 <body><header class="site-header" role="banner">
@@ -55,7 +55,7 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>Foreword: At Google, <a href="https://google.github.io/styleguide/go/decisions#assert">the definition of an assertion library</a> is a library that combines the validation and production of failure messages within a test. <a href="https://pkg.go.dev/testing">“testing”</a> is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.</p>
+    <p>Foreword: At Google, <a href="https://google.github.io/styleguide/go/decisions#assert">the definition of an assertion library</a> is a library that combines the validation and production of failure messages within a test. <a href="https://pkg.go.dev/testing">“testing”</a> is also kind of an assertion library, but it is much more concerned with providing low-level primitives for marking tests failed, writing to test logs, and so on. It leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I’m talking about “assertion libraries”, I’m talking about third-party assertion libraries that sit above “testing”.</p>
 
 <hr>
 
@@ -69,8 +69,6 @@
 <p>This post is not about mocking libraries, or comparison libraries. It is about assertion libraries. Examples of assertion libraries include <a href="https://pkg.go.dev/github.com/stretchr/testify">github.com/stretchr/testify</a>, <a href="https://pkg.go.dev/github.com/onsi/ginkgo">github.com/onsi/ginkgo</a>, <a href="https://pkg.go.dev/gopkg.in/check.v1">gopkg.in/check.v1</a>, and <a href="https://pkg.go.dev/github.com/franela/goblin">github.com/franela/goblin</a>.</p>
 
 <p>Don’t use these things. They provide little value over the stdlib, and tend to make your codebase (far) less readable. Use <a href="https://pkg.go.dev/testing">“testing”</a> for assertions, and comparison libraries like <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a> to perform the comparison (but not <em>the assertion</em>) for more complex objects that can’t be compared with basic operators (<code class="language-plaintext highlighter-rouge">==</code>, <code class="language-plaintext highlighter-rouge">&gt;</code>, etc).</p>
-
-<p>Sidenote: The <a href="https://pkg.go.dev/testing">testing</a> library is also an assertion library, but for the sake of this article we’ll just call it “the stdlib” or “testing”, and refer to all the non-stdlib assertion libraries as “assertion libraries”.</p>
 
 <h1 id="assertion-libraries-bring-incomprehensibility">
 <a class="anchor" href="#assertion-libraries-bring-incomprehensibility" aria-hidden="true"><span class="octicon octicon-link"></span></a>Assertion libraries bring incomprehensibility</h1>
