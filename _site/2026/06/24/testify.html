@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Use testing, not testify when writing Go tests | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Use testing, not testify when writing Go tests" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library." />
+<meta property="og:description" content="A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library." />
+<link rel="canonical" href="http://localhost:4000/2026/06/24/testify.html" />
+<meta property="og:url" content="http://localhost:4000/2026/06/24/testify.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-06-24T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Use testing, not testify when writing Go tests" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-06-24T02:55:23-06:00","datePublished":"2026-06-24T02:55:23-06:00","description":"A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library.","headline":"Use testing, not testify when writing Go tests","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2026/06/24/testify.html"},"url":"http://localhost:4000/2026/06/24/testify.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#use-testing-not-testify-when-writing-go-tests">Use testing, not testify when writing Go tests</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#main-gripes">Main gripes</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#testify-is-not-idiomatic-go">testify is not idiomatic Go</a></li>
+<li class="toc-entry toc-h3"><a href="#testify-is-a-relic-from-2012">testify is a relic from 2012</a></li>
+<li class="toc-entry toc-h3"><a href="#you-lose-the-type-system-with-testify">You lose the type system with testify</a></li>
+<li class="toc-entry toc-h3"><a href="#testify-is-a-rats-nest-of-assertions">testify is a rat’s nest of assertions</a></li>
+<li class="toc-entry toc-h3"><a href="#it-is-only-implements-a-subset-of-go-testing">It is only implements a subset of Go testing</a></li>
+<li class="toc-entry toc-h3"><a href="#the-mock-library-completely-misses-the-point-about-go-interfaces">The mock library completely misses the point about Go interfaces</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h2"><a href="#smaller-grips">Smaller grips</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#use-testing-not-testify-when-writing-go-tests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Use testing, not testify when writing Go tests</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-06-24T02:55:23-06:00" itemprop="datePublished">Jun 24, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>A follow-up to <a href="/2022-02-08-assertion-libraries.md">“Don’t use assertion libraries in Go”</a>
+specifically targeted at the <a href="https://pkg.go.dev/github.com/stretchr/testify">github.com/stretchr/testify</a>
+library.</p>
+
+<p>I recommend you don’t use testify: instead, just use “testing” and Go. This blog
+details the “Why”. This is all as of writing (mid-2026), so if you’re reading
+this in the future, check if any of this is out of date information.</p>
+
+<p>All the following will contrast writing testify tests against using ordinary Go,
+along with the <a href="https://pkg.go.dev/testing">testing</a> for assertions, and
+occasional use of <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a>
+for complex comparisons (but not assertions!). Here’s an example:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">foo_test</span>
+
+<span class="k">import</span> <span class="s">"testing"</span>
+
+<span class="k">func</span> <span class="n">TestFoo</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="n">got</span><span class="p">,</span> <span class="n">want</span> <span class="o">:=</span> <span class="n">Foo</span><span class="p">(),</span> <span class="m">5</span><span class="p">;</span> <span class="n">got</span> <span class="o">!=</span> <span class="n">want</span> <span class="p">{</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"got %d, want %d"</span><span class="p">,</span> <span class="n">got</span><span class="p">,</span> <span class="n">want</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="main-gripes">
+<a class="anchor" href="#main-gripes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main gripes</h2>
+
+<h3 id="testify-is-not-idiomatic-go">
+<a class="anchor" href="#testify-is-not-idiomatic-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>testify is not idiomatic Go</h3>
+
+<p>Go’s stdlib has a <a href="https://pkg.go.dev/testing">testing package</a>, which is
+<a href="https://go.dev/doc/tutorial/add-a-test">the idiomatic and recommended way</a> to
+write tests and assertions. <strong>testify is not idiomatic Go</strong>.</p>
+
+<p>I’ll also note that it does not appear that popular, either. As of this writing,
+pkg.go.dev counts <a href="https://pkg.go.dev/github.com/stretchr/testify/assert">16,016 imports for testify/assert</a>
+whereas <a href="https://pkg.go.dev/testing">110,931 for “testing”</a>.</p>
+
+<h3 id="testify-is-a-relic-from-2012">
+<a class="anchor" href="#testify-is-a-relic-from-2012" aria-hidden="true"><span class="octicon octicon-link"></span></a>testify is a relic from 2012</h3>
+
+<p>When Go came on the scene in 2012, the first thing that people did is start
+porting conventions from languages they were coming from. <a href="https://github.com/stretchr/testify/commit/2930d903bf969b4e153bb2f2d05a65455d214949">testify started in 2012</a> as basically a port of JUnit4, and is
+one such relic:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>assertEquals(expected, actual) // JUnit4
+assert.Equal(t, expected, actual) // testify
+</code></pre></div></div>
+
+<p>It didn’t actually do anything new or add value that the “testing” package
+didn’t already provide, other than being more terse than if statements.
+Otherwise it’s just added a wrapper around “testing”.</p>
+
+<p>I’m fairly sure it just got popular out of other-language familiarity until
+people started getting comfortable with the “testing” package, Go’s more verbose
+/ less magic aesthetic, and maybe some momentum from the BDD/Gherkin craze at
+the time.</p>
+
+<h3 id="you-lose-the-type-system-with-testify">
+<a class="anchor" href="#you-lose-the-type-system-with-testify" aria-hidden="true"><span class="octicon octicon-link"></span></a>You lose the type system with testify</h3>
+
+<p>It is completely reflect / <code class="language-plaintext highlighter-rouge">interface{}</code> based, which is slow, clunky, and
+<strong>you completely lose Go’s type system</strong>. For example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>```go
+// "testing" approach: you get an immediate compiler warning in your
+// editor.
+if 1 != "foo" {
+    t.Errorf("...")
+}
+
+// testify approach: this compiles! It's only at runtime that you get told
+// these types are not equivalent, and even then in a completely novel way
+// that is totally unlike how the compiler would tell you.
+assert.Equal(t, 1, "foo")
+```
+</code></pre></div></div>
+
+<h3 id="testify-is-a-rats-nest-of-assertions">
+<a class="anchor" href="#testify-is-a-rats-nest-of-assertions" aria-hidden="true"><span class="octicon octicon-link"></span></a>testify is a rat’s nest of assertions</h3>
+
+<p>(<a href="https://github.com/stretchr/testify/discussions/1560">And if you don’t trust my word on it, the maintainers also allude to it</a>)</p>
+
+<p>I count 312 assertions in the library. <em>312</em>. That. Is. Mad. It is literally
+trying to express in assertions every possible thing you could express with
+ordinary Go code. It is now not at all enough to know Go to read your
+colleague’s test, you now have to learn the ins and outs of this entire library.</p>
+
+<p>And if you decide to diligently do so, and you’re reading the docs but they don’t
+exactly answer the question of what it’s doing, surely you could peek at the
+code and read for ourselves?</p>
+
+<p><em><a href="https://github.com/stretchr/testify/blob/2a57335dc9cd6833daa820bc94d9b40c26a7917d/assert/assertions.go#L164">Ahhhhhh, it’s all deeply nested reflection logic, my eyes are burning!</a></em></p>
+
+<p>So that’s mostly a nope.</p>
+
+<p>And even then, you’ll reach points where the library can’t quite express what
+you want to do. What happens then is that you end up writing the Go code
+equivalent <em>anyways</em>:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// testify</span>
+<span class="n">assert</span><span class="o">.</span><span class="n">Condition</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="k">func</span><span class="p">()</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="n">config</span><span class="o">.</span><span class="n">Timeout</span> <span class="o">&gt;</span> <span class="m">10</span> <span class="o">&amp;&amp;</span> <span class="n">config</span><span class="o">.</span><span class="n">MaxRetries</span> <span class="o">==</span> <span class="m">3</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">config</span><span class="o">.</span><span class="n">Debug</span>
+<span class="p">},</span> <span class="s">"..."</span><span class="p">)</span>
+
+<span class="c">// You literally could have just written Go code!</span>
+<span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">Timeout</span> <span class="o">&gt;</span> <span class="m">10</span> <span class="o">&amp;&amp;</span> <span class="n">config</span><span class="o">.</span><span class="n">MaxRetries</span> <span class="o">==</span> <span class="m">3</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">config</span><span class="o">.</span><span class="n">Debug</span> <span class="p">{</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"..."</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="it-is-only-implements-a-subset-of-go-testing">
+<a class="anchor" href="#it-is-only-implements-a-subset-of-go-testing" aria-hidden="true"><span class="octicon octicon-link"></span></a>It is only implements a subset of Go testing</h3>
+
+<p>The project never fully implemented the set of things you can do with Go
+testing, but the project appears to have stalled circa ~2021-2023 (?) and has
+not kept up with new improvements to testing in Go:</p>
+
+<p><a href="https://github.com/stretchr/testify/issues/934">You can’t run parallel tests</a> (with <code class="language-plaintext highlighter-rouge">suite</code>).</p>
+
+<p>There’s no support for generics.</p>
+
+<p>There’s no support for <a href="https://go.dev/blog/synctest">synctest</a>.</p>
+
+<p>There’s no support for <a href="https://go.dev/doc/tutorial/fuzz">fuzz testing</a>.</p>
+
+<p>There’s no support for <a href="https://go.dev/blog/testing-b-loop">benchmarks</a>.</p>
+
+<h3 id="the-mock-library-completely-misses-the-point-about-go-interfaces">
+<a class="anchor" href="#the-mock-library-completely-misses-the-point-about-go-interfaces" aria-hidden="true"><span class="octicon octicon-link"></span></a>The mock library completely misses the point about Go interfaces</h3>
+
+<p>Go has implicit interfaces. I don’t know if the original authors of the
+<a href="https://pkg.go.dev/github.com/stretchr/testify/mock">testify mocking library</a> understood the implicitations of that.</p>
+
+<p>There is zero need for a mocking library since every client can add small,
+targeted interfaces for any external dependency and provide fakes in their test.</p>
+
+<p>Another issue I have with testify mocks is that <strong>they use string matching</strong>
+and once again you lose the type system:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// If you go and rename "MyMethod" with your editor, you're not going to get</span>
+<span class="c">// any updates to this magical string and your tests will blow up. Yay no type</span>
+<span class="c">// system!</span>
+<span class="n">Mock</span><span class="o">.</span><span class="n">On</span><span class="p">(</span><span class="s">"MyMethod"</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">2</span><span class="p">)</span><span class="o">.</span><span class="n">Return</span><span class="p">(</span><span class="m">0</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="smaller-grips">
+<a class="anchor" href="#smaller-grips" aria-hidden="true"><span class="octicon octicon-link"></span></a>Smaller grips</h2>
+
+<ul>
+  <li>It is a largely stalled project, not having had a release in ~1yr (as of writing)</li>
+  <li>Its diffing dep <a href="https://pkg.go.dev/github.com/pmezard/go-difflib">github.com/pmezard/go-difflib</a> is WIP and unmaintained.
+    <ul>
+      <li>
+<a href="https://pkg.go.dev/github.com/google/go-cmp">github.com/google/go-cmp</a> by comparison is elegantly small, type safe, modern, maintained by the Go team, has simple/elegant custom comparison options, and can handle protos, unexported fields, generics, and various other funky types.</li>
+    </ul>
+  </li>
+  <li>It uses a pretty printer <a href="https://pkg.go.dev/github.com/davecgh/go-spew">github.com/davecgh/go-spew</a> whose last commit was 8 years ago.</li>
+  <li>It has had a v2 schism; https://go-openapi.github.io/testify/index.html vs https://github.com/stretchr/testify/discussions/1560. Latter hasn’t seen updates in ~3y and readme says no v2 in sight.</li>
+  <li>It’s also pretty riddled with bugs, from a quick read through the issue
+tracker, with several fun panics, hangs, and incorrect assertion bugs
+outstanding.</li>
+</ul>
+
+  </div>
+<a class="u-url" href="/2026/06/24/testify.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
