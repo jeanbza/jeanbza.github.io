@@ -125,18 +125,16 @@ the time.</p>
 <p>It is completely reflect / <code class="language-plaintext highlighter-rouge">interface{}</code> based, which is slow, clunky, and
 <strong>you completely lose Go’s type system</strong>. For example:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>```go
-// "testing" approach: you get an immediate compiler warning in your
-// editor.
-if 1 != "foo" {
-    t.Errorf("...")
-}
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// "testing" approach: you get an immediate compiler warning in your</span>
+<span class="c">// editor.</span>
+<span class="k">if</span> <span class="m">1</span> <span class="o">!=</span> <span class="s">"foo"</span> <span class="p">{</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"..."</span><span class="p">)</span>
+<span class="p">}</span>
 
-// testify approach: this compiles! It's only at runtime that you get told
-// these types are not equivalent, and even then in a completely novel way
-// that is totally unlike how the compiler would tell you.
-assert.Equal(t, 1, "foo")
-```
+<span class="c">// testify approach: this compiles! It's only at runtime that you get told</span>
+<span class="c">// these types are not equivalent, and even then in a completely novel way</span>
+<span class="c">// that is totally unlike how the compiler would tell you.</span>
+<span class="n">assert</span><span class="o">.</span><span class="n">Equal</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="s">"foo"</span><span class="p">)</span>
 </code></pre></div></div>
 
 <h3 id="testify-is-a-rats-nest-of-assertions">
