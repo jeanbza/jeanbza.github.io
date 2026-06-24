@@ -1,5 +1,140 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-12-28T18:51:04-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Inlining function code</title><link href="http://localhost:4000/2025/10/23/function-spectrum.html" rel="alternate" type="text/html" title="Inlining function code" /><published>2025-10-23T02:55:23-06:00</published><updated>2025-10-23T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/23/function-spectrum</id><content type="html" xml:base="http://localhost:4000/2025/10/23/function-spectrum.html"><![CDATA[<p><em>Preface: John Carmack’s
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-24T13:16:19-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
+built on Redis. It’s great in many ways, but also pretty expensive and complex.</p>
+
+<p>I’ll detail that another time. For now, I’m going to focus on a much simpler way
+to solve this if you have lesser constraints than what we do. This is based on
+Postgres but would work for most relational databases. I’ve not load tested this
+and couldn’t really tell you how it scales, but it should be “good enough” for
+most queueing under ~1k QPS and &lt;1M messages (and probably fair amount higher,
+but again, haven’t load tested).</p>
+
+<p>Note: This was used at our
+<a href="https://github.com/Netflix-Skunkworks/golang-index">golang-index</a> as well as in
+<a href="https://github.com/golang/pkgsite/commit/372618454cdb62e4cbaab1fd14c58f2faf5db80a">Go’s pkgsite Postgres queue</a>.</p>
+
+<h2 id="schema">Schema</h2>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- This is the queue table.</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> <span class="n">queue_tasks</span> <span class="p">(</span>
+    <span class="c1">-- Bookkeeping.</span>
+    <span class="n">id</span>          <span class="n">BIGSERIAL</span> <span class="k">PRIMARY</span> <span class="k">KEY</span><span class="p">,</span>
+    
+    <span class="c1">-- Each consumer/dequeue-er needs a unique task name. appID+threadID for example.</span>
+    <span class="n">task_name</span>   <span class="nb">TEXT</span> <span class="k">UNIQUE</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    
+    <span class="c1">-- [...] Whatever payload you need for each message goes here.</span>
+
+    <span class="c1">-- Queueing.</span>
+    <span class="n">created_at</span>  <span class="n">TIMESTAMPTZ</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="n">NOW</span><span class="p">(),</span>
+    <span class="n">started_at</span>  <span class="n">TIMESTAMPTZ</span>
+
+    <span class="c1">-- Optionally also add completed_at and maybe success/failure columns if you</span>
+    <span class="c1">-- want a history; otherwise just delete on finish.</span>
+<span class="p">);</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> <span class="n">idx_queue_tasks_started_created</span>
+<span class="k">ON</span> <span class="n">queue_tasks</span> <span class="p">(</span><span class="n">started_at</span><span class="p">,</span> <span class="n">created_at</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="enqueueing">Enqueueing</h2>
+
+<p>Enqueue with an atomic test-and-set query:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">queue_tasks</span> <span class="p">(...)</span> <span class="c1">-- All but created_at.</span>
+<span class="k">VALUES</span> <span class="p">(...)</span>
+<span class="k">ON</span> <span class="n">CONFLICT</span> <span class="p">(</span><span class="n">task_name</span><span class="p">)</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span> <span class="c1">-- Another consumer won the race; no-op.</span>
+</code></pre></div></div>
+
+<h2 id="dequeueing">Dequeueing</h2>
+
+<p>Dequeue with a test for stalled workers:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">id</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="n">started_at</span> <span class="k">IS</span> <span class="k">NULL</span>
+        <span class="c1">-- Allow accepting work from stalled workers.</span>
+       <span class="k">OR</span> <span class="n">started_at</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="o">&lt;</span> <span class="n">NOW</span><span class="p">()</span>
+    <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">created_at</span> <span class="k">ASC</span>
+    <span class="k">LIMIT</span> <span class="mi">1</span>
+    <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
+<span class="p">)</span>
+<span class="k">UPDATE</span> <span class="n">queue_tasks</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+</code></pre></div></div>
+
+<h3 id="with-priority">With priority</h3>
+
+<p>Simple add a <code class="language-plaintext highlighter-rouge">priority</code> field of your choosing and then <code class="language-plaintext highlighter-rouge">ORDER BY priority</code>
+instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_at</code>.</p>
+
+<h3 id="with-certain-consumer-limit">With certain consumer limit</h3>
+
+<p>If you only want <em>n</em> consumers, simply add `LIMIT</p>
+
+<h3 id="with-lease-extension">With lease extension</h3>
+
+<p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">updated_at</code> and change the stall check
+to:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">id</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="n">started_at</span> <span class="k">IS</span> <span class="k">NULL</span>
+        <span class="c1">-- Allow accepting work from stalled workers; but now we used</span>
+        <span class="c1">-- leased_until, which workers are expected to periodically lease</span>
+        <span class="c1">-- extend.</span>
+       <span class="k">OR</span> <span class="n">leased_until</span> <span class="o">&lt;</span> <span class="n">NOW</span><span class="p">()</span>
+    <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">created_at</span> <span class="k">ASC</span>
+    <span class="k">LIMIT</span> <span class="mi">1</span>
+    <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
+<span class="p">)</span>
+<span class="k">UPDATE</span> <span class="n">queue_tasks</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="k">AND</span> <span class="n">leased_until</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="c1">-- Or however long you want leases.</span>
+<span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+</code></pre></div></div>
+
+<p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
+the near future.</p>
+
+<h3 id="with-batching">With batching</h3>
+
+<p>If you need to batch dequeue, you can do:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">active_workers</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">AS</span> <span class="n">current_count</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="n">started_at</span> <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span>
+      <span class="k">AND</span> <span class="n">started_at</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="o">&gt;=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="p">),</span>
+<span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">id</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">current_count</span> <span class="k">FROM</span> <span class="n">active_workers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">:</span><span class="n">n</span>
+      <span class="k">AND</span> <span class="p">(</span><span class="n">started_at</span> <span class="k">IS</span> <span class="k">NULL</span> <span class="k">OR</span> <span class="n">started_at</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="o">&lt;</span> <span class="n">NOW</span><span class="p">())</span>
+    <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">created_at</span> <span class="k">ASC</span>
+    <span class="k">LIMIT</span> <span class="mi">1</span>
+    <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
+<span class="p">)</span>
+<span class="k">UPDATE</span> <span class="n">queue_tasks</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+</code></pre></div></div>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>SQL databases are pretty easy to turn into queueing databases, and it’s
+fairly easy to tweak your SQL scripts to make the queue behave the way you want
+them to.</p>
+
+<p>If you already rely on a SQL database and need to add queueing, consider just
+doing it in your pre-existing SQL database rather than adding a whole new system
+dependency.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[At Netflix, part of the infrastructure I work on is a distributed priority queue built on Redis. It’s great in many ways, but also pretty expensive and complex.]]></summary></entry><entry><title type="html">Inlining function code</title><link href="http://localhost:4000/2025/10/23/function-spectrum.html" rel="alternate" type="text/html" title="Inlining function code" /><published>2025-10-23T02:55:23-06:00</published><updated>2025-10-23T02:55:23-06:00</updated><id>http://localhost:4000/2025/10/23/function-spectrum</id><content type="html" xml:base="http://localhost:4000/2025/10/23/function-spectrum.html"><![CDATA[<p><em>Preface: John Carmack’s
 <a href="https://cbarrete.com/carmack.html">email on inlining code</a> on this subject was
 a really impactful read for me. I highly recommend it.</em></p>
 
@@ -219,17 +354,32 @@ bookmark associated with the rev if one exists.</p>
   </li>
   <li>
     <p>Update <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/&lt;theme&gt;/&lt;theme&gt;.bash</code> (ex
-<code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>) to include your prompt next to the <code class="language-plaintext highlighter-rouge">git</code>
-prompt:</p>
+<code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>), amending the prompt_command:</p>
   </li>
 </ol>
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
-  <span class="c"># Old</span>
-  <span class="c"># PS1="\[${BOLD}${MAGENTA}\]\u \[$WHITE\]at \[$ORANGE\]\h \[$WHITE\]in \[$GREEN\]\w\[$WHITE\]\$([[ -n \$(git branch 2&gt; /dev/null) ]] &amp;&amp; echo \" on \")\[$PURPLE\]\$(parse_git_branch)\[$WHITE\]\n\$ \[$RESET\]"</span>
+  <span class="nb">local </span><span class="nv">scm_info</span><span class="o">=</span><span class="s2">""</span>
 
-  <span class="c"># New</span>
-  <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]\$</span><span class="s2">([[ -n </span><span class="se">\$</span><span class="s2">(git branch 2&gt; /dev/null) ]] &amp;&amp; echo </span><span class="se">\"</span><span class="s2"> on </span><span class="se">\"</span><span class="s2">)</span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]</span><span class="si">$(</span>jj_prompt_info<span class="si">)</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+  <span class="c"># 1. Check if it is a JJ repo first (Priority)</span>
+  <span class="c"># We use the 'is_jj_repo' function defined in your plugin.</span>
+  <span class="k">if </span><span class="nb">type </span>is_jj_repo &amp;&gt;/dev/null <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then</span>
+      <span class="c"># If JJ, show ONLY JJ info (suppress Git)</span>
+      <span class="nv">scm_info</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]\$</span><span class="s2">(jj_prompt_info)"</span>
+      
+  <span class="c"># 2. If not JJ, check if it is a Git repo</span>
+  <span class="k">elif</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="si">$(</span>git branch 2&gt; /dev/null<span class="si">)</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
+      <span class="c"># If Git, show " on " + Git info</span>
+      <span class="nv">scm_info</span><span class="o">=</span><span class="s2">" on </span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)"</span>
+  <span class="k">fi</span>
+
+  <span class="c"># Build the PS1 using the selected scm_info</span>
+  <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="k">${</span><span class="nv">scm_info</span><span class="k">}</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+
+  <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SEXY_THEME_SHOW_PYTHON</span><span class="s2">"</span> <span class="o">=</span> <span class="nb">true</span> <span class="o">]</span> <span class="p">;</span> <span class="k">then
+    </span><span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">WHITE</span><span class="k">}</span><span class="se">\]</span><span class="si">$(</span>env_prompt<span class="si">)</span><span class="s2"> "</span><span class="nv">$PS1</span>
+  <span class="k">fi</span>
+<span class="o">}</span>
 </code></pre></div></div>
 
 <p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[This is the first of a series of posts about jj. The next is A jj script to lint your entire graph.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
@@ -1261,294 +1411,4 @@ mis-use.</p>
   <li><a href="https://research.swtch.com/interfaces">Go Data Structures: Interfaces</a> by rsc@</li>
   <li><a href="https://www.airs.com/blog/archives/277">Go Interfaces</a> by iant@</li>
   <li><a href="https://go.dev/blog/laws-of-reflection">Laws of Reflection</a> by r@</li>
-</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Foreword]]></summary></entry><entry><title type="html">Graceful degradation with the logistic function</title><link href="http://localhost:4000/2022/05/05/logistic-function-backoff.html" rel="alternate" type="text/html" title="Graceful degradation with the logistic function" /><published>2022-05-05T15:55:23-06:00</published><updated>2022-05-05T15:55:23-06:00</updated><id>http://localhost:4000/2022/05/05/logistic-function-backoff</id><content type="html" xml:base="http://localhost:4000/2022/05/05/logistic-function-backoff.html"><![CDATA[<h1 id="graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</h1>
-
-<p>I recently worked on a server throttling feature in one of our build stack’s busiest binaries. We serve files from this binary, which is deployed as tens of thousands of tasks, which cumulatively serve millions of QPS.</p>
-
-<p>Sometimes, one of these tasks gets a large memory spike. The cause for this is that the task is asked to hold a single file, and before it gets replicated, the file is needed by tens of thousands of peers, who all bombard the task with RPCs. Handling all these requests causes a huge spike in memory, and the task falls over.</p>
-
-<p>Eventually replication catches up, and there are enough peers to spread the load. But we’d like to fail more gracefully than just OOM =&gt; death. We’d like to monitor the current and allocated memory, and gradually reject requests (throttle) when current memory exceeds allocated memory.</p>
-
-<h1 id="abrupt-degradation">Abrupt degradation</h1>
-
-<p>A simple way to abruptly degrade is to reject requests above the allocated amount. We can model that with a simple step function. For the sake of example, let’s imagine that our allocated memory is <code class="language-plaintext highlighter-rouge">3GiB = 3221225472 bytes</code>. We don’t want to hit 3GiB exactly, since that’s roughly where we’ll OOM, so let’s start throttling a bit before that: at <code class="language-plaintext highlighter-rouge">3000000000 bytes = 3e9 bytes</code> (number chosen because it’s conveniently round, and close to 3GiB 🙂).</p>
-
-\[f(x) = \left\{
-        \begin{array}{ll}
-            1 &amp; \quad x \ge 3e9 \\
-            0 &amp; \quad x &lt; 3e9
-        \end{array}
-    \right.\]
-
-<p>Here, 0 means “don’t reject”, and 1 means “reject”.</p>
-
-<p>But, this is inefficient: we’re not using all our available memory. In a resource constrained environment, or when we’re highly scaled, we really want to squeeze every bit of memory that we can, and leaving a huge buffer untouched is far too wasteful.</p>
-
-<h1 id="gradual-degradation">Gradual degradation</h1>
-
-<p>It’s starting to sound like we need a linear function, not a stepwise function: something that rejects more and more requests the more memory we’re using. We now need a range to operate our throttler within: at the bottom of the range, we reject no requests; at the top, all requests.</p>
-
-<p>Let’s define our range as <code class="language-plaintext highlighter-rouge">[3e9 bytes, 3221225472 bytes]</code>, using the same bounds as our step function above.</p>
-
-<p>So, let’s build a linear function for this. Note that the values that we want from our linear function are <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>. As above, 0 means “don’t reject”, and 1 means “reject”. Any value between that represents that chance that a request will be rejected. That is, we’ll compare the result of our linear function against a number taken randomly from a uniform distribution of <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>.</p>
-
-<p>To build this linear function, let’s start with what we know:</p>
-
-<ul>
-  <li>Linear functions look like $f(x)=a \cdot x + b$</li>
-  <li>$f(3e9)=0$</li>
-  <li>$f(3221225472)=1$</li>
-</ul>
-
-<p>We can use this to solve the equation:</p>
-
-\[\begin{split}
-0 = a \cdot 3e9 + b\\
--b = 3e9 \cdot a\\
-b = -3e9 \cdot a
-\end{split}
-\quad\quad
-\begin{split}
-1 = a \cdot 3221225472 + b\\
-1 - b = a \cdot 3221225472\\
--b = a \cdot 3221225472 - 1\\
-b = -a \cdot 3221225472 + 1
-\end{split}\\ \text{ } \\ \text{ } \\
--3e9 \cdot a = -a \cdot 3221225472 + 1 \\
--3e9 \cdot a + a \cdot 3221225472 = 1 \\
-a \cdot (-3e9 + 3221225472) = 1 \\
-a = 1/221225472\]
-
-<p>Now that we know <code class="language-plaintext highlighter-rouge">a</code>, let’s use that and either of the two partial solutions above to find <code class="language-plaintext highlighter-rouge">b</code>:</p>
-
-\[1 = a \cdot 3221225472 + b\\
-1 = 3221225472/221225472 + b\\
-b = 1 - 3221225472/221225472\\
-b = -1953125/144027\]
-
-<p>Our stepwise function accordingly gets an embedded linear function:</p>
-
-\[f(x) = \left\{
-        \begin{array}{ll}
-            x/221225472 - 1953125/144027  &amp; \quad x \ge 3e9 \\
-            0 &amp; \quad x &lt; 3e9
-        \end{array}
-    \right.\]
-
-<p><img src="/assets/linear.png" alt="" /></p>
-
-<p>We can verify that this works by plugging in our original numbers:</p>
-
-\[\begin{split}
-f(x) = x/221225472 - 1953125/144027\\
-f(x) = 3e9/221225472 - 1953125/144027\\
-f(x) = 0
-\end{split}
-\quad\quad
-\begin{split}
-f(x) = x/221225472 - 1953125/144027\\
-f(x) = 3221225472/221225472 - 1953125/144027\\
-f(x) = 1
-\end{split}\\\]
-
-<h1 id="linear-function-downsides">Linear function downsides</h1>
-
-<p>This is a lot nicer, but we can do better. If our binary is <em>expected</em> to consistently “run hot” (use most of its allocated memory), the linear function may be too aggressive.</p>
-
-<p>Consider a binary that fairly consistently runs somewhere in the bottom 10-30% of the throttle memory range. A linear function will accordingly throttle 10-30% of requests. That’s expensive! Particularly if the incoming RPCs have a wide range of memory footprints: throttling 10-30% of requests when those requests may have negligible impact on memory is wasteful. And we can’t just make our memory range smaller. Doing so is dangerous: the smaller the range, the easier it is for a request to cause our memory to jump to the end of the range and OOM the process.</p>
-
-<p>And, the second half of the linear function range is a problem too: it ramps up too slowly! When we’re 90% into our range, we’d like to be throttling most all requests, since it may only take a few expensive requests to jump right to the end and OOM the process.</p>
-
-<p>We need to find a function with a better shape.</p>
-
-<h1 id="graceful-degradation">Graceful degradation</h1>
-
-<p>The <a href="https://en.wikipedia.org/wiki/Logistic_function">logistic function</a> has a better shape for server throttling.</p>
-
-<p>Here’s the shape of the logistic function:</p>
-
-<p><img src="/assets/logistic.png" alt="" /></p>
-
-<p>Its S-shaped curve allows more requests through when we’re at the bottom of our range, and aggressively throttles at the end of our range.</p>
-
-<p>The equation for the logistic function is as follows,</p>
-
-\[\begin{align*}
-f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}
-\end{align*}\]
-
-<p>Where,</p>
-
-<ul>
-  <li>$x_0$ is the x value of the sigmoid’s midpoint</li>
-  <li>L is the curve’s maximum value</li>
-  <li>k is the logistic growth rate or steepness of the curve</li>
-</ul>
-
-<p>Let’s adapt this to our problem:</p>
-
-<p>L is the easiest: we want the maximum value to be 1 (we want our range to be <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>), So, <code class="language-plaintext highlighter-rouge">L=1</code>.</p>
-
-<p>$x_0$ is fairly straightforward: the midpont should be the midpoint between the start and end of our range. So,</p>
-
-\[\begin{align}
-x_0 = 3221225472-\left(\dfrac{3221225472-3e9}{2}\right)\\
-x_0 = 3110612736
-\end{align}\]
-
-<p>Now we have,</p>
-
-\[\begin{align*}
-f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}\\
-f(x) = \dfrac{1}{1 + e^{-k(x-3110612736)}}
-\end{align*}\]
-
-<p>k is the hardest. Let’s start by solving for k in the equation above:</p>
-
-\[\begin{align*}
-f(x) = \dfrac{1}{1 + e^{-k\left(x-3110612736\right)}}\\
-f(x)\left(1 + e^{-k(x-3110612736)}\right) = 1\\
-1 + e^{-k(x-3110612736)} = \dfrac{1}{f(x)}\\
-e^{-k(x-3110612736)} = \dfrac{1}{f(x)}-1\\
--k(x-3110612736) = ln\left(\dfrac{1}{f(x)}-1\right)\\
-k(x-3110612736) = -ln\left(\dfrac{1}{f(x)}-1\right)\\
-k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
-\end{align*}\]
-
-<p>Now we return to what we know about how this curve <em>should</em> behave:</p>
-
-<ul>
-  <li>$f(3e9)=0$</li>
-  <li>$f(3221225472)=1$</li>
-</ul>
-
-<p>Unfortunately, using either of these results in an unsolvable equation:</p>
-
-\[\begin{split}
-k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
-k = \dfrac{-ln\left(\dfrac{1}{0}-1\right)}{3e9-3110612736}\\
-\text{NaN: can't divide by 0}
-\end{split}
-\quad\quad
-\begin{split}
-k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
-k = \dfrac{-ln\left(\dfrac{1}{1}-1\right)}{3221225472-3110612736}\\
-k = \dfrac{-ln(0)}{3221225472-3110612736}\\
-\text{NaN: natural log of 0 is undefined}
-\end{split}\]
-
-<p>So, that’s a bummer. But it makes sense: the logistic function is asymptotic, with asymptotes 0 and 1: it will never actually reach those values!</p>
-
-<p>So, let’s estimate k by choosing a value close to the asymptotes: either .01 for the lower bound, or .99 for the upper bound. It doesn’t matter which one we do, as the curve is reflected around the midpoint. So, let’s use the upper:</p>
-
-\[k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
-k = \dfrac{-ln\left(\dfrac{1}{.99}-1\right)}{3221225472-3110612736}\\
-k = \dfrac{-ln(0.0101010101)}{110612736}\\
-k = \dfrac{4.59511985023}{110612736}\\
-k = \dfrac{4.595119}{110612736}\\
-k = .0000000415424043\]
-
-<p>Great! Let’s put it all together:</p>
-
-\[\begin{align*}
-f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}\\
-f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}
-\end{align*}\]
-
-<p><img src="/assets/logistic_real.png" alt="" /></p>
-
-<p>We can verify that this works by plugging in our original numbers:</p>
-
-\[\begin{split}
-f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}\\
-f(x) = \dfrac{1}{1 + e^{-.0000000415424043(3e9-3110612736)}}\\
-f(x) = 0.01000000841
-\end{split}
-\quad\quad
-\begin{split}
-f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}\\
-f(x) = \dfrac{1}{1 + e^{-.0000000415424043(3221225472-3110612736)}}\\
-f(x) = 0.98999999158
-\end{split}\\\]
-
-<p>Since we’re approximating values and will never reach 0 or 1, it’s helpful to continue using the stepwise function to guarantee no throttling when we’re below our threshold, and to always throttle when we’re above our allowable range:</p>
-
-\[f(x) = \left\{
-        \begin{array}{ll}
-            1 &amp; \quad x \ge 3221225472 \\
-            \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}  &amp; \quad 3e9 \le x &lt; 3221225472  \\
-            0 &amp; \quad x &lt; 3e9
-        \end{array}
-    \right.\]
-
-<h1 id="implementing-logistic-function-server-throttling">Implementing logistic function server throttling</h1>
-
-<p>Implementing server throttling with the logistic function is fairly straight forward, adding another positive to its list of positives:</p>
-
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// This example written in Go. It uses RPC semantics, like protobufs and</span>
-<span class="c">// google.golang.org/grpc/status, but the tools don't really matter. http or any</span>
-<span class="c">// other communication protocol works as well.</span>
-
-<span class="k">func</span> <span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">Client</span><span class="p">)</span> <span class="n">HandleSomeRPC</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">req</span> <span class="o">*</span><span class="n">mypb</span><span class="o">.</span><span class="n">Request</span><span class="p">,</span> <span class="n">resp</span> <span class="o">*</span><span class="n">mypb</span><span class="o">.</span><span class="n">Response</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
-  <span class="k">if</span> <span class="n">shouldThrottle</span><span class="p">(</span><span class="n">currentMemoryBytes</span><span class="p">(),</span> <span class="n">allocatedMemoryBytes</span><span class="p">(),</span> <span class="n">throttleRangeBytes</span><span class="p">())</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">codes</span><span class="o">.</span><span class="n">ResourceExhausted</span><span class="p">,</span> <span class="s">"out of memory - try again later"</span><span class="p">)</span>
-  <span class="p">}</span>
-  <span class="c">// ...</span>
-<span class="p">}</span>
-
-<span class="k">func</span> <span class="n">shouldThrottle</span><span class="p">(</span><span class="n">currentMemoryBytes</span><span class="p">,</span> <span class="n">allocatedMemoryBytes</span><span class="p">,</span> <span class="n">throttleRangeBytes</span> <span class="kt">uint64</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
-	<span class="k">if</span> <span class="n">currentMemoryBytes</span> <span class="o">&lt;</span> <span class="n">allocatedMemoryBytes</span><span class="o">-</span><span class="n">throttleRangeBytes</span> <span class="p">{</span>
-		<span class="k">return</span> <span class="no">false</span>
-	<span class="p">}</span>
-	<span class="k">if</span> <span class="n">currentMemoryBytes</span> <span class="o">&gt;</span> <span class="n">allocatedMemoryBytes</span><span class="o">+</span><span class="n">throttleRangeBytes</span> <span class="p">{</span>
-		<span class="c">// Relevant if your process is in a scenario where max available memory</span>
-		<span class="c">// is greater than max allocated memory (shared containers etc).</span>
-		<span class="k">return</span> <span class="no">true</span>
-	<span class="p">}</span>
-
-	<span class="n">x</span> <span class="o">:=</span> <span class="n">currentMemoryBytes</span>
-	<span class="n">x0</span> <span class="o">:=</span> <span class="n">allocatedMemoryBytes</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uint64</span><span class="p">)(</span><span class="n">throttleRangeBytes</span><span class="o">/</span><span class="m">2</span><span class="p">)</span>
-	<span class="n">L</span> <span class="o">:=</span> <span class="m">1.0</span>
-	<span class="n">k</span> <span class="o">:=</span> <span class="p">(</span><span class="o">-</span><span class="m">1</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">Log</span><span class="p">((</span><span class="n">L</span><span class="o">/</span><span class="m">.01</span><span class="p">)</span><span class="o">-</span><span class="m">1</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="kt">float64</span><span class="p">)(</span><span class="n">allocatedMemoryBytes</span><span class="o">-</span><span class="n">x0</span><span class="p">)</span>
-
-	<span class="c">// y1 is probability (0.00-1.00) which we roll against to determine whether</span>
-	<span class="c">// to throttle or not. When it is 0, we never throttle (memory below allowed</span>
-	<span class="c">// exceed). When it is 1, we always throttle (memory above allowed exceed).</span>
-	<span class="n">y1</span> <span class="o">:=</span> <span class="n">L</span> <span class="o">/</span> <span class="p">(</span><span class="m">1.0</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">Exp</span><span class="p">(</span><span class="o">-</span><span class="n">k</span><span class="o">*</span><span class="p">(</span><span class="kt">float64</span><span class="p">)(</span><span class="n">x</span><span class="o">-</span><span class="n">x0</span><span class="p">)))</span>
-
-	<span class="c">// y2 is a number between 0 and 1 to compare against y1.</span>
-	<span class="n">y2</span> <span class="o">:=</span> <span class="n">rand</span><span class="o">.</span><span class="n">Float64</span><span class="p">()</span>
-
-	<span class="k">return</span> <span class="n">y2</span> <span class="o">&lt;=</span> <span class="n">y1</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<h1 id="conclusion">Conclusion</h1>
-
-<p>At tremendous scale, it’s important to eke every last bit of memory from servers. It’s also important to be able to gracefully degrade during memory spikes, to avoid out-of-memory crashes. The logistic function is an excellent function for deciding whether to throttle requests, which strikes a good balance between the competing priorities of using all available memory and avoiding out-of-memory crashes.</p>
-
-<script type="text/javascript" async="" src="/assets/MathJax-2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Config({
-      tex2jax: {
-        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-        processEscapes: true
-      },
-      extensions: [
-        "MathMenu.js",
-        "MathZoom.js",
-        "AssistiveMML.js"
-      ],
-      jax: ["input/TeX", "output/CommonHTML"],
-      TeX: {
-        extensions: [
-          "AMSmath.js",
-          "AMSsymbols.js",
-          "noErrors.js",
-          "noUndefined.js",
-        ]
-      }
-    });
-  </script>]]></content><author><name></name></author><summary type="html"><![CDATA[Graceful degradation with the logistic function]]></summary></entry></feed>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Foreword]]></summary></entry></feed>

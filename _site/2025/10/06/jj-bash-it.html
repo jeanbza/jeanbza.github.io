@@ -144,17 +144,32 @@ bookmark associated with the rev if one exists.</p>
   </li>
   <li>
     <p>Update <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/&lt;theme&gt;/&lt;theme&gt;.bash</code> (ex
-<code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>) to include your prompt next to the <code class="language-plaintext highlighter-rouge">git</code>
-prompt:</p>
+<code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>), amending the prompt_command:</p>
   </li>
 </ol>
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
-  <span class="c"># Old</span>
-  <span class="c"># PS1="\[${BOLD}${MAGENTA}\]\u \[$WHITE\]at \[$ORANGE\]\h \[$WHITE\]in \[$GREEN\]\w\[$WHITE\]\$([[ -n \$(git branch 2&gt; /dev/null) ]] &amp;&amp; echo \" on \")\[$PURPLE\]\$(parse_git_branch)\[$WHITE\]\n\$ \[$RESET\]"</span>
+  <span class="nb">local </span><span class="nv">scm_info</span><span class="o">=</span><span class="s2">""</span>
 
-  <span class="c"># New</span>
-  <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]\$</span><span class="s2">([[ -n </span><span class="se">\$</span><span class="s2">(git branch 2&gt; /dev/null) ]] &amp;&amp; echo </span><span class="se">\"</span><span class="s2"> on </span><span class="se">\"</span><span class="s2">)</span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]</span><span class="si">$(</span>jj_prompt_info<span class="si">)</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+  <span class="c"># 1. Check if it is a JJ repo first (Priority)</span>
+  <span class="c"># We use the 'is_jj_repo' function defined in your plugin.</span>
+  <span class="k">if </span><span class="nb">type </span>is_jj_repo &amp;&gt;/dev/null <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then</span>
+      <span class="c"># If JJ, show ONLY JJ info (suppress Git)</span>
+      <span class="nv">scm_info</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]\$</span><span class="s2">(jj_prompt_info)"</span>
+      
+  <span class="c"># 2. If not JJ, check if it is a Git repo</span>
+  <span class="k">elif</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="si">$(</span>git branch 2&gt; /dev/null<span class="si">)</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
+      <span class="c"># If Git, show " on " + Git info</span>
+      <span class="nv">scm_info</span><span class="o">=</span><span class="s2">" on </span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)"</span>
+  <span class="k">fi</span>
+
+  <span class="c"># Build the PS1 using the selected scm_info</span>
+  <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="k">${</span><span class="nv">scm_info</span><span class="k">}</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+
+  <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SEXY_THEME_SHOW_PYTHON</span><span class="s2">"</span> <span class="o">=</span> <span class="nb">true</span> <span class="o">]</span> <span class="p">;</span> <span class="k">then
+    </span><span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">WHITE</span><span class="k">}</span><span class="se">\]</span><span class="si">$(</span>env_prompt<span class="si">)</span><span class="s2"> "</span><span class="nv">$PS1</span>
+  <span class="k">fi</span>
+<span class="o">}</span>
 </code></pre></div></div>
 
 <p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>

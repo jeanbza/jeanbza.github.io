@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Queues in Postgres | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Queues in Postgres" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="At Netflix, part of the infrastructure I work on is a distributed priority queue built on Redis. It’s great in many ways, but also pretty expensive and complex." />
+<meta property="og:description" content="At Netflix, part of the infrastructure I work on is a distributed priority queue built on Redis. It’s great in many ways, but also pretty expensive and complex." />
+<link rel="canonical" href="http://localhost:4000/2026/05/06/postgres-queue.html" />
+<meta property="og:url" content="http://localhost:4000/2026/05/06/postgres-queue.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-06T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Queues in Postgres" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-05-06T02:55:23-06:00","datePublished":"2026-05-06T02:55:23-06:00","description":"At Netflix, part of the infrastructure I work on is a distributed priority queue built on Redis. It’s great in many ways, but also pretty expensive and complex.","headline":"Queues in Postgres","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2026/05/06/postgres-queue.html"},"url":"http://localhost:4000/2026/05/06/postgres-queue.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#queues-in-postgres">Queues in Postgres</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#schema">Schema</a></li>
+<li class="toc-entry toc-h2"><a href="#enqueueing">Enqueueing</a></li>
+<li class="toc-entry toc-h2"><a href="#dequeueing">Dequeueing</a>
+<ul>
+<li class="toc-entry toc-h3"><a href="#with-priority">With priority</a></li>
+<li class="toc-entry toc-h3"><a href="#with-certain-consumer-limit">With certain consumer limit</a></li>
+<li class="toc-entry toc-h3"><a href="#with-lease-extension">With lease extension</a></li>
+<li class="toc-entry toc-h3"><a href="#with-batching">With batching</a></li>
+</ul>
+</li>
+<li class="toc-entry toc-h2"><a href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#queues-in-postgres" aria-hidden="true"><span class="octicon octicon-link"></span></a>Queues in Postgres</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-05-06T02:55:23-06:00" itemprop="datePublished">May 6, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>At Netflix, part of the infrastructure I work on is a distributed priority queue
+built on Redis. It’s great in many ways, but also pretty expensive and complex.</p>
+
+<p>I’ll detail that another time. For now, I’m going to focus on a much simpler way
+to solve this if you have lesser constraints than what we do. This is based on
+Postgres but would work for most relational databases. I’ve not load tested this
+and couldn’t really tell you how it scales, but it should be “good enough” for
+most queueing under ~1k QPS and &lt;1M messages (and probably fair amount higher,
+but again, haven’t load tested).</p>
+
+<p>Note: This was used at our
+<a href="https://github.com/Netflix-Skunkworks/golang-index">golang-index</a> as well as in
+<a href="https://github.com/golang/pkgsite/commit/372618454cdb62e4cbaab1fd14c58f2faf5db80a">Go’s pkgsite Postgres queue</a>.</p>
+
+<h2 id="schema">
+<a class="anchor" href="#schema" aria-hidden="true"><span class="octicon octicon-link"></span></a>Schema</h2>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- This is the queue table.</span>
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> <span class="n">queue_tasks</span> <span class="p">(</span>
+    <span class="c1">-- Bookkeeping.</span>
+    <span class="n">id</span>          <span class="n">BIGSERIAL</span> <span class="k">PRIMARY</span> <span class="k">KEY</span><span class="p">,</span>
+    
+    <span class="c1">-- Each consumer/dequeue-er needs a unique task name. appID+threadID for example.</span>
+    <span class="n">task_name</span>   <span class="nb">TEXT</span> <span class="k">UNIQUE</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    
+    <span class="c1">-- [...] Whatever payload you need for each message goes here.</span>
+
+    <span class="c1">-- Queueing.</span>
+    <span class="n">created_at</span>  <span class="n">TIMESTAMPTZ</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="k">DEFAULT</span> <span class="n">NOW</span><span class="p">(),</span>
+    <span class="n">started_at</span>  <span class="n">TIMESTAMPTZ</span>
+
+    <span class="c1">-- Optionally also add completed_at and maybe success/failure columns if you</span>
+    <span class="c1">-- want a history; otherwise just delete on finish.</span>
+<span class="p">);</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> <span class="n">idx_queue_tasks_started_created</span>
+<span class="k">ON</span> <span class="n">queue_tasks</span> <span class="p">(</span><span class="n">started_at</span><span class="p">,</span> <span class="n">created_at</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="enqueueing">
+<a class="anchor" href="#enqueueing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Enqueueing</h2>
+
+<p>Enqueue with an atomic test-and-set query:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">INSERT</span> <span class="k">INTO</span> <span class="n">queue_tasks</span> <span class="p">(...)</span> <span class="c1">-- All but created_at.</span>
+<span class="k">VALUES</span> <span class="p">(...)</span>
+<span class="k">ON</span> <span class="n">CONFLICT</span> <span class="p">(</span><span class="n">task_name</span><span class="p">)</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span> <span class="c1">-- Another consumer won the race; no-op.</span>
+</code></pre></div></div>
+
+<h2 id="dequeueing">
+<a class="anchor" href="#dequeueing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dequeueing</h2>
+
+<p>Dequeue with a test for stalled workers:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">id</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="n">started_at</span> <span class="k">IS</span> <span class="k">NULL</span>
+        <span class="c1">-- Allow accepting work from stalled workers.</span>
+       <span class="k">OR</span> <span class="n">started_at</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="o">&lt;</span> <span class="n">NOW</span><span class="p">()</span>
+    <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">created_at</span> <span class="k">ASC</span>
+    <span class="k">LIMIT</span> <span class="mi">1</span>
+    <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
+<span class="p">)</span>
+<span class="k">UPDATE</span> <span class="n">queue_tasks</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+</code></pre></div></div>
+
+<h3 id="with-priority">
+<a class="anchor" href="#with-priority" aria-hidden="true"><span class="octicon octicon-link"></span></a>With priority</h3>
+
+<p>Simple add a <code class="language-plaintext highlighter-rouge">priority</code> field of your choosing and then <code class="language-plaintext highlighter-rouge">ORDER BY priority</code>
+instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_at</code>.</p>
+
+<h3 id="with-certain-consumer-limit">
+<a class="anchor" href="#with-certain-consumer-limit" aria-hidden="true"><span class="octicon octicon-link"></span></a>With certain consumer limit</h3>
+
+<p>If you only want <em>n</em> consumers, simply add `LIMIT</p>
+
+<h3 id="with-lease-extension">
+<a class="anchor" href="#with-lease-extension" aria-hidden="true"><span class="octicon octicon-link"></span></a>With lease extension</h3>
+
+<p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">updated_at</code> and change the stall check
+to:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">id</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="n">started_at</span> <span class="k">IS</span> <span class="k">NULL</span>
+        <span class="c1">-- Allow accepting work from stalled workers; but now we used</span>
+        <span class="c1">-- leased_until, which workers are expected to periodically lease</span>
+        <span class="c1">-- extend.</span>
+       <span class="k">OR</span> <span class="n">leased_until</span> <span class="o">&lt;</span> <span class="n">NOW</span><span class="p">()</span>
+    <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">created_at</span> <span class="k">ASC</span>
+    <span class="k">LIMIT</span> <span class="mi">1</span>
+    <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
+<span class="p">)</span>
+<span class="k">UPDATE</span> <span class="n">queue_tasks</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="k">AND</span> <span class="n">leased_until</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="c1">-- Or however long you want leases.</span>
+<span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+</code></pre></div></div>
+
+<p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
+the near future.</p>
+
+<h3 id="with-batching">
+<a class="anchor" href="#with-batching" aria-hidden="true"><span class="octicon octicon-link"></span></a>With batching</h3>
+
+<p>If you need to batch dequeue, you can do:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">active_workers</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">AS</span> <span class="n">current_count</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="n">started_at</span> <span class="k">IS</span> <span class="k">NOT</span> <span class="k">NULL</span>
+      <span class="k">AND</span> <span class="n">started_at</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="o">&gt;=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="p">),</span>
+<span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
+    <span class="k">SELECT</span> <span class="n">id</span>
+    <span class="k">FROM</span> <span class="n">queue_tasks</span>
+    <span class="k">WHERE</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">current_count</span> <span class="k">FROM</span> <span class="n">active_workers</span><span class="p">)</span> <span class="o">&lt;</span> <span class="p">:</span><span class="n">n</span>
+      <span class="k">AND</span> <span class="p">(</span><span class="n">started_at</span> <span class="k">IS</span> <span class="k">NULL</span> <span class="k">OR</span> <span class="n">started_at</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="o">&lt;</span> <span class="n">NOW</span><span class="p">())</span>
+    <span class="k">ORDER</span> <span class="k">BY</span> <span class="n">created_at</span> <span class="k">ASC</span>
+    <span class="k">LIMIT</span> <span class="mi">1</span>
+    <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
+<span class="p">)</span>
+<span class="k">UPDATE</span> <span class="n">queue_tasks</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
+<span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+</code></pre></div></div>
+
+<h2 id="conclusion">
+<a class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h2>
+
+<p>SQL databases are pretty easy to turn into queueing databases, and it’s
+fairly easy to tweak your SQL scripts to make the queue behave the way you want
+them to.</p>
+
+<p>If you already rely on a SQL database and need to add queueing, consider just
+doing it in your pre-existing SQL database rather than adding a whole new system
+dependency.</p>
+
+  </div>
+<a class="u-url" href="/2026/05/06/postgres-queue.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
