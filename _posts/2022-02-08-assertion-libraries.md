@@ -6,9 +6,11 @@ categories:
 toc: true
 ---
 
-Foreword #1: This is a very sensitive topic for many people. 🙂 I find that many people have never considered writing tests _without_ assertion libraries. It might come as a shocking surprise to consider such a world. That shock and surprise might be painful. Steel yourself.
+Foreword: At Google, [the definition of an assertion library](https://google.github.io/styleguide/go/decisions#assert) is a library that combines the validation and production of failure messages within a test. ["testing"](https://pkg.go.dev/testing) is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.
 
-Foreword #2: This is inspired by a long conversation the Google Go readability crowd recently, in which we collectively re-affirmed our position to ban assertion libraries in Google. Most of this post is my own responses, tidied up.
+---
+
+This is inspired by a long conversation the Google Go readability crowd recently, in which we collectively re-affirmed our position to ban assertion libraries in Google. Most of this post is my own responses, tidied up.
 
 # Just stop
 

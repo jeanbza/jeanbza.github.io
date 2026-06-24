@@ -1,16 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-24T14:22:16-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Use testing, not testify when writing Go tests</title><link href="http://localhost:4000/2026/06/24/testify.html" rel="alternate" type="text/html" title="Use testing, not testify when writing Go tests" /><published>2026-06-24T02:55:23-06:00</published><updated>2026-06-24T02:55:23-06:00</updated><id>http://localhost:4000/2026/06/24/testify</id><content type="html" xml:base="http://localhost:4000/2026/06/24/testify.html"><![CDATA[<p>A follow-up to <a href="/2022/02/08/assertion-libraries.html">“Don’t use assertion libraries in Go”</a>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-24T14:31:38-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Use testing, not testify when writing Go tests</title><link href="http://localhost:4000/2026/06/24/testify.html" rel="alternate" type="text/html" title="Use testing, not testify when writing Go tests" /><published>2026-06-24T02:55:23-06:00</published><updated>2026-06-24T02:55:23-06:00</updated><id>http://localhost:4000/2026/06/24/testify</id><content type="html" xml:base="http://localhost:4000/2026/06/24/testify.html"><![CDATA[<p>Foreword: At Google, <a href="https://google.github.io/styleguide/go/decisions#assert">the definition of an assertion library</a> is a library that combines the validation and production of failure messages within a test. <a href="https://pkg.go.dev/testing">“testing”</a> is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.</p>
+
+<hr />
+
+<p>This post is a follow-up to <a href="/2022/02/08/assertion-libraries.html">“Don’t use assertion libraries in Go”</a>
 specifically targeted at the <a href="https://pkg.go.dev/github.com/stretchr/testify">github.com/stretchr/testify</a>
 library.</p>
 
-<p>I recommend you don’t use testify: instead, just use “testing” and Go. This blog
-details the “Why”. This is all as of writing (mid-2026), so if you’re reading
-this in the future, check if any of this is out of date information.</p>
-
-<p>All the following will contrast writing testify tests against using ordinary Go,
-along with the <a href="https://pkg.go.dev/testing">testing</a> for assertions, and
-occasional use of <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a>
-for complex comparisons (but not assertions!). Here’s an example:</p>
+<p>I recommend you don’t use testify: instead, use <a href="https://pkg.go.dev/testing">“testing”</a>, ordinary Go, and occasionally <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a> for complex comparisons. Here’s an example:</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">foo_test</span>
 
@@ -29,7 +26,7 @@ for complex comparisons (but not assertions!). Here’s an example:</p>
 
 <p>Go’s stdlib has a <a href="https://pkg.go.dev/testing">testing package</a>, which is
 <a href="https://go.dev/doc/tutorial/add-a-test">the idiomatic and recommended way</a> to
-write tests and assertions. <strong>testify is not idiomatic Go</strong>.</p>
+write tests. <strong>testify is not idiomatic Go</strong>.</p>
 
 <p>I’ll also note that it does not appear that popular, either. As of this writing,
 pkg.go.dev counts <a href="https://pkg.go.dev/github.com/stretchr/testify/assert">16,016 imports for testify/assert</a>
@@ -152,7 +149,7 @@ and once again you lose the type system:</p>
   <li>It’s also pretty riddled with bugs, from a quick read through the issue
 tracker, with several fun panics, hangs, and incorrect assertion bugs
 outstanding.</li>
-</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library.]]></summary></entry><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.]]></summary></entry><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
 built on Redis. It’s great in many ways, but also pretty expensive and complex.</p>
 
 <p>I’ll detail that another time. For now, I’m going to focus on a much simpler way

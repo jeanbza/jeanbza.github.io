@@ -7,8 +7,8 @@
 <meta name="generator" content="Jekyll v4.3.4" />
 <meta property="og:title" content="Use testing, not testify when writing Go tests" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library." />
-<meta property="og:description" content="A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library." />
+<meta name="description" content="Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages." />
+<meta property="og:description" content="Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages." />
 <link rel="canonical" href="http://localhost:4000/2026/06/24/testify.html" />
 <meta property="og:url" content="http://localhost:4000/2026/06/24/testify.html" />
 <meta property="og:site_name" content="Jean Barkhuysen" />
@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Use testing, not testify when writing Go tests" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-06-24T02:55:23-06:00","datePublished":"2026-06-24T02:55:23-06:00","description":"A follow-up to “Don’t use assertion libraries in Go” specifically targeted at the github.com/stretchr/testify library.","headline":"Use testing, not testify when writing Go tests","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2026/06/24/testify.html"},"url":"http://localhost:4000/2026/06/24/testify.html"}</script>
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-06-24T02:55:23-06:00","datePublished":"2026-06-24T02:55:23-06:00","description":"Foreword: At Google, the definition of an assertion library is a library that combines the validation and production of failure messages within a test. “testing” is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.","headline":"Use testing, not testify when writing Go tests","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2026/06/24/testify.html"},"url":"http://localhost:4000/2026/06/24/testify.html"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
 <body><header class="site-header" role="banner">
@@ -64,18 +64,15 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>A follow-up to <a href="/2022-02-08-assertion-libraries.md">“Don’t use assertion libraries in Go”</a>
+    <p>Foreword: At Google, <a href="https://google.github.io/styleguide/go/decisions#assert">the definition of an assertion library</a> is a library that combines the validation and production of failure messages within a test. <a href="https://pkg.go.dev/testing">“testing”</a> is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.</p>
+
+<hr>
+
+<p>This post is a follow-up to <a href="/2022/02/08/assertion-libraries.html">“Don’t use assertion libraries in Go”</a>
 specifically targeted at the <a href="https://pkg.go.dev/github.com/stretchr/testify">github.com/stretchr/testify</a>
 library.</p>
 
-<p>I recommend you don’t use testify: instead, just use “testing” and Go. This blog
-details the “Why”. This is all as of writing (mid-2026), so if you’re reading
-this in the future, check if any of this is out of date information.</p>
-
-<p>All the following will contrast writing testify tests against using ordinary Go,
-along with the <a href="https://pkg.go.dev/testing">testing</a> for assertions, and
-occasional use of <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a>
-for complex comparisons (but not assertions!). Here’s an example:</p>
+<p>I recommend you don’t use testify: instead, use <a href="https://pkg.go.dev/testing">“testing”</a>, ordinary Go, and occasionally <a href="https://pkg.go.dev/github.com/google/go-cmp/cmp">github.com/google/go-cmp/cmp</a> for complex comparisons. Here’s an example:</p>
 
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">foo_test</span>
 
@@ -96,7 +93,7 @@ for complex comparisons (but not assertions!). Here’s an example:</p>
 
 <p>Go’s stdlib has a <a href="https://pkg.go.dev/testing">testing package</a>, which is
 <a href="https://go.dev/doc/tutorial/add-a-test">the idiomatic and recommended way</a> to
-write tests and assertions. <strong>testify is not idiomatic Go</strong>.</p>
+write tests. <strong>testify is not idiomatic Go</strong>.</p>
 
 <p>I’ll also note that it does not appear that popular, either. As of this writing,
 pkg.go.dev counts <a href="https://pkg.go.dev/github.com/stretchr/testify/assert">16,016 imports for testify/assert</a>
