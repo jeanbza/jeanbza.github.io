@@ -6,7 +6,7 @@ categories:
 toc: true
 ---
 
-Foreword: At Google, [the definition of an assertion library](https://google.github.io/styleguide/go/decisions#assert) is a library that combines the validation and production of failure messages within a test. ["testing"](https://pkg.go.dev/testing) is not an assertion library: it provides primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine these primitives with Go code into validation and failure messages.
+Foreword: At Google, [the definition of an assertion library](https://google.github.io/styleguide/go/decisions#assert) is a library that combines the validation and production of failure messages within a test. ["testing"](https://pkg.go.dev/testing) is also kind of an assertion library, but it is much more concerned with providing primitives for marking tests failed, writing to test logs, and so on, but it leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I'm talking about "assertion libraries", I'm talking about third-party assertion libraries that sit above "testing".
 
 ---
 
@@ -19,8 +19,6 @@ Assertion libraries are libraries that attempt to combine the validation and pro
 This post is not about mocking libraries, or comparison libraries. It is about assertion libraries. Examples of assertion libraries include [github.com/stretchr/testify](https://pkg.go.dev/github.com/stretchr/testify), [github.com/onsi/ginkgo](https://pkg.go.dev/github.com/onsi/ginkgo), [gopkg.in/check.v1](https://pkg.go.dev/gopkg.in/check.v1), and [github.com/franela/goblin](https://pkg.go.dev/github.com/franela/goblin).
 
 Don't use these things. They provide little value over the stdlib, and tend to make your codebase (far) less readable. Use ["testing"](https://pkg.go.dev/testing) for assertions, and comparison libraries like [github.com/google/go-cmp/cmp](https://pkg.go.dev/github.com/google/go-cmp/cmp) to perform the comparison (but not _the assertion_) for more complex objects that can't be compared with basic operators (`==`, `>`, etc).
-
-Sidenote: The [testing](https://pkg.go.dev/testing) library is also an assertion library, but for the sake of this article we'll just call it "the stdlib" or "testing", and refer to all the non-stdlib assertion libraries as "assertion libraries".
 
 # Assertion libraries bring incomprehensibility
 
