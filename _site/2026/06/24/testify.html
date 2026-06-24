@@ -190,7 +190,7 @@ not kept up with new improvements to testing in Go:</p>
 <h3 id="the-mock-library-completely-misses-the-point-about-go-interfaces">
 <a class="anchor" href="#the-mock-library-completely-misses-the-point-about-go-interfaces" aria-hidden="true"><span class="octicon octicon-link"></span></a>The mock library completely misses the point about Go interfaces</h3>
 
-<p>Go has implicit interfaces. I don’t know if the original authors of the
+<p><a href="https://go.dev/tour/methods/10">Go has implicit interfaces</a>. I don’t know if the original authors of the
 <a href="https://pkg.go.dev/github.com/stretchr/testify/mock">testify mocking library</a> understood the implicitations of that.</p>
 
 <p>There is zero need for a mocking library since every client can add small,
@@ -199,9 +199,8 @@ targeted interfaces for any external dependency and provide fakes in their test.
 <p>Another issue I have with testify mocks is that <strong>they use string matching</strong>
 and once again you lose the type system:</p>
 
-<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// If you go and rename "MyMethod" with your editor, you're not going to get</span>
-<span class="c">// any updates to this magical string and your tests will blow up. Yay no type</span>
-<span class="c">// system!</span>
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// Renaming "MyMethod" with your editor won't update this magical string and</span>
+<span class="c">// your tests will blow up. Yay no type system!</span>
 <span class="n">Mock</span><span class="o">.</span><span class="n">On</span><span class="p">(</span><span class="s">"MyMethod"</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">2</span><span class="p">)</span><span class="o">.</span><span class="n">Return</span><span class="p">(</span><span class="m">0</span><span class="p">)</span>
 </code></pre></div></div>
 
