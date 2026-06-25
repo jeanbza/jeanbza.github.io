@@ -1,16 +1,20 @@
 ---
 layout: post
-title:  "Stubbing gRPC in Go"
+title:  "Stubbing gRPC clients in Go tests"
 date:   2020-10-08 15:55:23 -0600
 categories: 
 toc: true
 ---
 
-# Introduction
+This is part of a series of posts on testing in Go:
+
+- **Stubbing gRPC clients in Go tests**
+- [testing in Go](/2022/02/08/testing-in-go)
+- [Complex assertions](/2022/02/09/complex-assertions)
 
 I've several times been met with the question, "How do you stub gRPC in Go"?
 
-This is a short blog post about how to do that.
+This is a short blog post about how to do that. It focuses on 
 
 # Mocking
 
