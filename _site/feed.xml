@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-25T13:53:52-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-25T15:05:02-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
 built on Redis. It’s great in many ways, but also pretty expensive and complex.</p>
 
@@ -65,14 +65,16 @@ but again, haven’t load tested).</p>
 <span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
+<p>And then to complete work, you’d simply <code class="language-plaintext highlighter-rouge">DELETE</code> the row.</p>
+
 <h3 id="with-priority">With priority</h3>
 
 <p>Simple add a <code class="language-plaintext highlighter-rouge">priority</code> field of your choosing and then <code class="language-plaintext highlighter-rouge">ORDER BY priority</code>
 instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_at</code>.</p>
 
-<h3 id="with-certain-consumer-limit">With certain consumer limit</h3>
+<h3 id="with-batch-dequeue">With batch dequeue</h3>
 
-<p>If you only want <em>n</em> consumers, simply add `LIMIT</p>
+<p>To batch dequeue simply change <code class="language-plaintext highlighter-rouge">LIMIT 1</code> to <code class="language-plaintext highlighter-rouge">LIMIT n</code>.</p>
 
 <h3 id="with-lease-extension">With lease extension</h3>
 
@@ -101,9 +103,9 @@ to:</p>
 <p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
 the near future.</p>
 
-<h3 id="with-batching">With batching</h3>
+<h3 id="with-max-consumers">With max consumers</h3>
 
-<p>If you need to batch dequeue, you can do:</p>
+<p>If you need to limit work to a maximum amount of in-flight work/consumers, you can do:</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">active_workers</span> <span class="k">AS</span> <span class="p">(</span>
     <span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">AS</span> <span class="n">current_count</span>
@@ -1052,7 +1054,7 @@ DBName:               GetEnv("GO_DISCOVERY_DATABASE_NAME", "discovery-db"),
 <h3 id="a-simple-pkgsite">A simple pkgsite</h3>
 
 <p>You can run a simple pkgsite with <code class="language-plaintext highlighter-rouge">go run cmd/pkgsite/main.go -proxy=URL</code>, but
-it is only hosts documentation for a single repo. So, we’ll move on from this.</p>
+it only hosts documentation for a single repo. So, we’ll move on from this.</p>
 
 <h3 id="standing-up-a-real-pkgsite">Standing up a real pkgsite</h3>
 

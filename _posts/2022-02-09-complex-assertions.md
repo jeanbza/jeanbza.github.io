@@ -67,4 +67,4 @@ That means that readers will often need to look at the customer matcher's code t
 
 This comprehensibility cost is high and very under-appreciated: it slows down reading (and extending) your tests and makes it harder to onboard new people to your part of the codebase.
 
-I'd recommend preferring more verbose but easier to read code to keep to keep your team going fast. When you need a helper, I'd suggest writing it as a simple function rather than as a matcher.
+I'd recommend preferring more verbose but easier to read code to keep your team going fast. When you need a helper, I'd suggest writing it as a simple function rather than as a matcher.

@@ -186,7 +186,7 @@ func (gc *FakeGreeterClient) SayHello(ctx context.Context, in *HelloRequest, opt
 }
 
 func TestIntegration(t *testing.T) {
-    ctx := context.Context()
+    ctx := context.Background()
 
     // Start FakeGreeterClient in an in-memory process.
     gc := &FakeGreeterClient{}
@@ -295,7 +295,7 @@ func (gc *FakeGreeterClient) SayHello(ctx context.Context, in *HelloRequest, opt
 }
 
 func TestIntegration(t *testing.T) {
-    ctx := context.Context()
+    ctx := context.Background()
 
     // Start FakeGreeterClient in an in-memory process.
     gc := &FakeGreeterClient{}
