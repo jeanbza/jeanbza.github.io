@@ -75,14 +75,16 @@ WHERE id = (SELECT id FROM next_task)
 RETURNING id, started_at
 ```
 
+And then to complete work, you'd simply `DELETE` the row.
+
 ### With priority
 
 Simple add a `priority` field of your choosing and then `ORDER BY priority`
 instead of `ORDER BY created_at`.
 
-### With certain consumer limit
+### With batch dequeue
 
-If you only want _n_ consumers, simply add `LIMIT 
+To batch dequeue simply change `LIMIT 1` to `LIMIT n`.
 
 ### With lease extension
 
@@ -112,9 +114,9 @@ RETURNING id, started_at
 And then have your workers periodically update `leased_until` to some time in
 the near future.
 
-### With batching
+### With max consumers
 
-If you need to batch dequeue, you can do:
+If you need to limit work to a maximum amount of in-flight work/consumers, you can do:
 
 ```sql
 WITH active_workers AS (

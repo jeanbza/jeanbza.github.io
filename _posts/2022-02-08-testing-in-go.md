@@ -46,7 +46,7 @@ Here is the same test with testify:
 
 ```go
 func TestFoo(t *testing.T) {
-    assert.Equal(t, want, Foo()) // We saved 2 LoC.
+    assert.Equal(t, 5, Foo()) // We saved 2 LoC.
 }
 ```
 

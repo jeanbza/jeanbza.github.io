@@ -45,9 +45,9 @@
 <li class="toc-entry toc-h2"><a href="#dequeueing">Dequeueing</a>
 <ul>
 <li class="toc-entry toc-h3"><a href="#with-priority">With priority</a></li>
-<li class="toc-entry toc-h3"><a href="#with-certain-consumer-limit">With certain consumer limit</a></li>
+<li class="toc-entry toc-h3"><a href="#with-batch-dequeue">With batch dequeue</a></li>
 <li class="toc-entry toc-h3"><a href="#with-lease-extension">With lease extension</a></li>
-<li class="toc-entry toc-h3"><a href="#with-batching">With batching</a></li>
+<li class="toc-entry toc-h3"><a href="#with-max-consumers">With max consumers</a></li>
 </ul>
 </li>
 <li class="toc-entry toc-h2"><a href="#conclusion">Conclusion</a></li>
@@ -133,16 +133,18 @@ but again, haven’t load tested).</p>
 <span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
+<p>And then to complete work, you’d simply <code class="language-plaintext highlighter-rouge">DELETE</code> the row.</p>
+
 <h3 id="with-priority">
 <a class="anchor" href="#with-priority" aria-hidden="true"><span class="octicon octicon-link"></span></a>With priority</h3>
 
 <p>Simple add a <code class="language-plaintext highlighter-rouge">priority</code> field of your choosing and then <code class="language-plaintext highlighter-rouge">ORDER BY priority</code>
 instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_at</code>.</p>
 
-<h3 id="with-certain-consumer-limit">
-<a class="anchor" href="#with-certain-consumer-limit" aria-hidden="true"><span class="octicon octicon-link"></span></a>With certain consumer limit</h3>
+<h3 id="with-batch-dequeue">
+<a class="anchor" href="#with-batch-dequeue" aria-hidden="true"><span class="octicon octicon-link"></span></a>With batch dequeue</h3>
 
-<p>If you only want <em>n</em> consumers, simply add `LIMIT</p>
+<p>To batch dequeue simply change <code class="language-plaintext highlighter-rouge">LIMIT 1</code> to <code class="language-plaintext highlighter-rouge">LIMIT n</code>.</p>
 
 <h3 id="with-lease-extension">
 <a class="anchor" href="#with-lease-extension" aria-hidden="true"><span class="octicon octicon-link"></span></a>With lease extension</h3>
@@ -172,10 +174,10 @@ to:</p>
 <p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
 the near future.</p>
 
-<h3 id="with-batching">
-<a class="anchor" href="#with-batching" aria-hidden="true"><span class="octicon octicon-link"></span></a>With batching</h3>
+<h3 id="with-max-consumers">
+<a class="anchor" href="#with-max-consumers" aria-hidden="true"><span class="octicon octicon-link"></span></a>With max consumers</h3>
 
-<p>If you need to batch dequeue, you can do:</p>
+<p>If you need to limit work to a maximum amount of in-flight work/consumers, you can do:</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">active_workers</span> <span class="k">AS</span> <span class="p">(</span>
     <span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">AS</span> <span class="n">current_count</span>

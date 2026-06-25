@@ -230,7 +230,7 @@ We clearly can’t pass in a <code class="language-plaintext highlighter-rouge">
 <span class="p">}</span>
 
 <span class="k">func</span> <span class="n">TestIntegration</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">ctx</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+    <span class="n">ctx</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">()</span>
 
     <span class="c">// Start FakeGreeterClient in an in-memory process.</span>
     <span class="n">gc</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">FakeGreeterClient</span><span class="p">{}</span>
@@ -337,7 +337,7 @@ gRPC server would look similar.</p>
 <span class="p">}</span>
 
 <span class="k">func</span> <span class="n">TestIntegration</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">ctx</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+    <span class="n">ctx</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">()</span>
 
     <span class="c">// Start FakeGreeterClient in an in-memory process.</span>
     <span class="n">gc</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">FakeGreeterClient</span><span class="p">{}</span>
