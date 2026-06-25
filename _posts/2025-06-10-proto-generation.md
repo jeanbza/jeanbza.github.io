@@ -68,7 +68,7 @@ Warning: This approach allows others to depend on your generated Go code.
 
 This example signs you up to maintaining generated Go code at `github.com/username/myrepo/protos/server` and `[...]/protos/user`. Whether or not this is a good idea is discussed in "Storing generated code". For now suffice it to say that instead of declaring `option go_package` you could instead provide `--go_opt=M<proto>=<go import>`. And, instead of generating your `.pb.go`s into the publicly import-able `protos/`, you could generate them into an `internal/` directory which is not publicly import-able.
 
-If you need to produce gRPC language bindings, add the gRPC option equivalents `--go-grpc_out` and `--go_grpc_opt`:
+If you need to produce gRPC language bindings, add the gRPC option equivalents `--go-grpc_out` and `--go-grpc_opt`:
 
 ```sh
 $ protoc protos/**/*.proto \
@@ -194,13 +194,13 @@ Generate Go code (.pb.gos) from these protos with buf by adding:
     # For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml
     version: v2
     lint:
-    use:
+      use:
         - STANDARD
     breaking:
-    use:
+      use:
         - FILE
     modules:
-    - path: protos/
+      - path: protos/
     ```
 
 - A `buf.gen.yaml`:
@@ -210,10 +210,10 @@ Generate Go code (.pb.gos) from these protos with buf by adding:
     # For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml
     version: v2
     plugins:
-    - remote: buf.build/protocolbuffers/go:v1.36.6
+      - remote: buf.build/protocolbuffers/go:v1.36.6
         out: protos
         opt:
-        - paths=source_relative
+          - paths=source_relative
     ```
 
 Generate code with `buf generate`:

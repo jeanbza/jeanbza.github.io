@@ -88,10 +88,10 @@ and our tests we’ll give it a fake client:</p>
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// Code that uses GreeterClient</span>
 
 <span class="k">type</span> <span class="n">SomeService</span> <span class="k">struct</span> <span class="p">{</span>
-    <span class="n">gc</span> <span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">GreeterClient</span>
+    <span class="n">gc</span> <span class="n">greeter</span><span class="o">.</span><span class="n">GreeterClient</span>
 <span class="p">}</span>
 <span class="c">// Inject me with either a real GreeterClient or a fake one!</span>
-<span class="k">func</span> <span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span> <span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">GreeterClient</span><span class="p">)</span> <span class="o">*</span><span class="n">SomeService</span> <span class="p">{</span>
+<span class="k">func</span> <span class="n">NewSomeService</span><span class="p">(</span><span class="n">gc</span> <span class="n">greeter</span><span class="o">.</span><span class="n">GreeterClient</span><span class="p">)</span> <span class="o">*</span><span class="n">SomeService</span> <span class="p">{</span>
     <span class="k">return</span> <span class="o">&amp;</span><span class="n">SomeService</span><span class="p">{</span><span class="n">gc</span><span class="o">:</span> <span class="n">gc</span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div></div>
@@ -102,7 +102,7 @@ and our tests we’ll give it a fake client:</p>
 
 <span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
     <span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
-    <span class="n">conn</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">Dial</span><span class="p">(</span><span class="o">*</span><span class="n">GreeterAddr</span><span class="p">)</span>
+    <span class="n">conn</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">Dial</span><span class="p">(</span><span class="o">*</span><span class="n">greeterAddr</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
         <span class="c">// Handle err.</span>
     <span class="p">}</span>
@@ -127,7 +127,7 @@ and our tests we’ll give it a fake client:</p>
 <span class="p">}</span>
 
 <span class="k">func</span> <span class="n">TestSomeService</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">var</span> <span class="n">requests</span> <span class="p">[]</span><span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloReply</span>
+    <span class="k">var</span> <span class="n">requests</span> <span class="p">[]</span><span class="o">*</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloRequest</span>
     <span class="n">gc</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">fakeGreeterClient</span><span class="p">{}</span>
     <span class="c">// Set up the fake greeter to return a canned message.</span>
     <span class="n">gc</span><span class="o">.</span><span class="n">sayHelloFn</span> <span class="o">=</span> <span class="k">func</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">in</span> <span class="o">*</span><span class="n">HelloRequest</span><span class="p">,</span> <span class="n">opts</span> <span class="o">...</span><span class="n">grpc</span><span class="o">.</span><span class="n">CallOption</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="n">HelloReply</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
@@ -299,7 +299,7 @@ can send requests to. Let’s make that happen!</p>
 
     <span class="n">http</span><span class="o">.</span><span class="n">HandleFunc</span><span class="p">(</span><span class="s">"/sayhello"</span><span class="p">,</span> <span class="k">func</span><span class="p">(</span><span class="n">w</span> <span class="n">http</span><span class="o">.</span><span class="n">ResponseWriter</span><span class="p">,</span> <span class="n">r</span> <span class="o">*</span><span class="n">http</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="p">{</span>
         <span class="k">if</span> <span class="n">_</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">serv</span><span class="o">.</span><span class="n">SayHello</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">greeter</span><span class="o">.</span><span class="n">HelloRequest</span><span class="p">{</span><span class="n">Name</span><span class="o">:</span> <span class="s">"world"</span><span class="p">});</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
-            <span class="n">http</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">err</span><span class="o">.</span><span class="n">String</span><span class="p">(),</span> <span class="m">500</span><span class="p">)</span>
+            <span class="n">http</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">err</span><span class="o">.</span><span class="n">Error</span><span class="p">(),</span> <span class="m">500</span><span class="p">)</span>
         <span class="p">}</span>
     <span class="p">})</span>
     
@@ -350,7 +350,7 @@ gRPC server would look similar.</p>
         <span class="p">}</span>
     <span class="p">}()</span>
 
-    <span class="n">myappPort</span> <span class="o">:=</span> <span class="n">openPort</span><span class="p">()</span>
+    <span class="n">myappPort</span> <span class="o">:=</span> <span class="n">openPort</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
     <span class="n">myappAddr</span> <span class="o">:=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"localhost:%d"</span><span class="p">,</span> <span class="n">myappPort</span><span class="p">)</span>
 
     <span class="n">srv</span> <span class="o">:=</span> <span class="n">myapp</span><span class="o">.</span><span class="n">Start</span><span class="p">(</span><span class="n">myappPort</span><span class="p">,</span> <span class="n">fakeGreeterAddr</span><span class="p">)</span>

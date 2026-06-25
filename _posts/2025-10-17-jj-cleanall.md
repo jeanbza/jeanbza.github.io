@@ -27,7 +27,7 @@ So, I made this little script. I hope you'll find it useful too:
 ```sh
 #!/bin/bash
 set -e
-for i in `jj log -r "mutable()" --no-graph -T 'change_id ++ "\n"' | tail -r`; do
+for i in `jj log -r "mutable()" --no-graph -T 'change_id ++ "\n"' | tac`; do
   jj edit $i
   ./gradlew spotlessApply
   ./gradlew spotbugsMain

@@ -20,7 +20,7 @@ takes parameters, we have to ask the questions:
 
 Consider the following RPC:
 
-```
+```go
 message FooUpdateRequest {
   google.protobuf.Duration ttl = 1;        // When set to 0, deletes TTL.
   google.protobuf.Duration expiration = 2; // When set to 0, deletes expiration.
@@ -33,7 +33,7 @@ service Foo {
 
 Building a manual layer wrapper around this might look very similar:
 
-```
+```go
 type FooConfigToUpdate struct {
   Ttl        time.Duration
   Expiration time.Duration
@@ -56,7 +56,7 @@ This seems fairly innocuous, but consider those questions again:
 As you can see, there's currently no way to distinguish between Delete and
 Ignore. That is, if a user passes:
 
-```
+```go
 f.Update(ctx, &foopkg.FooConfigToUpdate{Expiration: 5 * time.Second})
 ```
 
@@ -74,7 +74,7 @@ We need a way to get around this. Broadly, there are three options we use in cli
 Sentinel values are basically special values that signal to the client library
 to perform special logic. For example, consider:
 
-```
+```go
 var NeverExpire time.Duration = -1 * time.Second
 ```
 
@@ -86,7 +86,7 @@ If the empty value is passed, the library ignores the operation. If the user
 passes the sentinel value, the library performs the delete. A user uses the
 sentinel to delete as such:
 
-```
+```go
 f.Update(ctx, &foopkg.FooConfigToUpdate{Expiration: foopkg.NeverExpire})
 ```
 
@@ -100,8 +100,8 @@ taken as "delete this".
 
 A user uses the empty value to delete as such:
 
-```
-f.Update(ctx, &foopkg.FooConfigToUpdate{Expiration: &time.Duration(0)})
+```go
+f.Update(ctx, &foopkg.FooConfigToUpdate{Expiration: new(time.Duration(0))})
 ```
 
 ## Optionals
@@ -120,7 +120,7 @@ empty value is taken as "delete this".
 
 A user uses the empty value to delete as such:
 
-```
+```go
 f.Update(ctx, &foopkg.FooConfigToUpdate{Expiration: time.Duration(0)})
 ```
 
@@ -166,6 +166,6 @@ on backwards compatibility don't apply. Therefore, if you're adding to an API
 surface and not sure how it'll evolve over time, opt to add the
 `// Experimental` tag:
 
-```
+```go
 // It is EXPERIMENTAL and subject to change or removal without notice.
 ```

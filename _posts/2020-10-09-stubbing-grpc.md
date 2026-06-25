@@ -40,10 +40,10 @@ and our tests we'll give it a fake client:
 // Code that uses GreeterClient
 
 type SomeService struct {
-    gc *greeter.GreeterClient
+    gc greeter.GreeterClient
 }
 // Inject me with either a real GreeterClient or a fake one!
-func NewSomeService(gc *greeter.GreeterClient) *SomeService {
+func NewSomeService(gc greeter.GreeterClient) *SomeService {
     return &SomeService{gc: gc}
 }
 ```
@@ -55,7 +55,7 @@ var greeterAddr = flag.String("greeterAddr", "", "--greeterAddr=greeter:12345")
 
 func main() {
     flag.Parse()
-    conn, err := grpc.Dial(*GreeterAddr)
+    conn, err := grpc.Dial(*greeterAddr)
     if err != nil {
         // Handle err.
     }
@@ -81,7 +81,7 @@ func (gc *fakeGreeterClient) SayHello(ctx context.Context, in *HelloRequest, opt
 }
 
 func TestSomeService(t *testing.T) {
-    var requests []*greeter.HelloReply
+    var requests []*greeter.HelloRequest
     gc := &fakeGreeterClient{}
     // Set up the fake greeter to return a canned message.
     gc.sayHelloFn = func(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error) {
@@ -256,7 +256,7 @@ func Start(port int, greeterAddr string) *http.Server {
 
     http.HandleFunc("/sayhello", func(w http.ResponseWriter, r *http.Request) {
         if _, err := serv.SayHello(context.Background(), &greeter.HelloRequest{Name: "world"}); err != nil {
-            http.Error(w, err.String(), 500)
+            http.Error(w, err.Error(), 500)
         }
     })
     
@@ -308,7 +308,7 @@ func TestIntegration(t *testing.T) {
         }
     }()
 
-    myappPort := openPort()
+    myappPort := openPort(t)
     myappAddr := fmt.Sprintf("localhost:%d", myappPort)
 
     srv := myapp.Start(myappPort, fakeGreeterAddr)

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-24T14:42:59-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-06-25T11:53:28-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Use testing, not testify when writing Go tests</title><link href="http://localhost:4000/2026/06/24/testify.html" rel="alternate" type="text/html" title="Use testing, not testify when writing Go tests" /><published>2026-06-24T02:55:23-06:00</published><updated>2026-06-24T02:55:23-06:00</updated><id>http://localhost:4000/2026/06/24/testify</id><content type="html" xml:base="http://localhost:4000/2026/06/24/testify.html"><![CDATA[<p>Foreword: At Google, <a href="https://google.github.io/styleguide/go/decisions#assert">the definition of an assertion library</a> is a library that combines the validation and production of failure messages within a test. <a href="https://pkg.go.dev/testing">“testing”</a> is also kind of an assertion library, but it is much more concerned with providing low-level primitives for marking tests failed, writing to test logs, and so on. It leaves it to you to combine those primitives with Go code into validation and failure messages. In this article, when I’m talking about “assertion libraries”, I’m talking about third-party assertion libraries that sit above “testing”.</p>
 
 <hr />
@@ -209,7 +209,7 @@ but again, haven’t load tested).</p>
 <span class="k">UPDATE</span> <span class="n">queue_tasks</span>
 <span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
 <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
-<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
 <h3 id="with-priority">With priority</h3>
@@ -223,7 +223,7 @@ instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_a
 
 <h3 id="with-lease-extension">With lease extension</h3>
 
-<p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">updated_at</code> and change the stall check
+<p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">leased_until</code> and change the stall check
 to:</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
@@ -239,10 +239,10 @@ to:</p>
     <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
 <span class="p">)</span>
 <span class="k">UPDATE</span> <span class="n">queue_tasks</span>
-<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
-<span class="k">AND</span> <span class="n">leased_until</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="c1">-- Or however long you want leases.</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">(),</span>
+    <span class="n">leased_until</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="c1">-- Or however long you want leases.</span>
 <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
-<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
 <p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
@@ -270,7 +270,7 @@ the near future.</p>
 <span class="k">UPDATE</span> <span class="n">queue_tasks</span>
 <span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
 <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
-<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
 <h2 id="conclusion">Conclusion</h2>
@@ -396,7 +396,7 @@ them all off to be CI/CD’d with <code class="language-plaintext highlighter-ro
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
 <span class="nb">set</span> <span class="nt">-e</span>
-<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
+<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tac</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
   </span>jj edit <span class="nv">$i</span>
   ./gradlew spotlessApply
   ./gradlew spotbugsMain
@@ -436,7 +436,7 @@ bookmark associated with the rev if one exists.</p>
 
  <span class="c"># jj repo check</span>
  <span class="k">function </span>is_jj_repo <span class="o">{</span>
- <span class="k">if</span> <span class="o">[</span> <span class="nt">-d</span> <span class="s2">".jj"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+ <span class="k">if </span>jj root <span class="o">&gt;</span>/dev/null 2&gt;&amp;1<span class="p">;</span> <span class="k">then
      return </span>0
  <span class="k">else
      return </span>1
@@ -608,7 +608,7 @@ option go_package <span class="o">=</span> <span class="s2">"github.com/username
   <li><a href="https://github.com/googleapis/googleapis/blob/c759e924aa786f3df0e64499daf97d46a27edb31/google/cloud/speech/v1/cloud_speech.proto"><code class="language-plaintext highlighter-rouge">github.com/googleapis/google/cloud/speech/v1/cloud_speech.proto</code></a> is a proto that defines <code class="language-plaintext highlighter-rouge">option go_package = "cloud.google.com/go/speech/apiv1/speechpb;speechpb";</code>.</li>
   <li>Accordingly, its generated Go code exists at <a href="https://github.com/googleapis/google-cloud-go/tree/main/speech/apiv1/speechpb"><code class="language-plaintext highlighter-rouge">github.com/google-cloud-go/speech/apiv1/speechpb</code></a>.
     <ul>
-      <li>Note: <code class="language-plaintext highlighter-rouge">cloud.google.com/go</code> is an alias for <code class="language-plaintext highlighter-rouge">github.com/google/google-cloud-go</code>.</li>
+      <li>Note: <code class="language-plaintext highlighter-rouge">cloud.google.com/go</code> is an alias for <code class="language-plaintext highlighter-rouge">github.com/googleapis/google-cloud-go</code>.</li>
     </ul>
   </li>
   <li>If you want to use it,
@@ -703,7 +703,7 @@ message Server {
 
 <p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
 
-<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go_grpc_opt</code>:</p>
+<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go-grpc_opt</code>:</p>
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
     <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
@@ -829,13 +829,13 @@ message Server <span class="o">{</span>
   <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml</span>
   <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
   <span class="na">lint</span><span class="pi">:</span>
-  <span class="na">use</span><span class="pi">:</span>
+    <span class="na">use</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="s">STANDARD</span>
   <span class="na">breaking</span><span class="pi">:</span>
-  <span class="na">use</span><span class="pi">:</span>
+    <span class="na">use</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="s">FILE</span>
   <span class="na">modules</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
+    <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
 </code></pre></div>    </div>
   </li>
   <li>
@@ -845,10 +845,10 @@ message Server <span class="o">{</span>
   <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml</span>
   <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
   <span class="na">plugins</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
-      <span class="s">out</span><span class="err">:</span> <span class="s">protos</span>
-      <span class="s">opt</span><span class="err">:</span>
-      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+    <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+      <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
+      <span class="na">opt</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">paths=source_relative</span>
 </code></pre></div>    </div>
   </li>
 </ul>
@@ -1271,7 +1271,7 @@ go run cmd/frontend/main.go <span class="se">\</span>
     <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div></div>
 
-<p>Note: If you’re using <code class="language-plaintext highlighter-rouge">github.com/jeanbza/golang-index</code>, the proxy runs (as of
+<p>Note: If you’re using <code class="language-plaintext highlighter-rouge">github.com/jeanbza/golang-index</code>, the index runs (as of
 this writing) at <code class="language-plaintext highlighter-rouge">http://localhost:8081</code>. You’ll note this is raw http. Trying
 to run the worker with a non-TLS’d GO_MODULE_INDEX_URL will result in an error.
 Get around this by making the worker accept a non-https index by commenting out

@@ -76,26 +76,26 @@ takes parameters, we have to ask the questions:</p>
 
 <p>Consider the following RPC:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>message FooUpdateRequest {
-  google.protobuf.Duration ttl = 1;        // When set to 0, deletes TTL.
-  google.protobuf.Duration expiration = 2; // When set to 0, deletes expiration.
-}
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">message</span> <span class="n">FooUpdateRequest</span> <span class="p">{</span>
+  <span class="n">google</span><span class="o">.</span><span class="n">protobuf</span><span class="o">.</span><span class="n">Duration</span> <span class="n">ttl</span> <span class="o">=</span> <span class="m">1</span><span class="p">;</span>        <span class="c">// When set to 0, deletes TTL.</span>
+  <span class="n">google</span><span class="o">.</span><span class="n">protobuf</span><span class="o">.</span><span class="n">Duration</span> <span class="n">expiration</span> <span class="o">=</span> <span class="m">2</span><span class="p">;</span> <span class="c">// When set to 0, deletes expiration.</span>
+<span class="p">}</span>
 
-service Foo {
-  rpc UpdateFoo(FooUpdateRequest) returns (SomeResponse)
-}
+<span class="n">service</span> <span class="n">Foo</span> <span class="p">{</span>
+  <span class="n">rpc</span> <span class="n">UpdateFoo</span><span class="p">(</span><span class="n">FooUpdateRequest</span><span class="p">)</span> <span class="n">returns</span> <span class="p">(</span><span class="n">SomeResponse</span><span class="p">)</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
 <p>Building a manual layer wrapper around this might look very similar:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>type FooConfigToUpdate struct {
-  Ttl        time.Duration
-  Expiration time.Duration
-}
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">type</span> <span class="n">FooConfigToUpdate</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="n">Ttl</span>        <span class="n">time</span><span class="o">.</span><span class="n">Duration</span>
+  <span class="n">Expiration</span> <span class="n">time</span><span class="o">.</span><span class="n">Duration</span>
+<span class="p">}</span>
 
-func (f *Foo) Update(ctx context.Context, cfg *FooConfigToUpdate) error {
-  // ...
-}
+<span class="k">func</span> <span class="p">(</span><span class="n">f</span> <span class="o">*</span><span class="n">Foo</span><span class="p">)</span> <span class="n">Update</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">cfg</span> <span class="o">*</span><span class="n">FooConfigToUpdate</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+  <span class="c">// ...</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
 <p>This seems fairly innocuous, but consider those questions again:</p>
@@ -112,7 +112,7 @@ A: Uhh… also set it to time.Duration(0)?</li>
 <p>As you can see, there’s currently no way to distinguish between Delete and
 Ignore. That is, if a user passes:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>f.Update(ctx, &amp;foopkg.FooConfigToUpdate{Expiration: 5 * time.Second})
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="m">5</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Second</span><span class="p">})</span>
 </code></pre></div></div>
 
 <p>It’s clear that we need to update Expiration to 5s, but what do we do with ttl?
@@ -132,7 +132,7 @@ Its default value is <code class="language-plaintext highlighter-rouge">time.Dur
 <p>Sentinel values are basically special values that signal to the client library
 to perform special logic. For example, consider:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>var NeverExpire time.Duration = -1 * time.Second
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">var</span> <span class="n">NeverExpire</span> <span class="n">time</span><span class="o">.</span><span class="n">Duration</span> <span class="o">=</span> <span class="o">-</span><span class="m">1</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Second</span>
 </code></pre></div></div>
 
 <p>No user would ever specify -1s as an expiration value, so the library picks that
@@ -143,7 +143,7 @@ special value used to indicate “delete”.</p>
 passes the sentinel value, the library performs the delete. A user uses the
 sentinel to delete as such:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>f.Update(ctx, &amp;foopkg.FooConfigToUpdate{Expiration: foopkg.NeverExpire})
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="n">foopkg</span><span class="o">.</span><span class="n">NeverExpire</span><span class="p">})</span>
 </code></pre></div></div>
 
 <h2 id="pointers">
@@ -157,7 +157,7 @@ taken as “delete this”.</p>
 
 <p>A user uses the empty value to delete as such:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>f.Update(ctx, &amp;foopkg.FooConfigToUpdate{Expiration: &amp;time.Duration(0)})
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="nb">new</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">Duration</span><span class="p">(</span><span class="m">0</span><span class="p">))})</span>
 </code></pre></div></div>
 
 <h2 id="optionals">
@@ -177,7 +177,7 @@ empty value is taken as “delete this”.</p>
 
 <p>A user uses the empty value to delete as such:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>f.Update(ctx, &amp;foopkg.FooConfigToUpdate{Expiration: time.Duration(0)})
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="n">time</span><span class="o">.</span><span class="n">Duration</span><span class="p">(</span><span class="m">0</span><span class="p">)})</span>
 </code></pre></div></div>
 
 <h2 id="choosing-the-right-solution">
@@ -228,7 +228,7 @@ on backwards compatibility don’t apply. Therefore, if you’re adding to an AP
 surface and not sure how it’ll evolve over time, opt to add the
 <code class="language-plaintext highlighter-rouge">// Experimental</code> tag:</p>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// It is EXPERIMENTAL and subject to change or removal without notice.
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// It is EXPERIMENTAL and subject to change or removal without notice.</span>
 </code></pre></div></div>
 
   </div>
