@@ -128,7 +128,7 @@ message Server {
 
 <p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
 
-<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go_grpc_opt</code>:</p>
+<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go-grpc_opt</code>:</p>
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
     <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
@@ -259,13 +259,13 @@ message Server <span class="o">{</span>
   <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml</span>
   <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
   <span class="na">lint</span><span class="pi">:</span>
-  <span class="na">use</span><span class="pi">:</span>
+    <span class="na">use</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="s">STANDARD</span>
   <span class="na">breaking</span><span class="pi">:</span>
-  <span class="na">use</span><span class="pi">:</span>
+    <span class="na">use</span><span class="pi">:</span>
       <span class="pi">-</span> <span class="s">FILE</span>
   <span class="na">modules</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
+    <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
 </code></pre></div>    </div>
   </li>
   <li>
@@ -276,10 +276,10 @@ message Server <span class="o">{</span>
   <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml</span>
   <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
   <span class="na">plugins</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
-      <span class="s">out</span><span class="err">:</span> <span class="s">protos</span>
-      <span class="s">opt</span><span class="err">:</span>
-      <span class="pi">-</span> <span class="s">paths=source_relative</span>
+    <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
+      <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
+      <span class="na">opt</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">paths=source_relative</span>
 </code></pre></div>    </div>
   </li>
 </ul>

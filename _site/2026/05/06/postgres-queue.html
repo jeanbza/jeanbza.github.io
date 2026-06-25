@@ -130,7 +130,7 @@ but again, haven’t load tested).</p>
 <span class="k">UPDATE</span> <span class="n">queue_tasks</span>
 <span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
 <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
-<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
 <h3 id="with-priority">
@@ -147,7 +147,7 @@ instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_a
 <h3 id="with-lease-extension">
 <a class="anchor" href="#with-lease-extension" aria-hidden="true"><span class="octicon octicon-link"></span></a>With lease extension</h3>
 
-<p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">updated_at</code> and change the stall check
+<p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">leased_until</code> and change the stall check
 to:</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">WITH</span> <span class="n">next_task</span> <span class="k">AS</span> <span class="p">(</span>
@@ -163,10 +163,10 @@ to:</p>
     <span class="k">FOR</span> <span class="k">UPDATE</span> <span class="n">SKIP</span> <span class="n">LOCKED</span>
 <span class="p">)</span>
 <span class="k">UPDATE</span> <span class="n">queue_tasks</span>
-<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
-<span class="k">AND</span> <span class="n">leased_until</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="c1">-- Or however long you want leases.</span>
+<span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">(),</span>
+    <span class="n">leased_until</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span> <span class="o">+</span> <span class="n">INTERVAL</span> <span class="s1">'5 minutes'</span> <span class="c1">-- Or however long you want leases.</span>
 <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
-<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
 <p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
@@ -195,7 +195,7 @@ the near future.</p>
 <span class="k">UPDATE</span> <span class="n">queue_tasks</span>
 <span class="k">SET</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">NOW</span><span class="p">()</span>
 <span class="k">WHERE</span> <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span class="k">SELECT</span> <span class="n">id</span> <span class="k">FROM</span> <span class="n">next_task</span><span class="p">)</span>
-<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">module_path</span><span class="p">,</span> <span class="k">version</span><span class="p">,</span> <span class="n">started_at</span>
+<span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
 <h2 id="conclusion">

@@ -72,7 +72,7 @@ WITH next_task AS (
 UPDATE queue_tasks
 SET started_at = NOW()
 WHERE id = (SELECT id FROM next_task)
-RETURNING id, module_path, version, started_at
+RETURNING id, started_at
 ```
 
 ### With priority
@@ -86,7 +86,7 @@ If you only want _n_ consumers, simply add `LIMIT
 
 ### With lease extension
 
-If you need lease extension, you can add `updated_at` and change the stall check
+If you need lease extension, you can add `leased_until` and change the stall check
 to:
 
 ```sql
@@ -103,10 +103,10 @@ WITH next_task AS (
     FOR UPDATE SKIP LOCKED
 )
 UPDATE queue_tasks
-SET started_at = NOW()
-AND leased_until = NOW() + INTERVAL '5 minutes' -- Or however long you want leases.
+SET started_at = NOW(),
+    leased_until = NOW() + INTERVAL '5 minutes' -- Or however long you want leases.
 WHERE id = (SELECT id FROM next_task)
-RETURNING id, module_path, version, started_at
+RETURNING id, started_at
 ```
 
 And then have your workers periodically update `leased_until` to some time in
@@ -135,7 +135,7 @@ next_task AS (
 UPDATE queue_tasks
 SET started_at = NOW()
 WHERE id = (SELECT id FROM next_task)
-RETURNING id, module_path, version, started_at
+RETURNING id, started_at
 ```
 
 ## Conclusion

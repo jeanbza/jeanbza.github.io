@@ -79,7 +79,7 @@ bookmark associated with the rev if one exists.</p>
 
  <span class="c"># jj repo check</span>
  <span class="k">function </span>is_jj_repo <span class="o">{</span>
- <span class="k">if</span> <span class="o">[</span> <span class="nt">-d</span> <span class="s2">".jj"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+ <span class="k">if </span>jj root <span class="o">&gt;</span>/dev/null 2&gt;&amp;1<span class="p">;</span> <span class="k">then
      return </span>0
  <span class="k">else
      return </span>1

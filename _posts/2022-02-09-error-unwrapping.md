@@ -107,7 +107,8 @@ When you return a structured error with an Unwrap method, users can use As, Is, 
 
 ```
 err := Decompress(name, path)
-if errors.Is(err, PathParseError) {
+var pathParseErr *PathParseError
+if errors.As(err, &pathParseErr) {
     // err, or some error that it wraps, is a path parse problem
 }
 ```
@@ -137,7 +138,7 @@ func Decompress(name, path string) error {
 
 Here, we've added an intermediary decompressErr. This might be useful somewhere else in our code that calls Decompress, but since it's un-exported, users have no way to use it for introspection.
 
-But, even though it's un-exported, the Unwrap method is part of our public API. If we remove the Unwrap method, for example, the errors.Is example breaks: there is no Unwrap link between the returned error and the externaldep.PathParseError. Similarly, if we change Unwrap to behave differently, it will constitute a behavior change in our library.
+But, even though it's un-exported, the Unwrap method is part of our public API. If we remove the Unwrap method, for example, the errors.As example breaks: there is no Unwrap link between the returned error and the externaldep.PathParseError. Similarly, if we change Unwrap to behave differently, it will constitute a behavior change in our library.
 
 To combat this, here is a tip:
 

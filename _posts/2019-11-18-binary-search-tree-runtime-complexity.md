@@ -104,7 +104,7 @@ n \cdot b + 1=b^k+b^{k-1}+...+b+1 && \text{Add 1 to each side.} \\
 n \cdot b + 1=b^k + n && \text{Note that we can use n for the right side.} \\
 n \cdot b - n=b^k - 1 && \text{Move n left; 1 right.} \\
 n \cdot (b - 1)=b^k - 1 && \text{Factor out n.} \\
-n = \frac{b^k - 1}{b - 1} && \text{Divide by n-1.} \\
+n = \frac{b^k - 1}{b - 1} && \text{Divide by b-1.} \\
 \end{align*}
 $$
 

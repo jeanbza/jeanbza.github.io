@@ -8,7 +8,7 @@ toc: true
 
 Disclaimer: This document makes statements and gives advice about interviewing
 at Google. This is _not at all_ an official accounting of what it's like to
-interview at Google. This is entirely my own interpration, likely riddled with
+interview at Google. This is entirely my own interpretation, likely riddled with
 inaccuracies to the extent that a Googler in recruitment would probably develop
 a migraine reading this. If you'd like the official word, check out
 careers.google.com or talk to a recruiter.
@@ -29,7 +29,7 @@ I'm not sure why. Perhaps the infamously hard interview process, which seemed to
 accept only the best of the best. Perhaps the reputably sky-high salaries. Or,
 most likely it was that the work was that special kind of interesting and
 challenging that all engineers yearn for. The kind of work that you are trained
-to do in university - implementing red-black trees; modifying Djikstra's
+to do in university - implementing red-black trees; modifying Dijkstra's
 algorithm to suit some arcane need; or coming up with some novel algorithm. The
 kind of work that hardly any other job seemed to offer; certainly not my
 internships up to that point, which all centered around writing websites in some
@@ -225,7 +225,7 @@ Every person learns differently, and retains knowledge differently. Some of my
 colleagues swear by working on practice problems, whilst I strongly prefer the
 approach of taking courses and completing homework / projects.
 
-Consider the list of interview prepation techniques above and do some
+Consider the list of interview preparation techniques above and do some
 introspection about how you learn best. And, if you can, try to orient your
 job around interesting problems that push you to learn, rather than staying
 in your comfort zone.

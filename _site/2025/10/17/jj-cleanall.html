@@ -70,7 +70,7 @@ them all off to be CI/CD’d with <code class="language-plaintext highlighter-ro
 
 <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
 <span class="nb">set</span> <span class="nt">-e</span>
-<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tail</span> <span class="nt">-r</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
+<span class="k">for </span>i <span class="k">in</span> <span class="sb">`</span>jj log <span class="nt">-r</span> <span class="s2">"mutable()"</span> <span class="nt">--no-graph</span> <span class="nt">-T</span> <span class="s1">'change_id ++ "\n"'</span> | <span class="nb">tac</span><span class="sb">`</span><span class="p">;</span> <span class="k">do
   </span>jj edit <span class="nv">$i</span>
   ./gradlew spotlessApply
   ./gradlew spotbugsMain

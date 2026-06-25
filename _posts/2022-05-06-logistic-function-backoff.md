@@ -277,12 +277,12 @@ func shouldThrottle(currentMemoryBytes, allocatedMemoryBytes, throttleRangeBytes
 	x := currentMemoryBytes
 	x0 := allocatedMemoryBytes - (uint64)(throttleRangeBytes/2)
 	L := 1.0
-	k := (-1 * math.Log((L/.01)-1)) / (float64)(allocatedMemoryBytes-x0)
+	k := (-1 * math.Log((L/.99)-1)) / (float64(allocatedMemoryBytes) - float64(x0))
 
 	// y1 is probability (0.00-1.00) which we roll against to determine whether
 	// to throttle or not. When it is 0, we never throttle (memory below allowed
 	// exceed). When it is 1, we always throttle (memory above allowed exceed).
-	y1 := L / (1.0 + math.Exp(-k*(float64)(x-x0)))
+	y1 := L / (1.0 + math.Exp(-k*(float64(x)-float64(x0))))
 
 	// y2 is a number between 0 and 1 to compare against y1.
 	y2 := rand.Float64()

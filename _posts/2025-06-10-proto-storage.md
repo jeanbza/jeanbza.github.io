@@ -85,7 +85,7 @@ Here's a concrete example of that:
 
 - [`github.com/googleapis/google/cloud/speech/v1/cloud_speech.proto`](https://github.com/googleapis/googleapis/blob/c759e924aa786f3df0e64499daf97d46a27edb31/google/cloud/speech/v1/cloud_speech.proto) is a proto that defines `option go_package = "cloud.google.com/go/speech/apiv1/speechpb;speechpb";`.
 - Accordingly, its generated Go code exists at [`github.com/google-cloud-go/speech/apiv1/speechpb`](https://github.com/googleapis/google-cloud-go/tree/main/speech/apiv1/speechpb).
-  - Note: `cloud.google.com/go` is an alias for `github.com/google/google-cloud-go`.
+  - Note: `cloud.google.com/go` is an alias for `github.com/googleapis/google-cloud-go`.
 - If you want to use it,
   - ✅ You should import it as `speechpb cloud.google.com/go/speech/apiv1/speechpb`.
   - ❌ You should not generate (or store) `cloud_speech.pb.go`.
