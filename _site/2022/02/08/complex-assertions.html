@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Complex assertions | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Complex assertions" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="This is part of a series of posts on testing in Go:" />
+<meta property="og:description" content="This is part of a series of posts on testing in Go:" />
+<link rel="canonical" href="http://localhost:4000/2022/02/08/complex-assertions.html" />
+<meta property="og:url" content="http://localhost:4000/2022/02/08/complex-assertions.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-02-08T14:55:23-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Complex assertions" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-02-08T14:55:23-07:00","datePublished":"2022-02-08T14:55:23-07:00","description":"This is part of a series of posts on testing in Go:","headline":"Complex assertions","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2022/02/08/complex-assertions.html"},"url":"http://localhost:4000/2022/02/08/complex-assertions.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#complex-assertions">Complex assertions</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#custom-matcher-examples">Custom matcher examples</a></li>
+<li class="toc-entry toc-h2"><a href="#custom-matchers-tend-to-reduce-comprehensibility-of-your-tests">Custom matchers tend to reduce comprehensibility of your tests</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#complex-assertions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Complex assertions</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2022-02-08T14:55:23-07:00" itemprop="datePublished">Feb 8, 2022
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>This is part of a series of posts on testing in Go:</p>
+
+<ul>
+  <li><a href="/2020/10/08/stubbing-grpc-clients">Stubbing gRPC clients in Go tests</a></li>
+  <li><a href="/2022/02/08/testing-in-go">testing in Go</a></li>
+  <li><strong>Complex assertions</strong></li>
+</ul>
+
+<p>I’ve seen a lot of complexity in custom assertions. That tends to slow teams down and increase the cost of ownership for many applications.</p>
+
+<p>I thought I’d briefly showcase that.</p>
+
+<p>The following are real code examples pulled from real codebases.</p>
+
+<h2 id="custom-matcher-examples">
+<a class="anchor" href="#custom-matcher-examples" aria-hidden="true"><span class="octicon octicon-link"></span></a>Custom matcher examples</h2>
+
+<p>Consider the following Java code:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">assertParagraphElement</span><span class="o">(</span><span class="n">bodyStructuralElements</span>
+    <span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">25</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">getParagraph</span><span class="o">()</span>
+    <span class="o">.</span><span class="na">getElements</span><span class="o">()</span>
+    <span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">),</span> <span class="mi">311</span><span class="o">,</span> <span class="mi">312</span><span class="o">,</span> <span class="nc">Person</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</code></pre></div></div>
+
+<p>Here’s another in C++:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="n">EXPECT_CALL</span><span class="p">(</span>
+        <span class="o">*</span><span class="n">mock_quota_server_client_</span><span class="p">,</span>
+        <span class="n">MultiGetTokens</span><span class="p">(</span>
+            <span class="o">::</span><span class="n">testing</span><span class="o">::</span><span class="n">AllOf</span><span class="p">(</span>
+                <span class="o">::</span><span class="n">testing</span><span class="o">::</span><span class="n">AllOfArray</span><span class="p">(</span>
+                    <span class="n">experiment_ids</span> <span class="o">|</span>
+                    <span class="o">::</span><span class="n">websitetools</span><span class="o">::</span><span class="n">feeds</span><span class="o">::</span><span class="n">range</span><span class="o">::</span><span class="n">transformed</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">quota_group_suffix</span><span class="p">](</span><span class="n">ExperimentId</span> <span class="n">experiment_id</span><span class="p">)</span> <span class="p">{</span>
+                          <span class="k">return</span> <span class="n">dos_quotas</span><span class="o">::</span><span class="n">HasRequest</span><span class="p">(</span>
+                              <span class="n">absl</span><span class="o">::</span><span class="n">StrFormat</span><span class="p">(</span><span class="n">kQuotaExperimentGroupId</span><span class="p">,</span>
+                                              <span class="n">quota_group_suffix</span><span class="p">),</span>
+                              <span class="n">absl</span><span class="o">::</span><span class="n">StrFormat</span><span class="p">(</span><span class="s">"%s:%d"</span><span class="p">,</span>
+                                              <span class="n">kQuotaUserId</span><span class="p">,</span>
+                                              <span class="n">experiment_id</span><span class="p">));</span>
+                        <span class="p">})),</span>
+                <span class="n">dos_quotas</span><span class="o">::</span><span class="n">HasRequest</span><span class="p">(</span>
+                    <span class="n">absl</span><span class="o">::</span><span class="n">StrFormat</span><span class="p">(</span><span class="n">kQuotaUserGroupId</span><span class="p">,</span> <span class="n">quota_group_suffix</span><span class="p">),</span>
+                    <span class="n">kQuotaUserId</span><span class="p">)),</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">))</span>
+        <span class="p">.</span><span class="n">Times</span><span class="p">(</span><span class="n">times</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>I couldn’t really tell you what’s going on in either without looking at <code class="language-plaintext highlighter-rouge">assertParagraphElement</code> or <code class="language-plaintext highlighter-rouge">dos_quotas::HasRequest</code>.</p>
+
+<h2 id="custom-matchers-tend-to-reduce-comprehensibility-of-your-tests">
+<a class="anchor" href="#custom-matchers-tend-to-reduce-comprehensibility-of-your-tests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Custom matchers tend to reduce comprehensibility of your tests</h2>
+
+<p>I tend to see people using custom matchers either because it’s super terse, or as a way to implement a helper function.</p>
+
+<p>But, custom matchers often come with a sharp drop in comprehensibility of your tests. Readers have to guess functionality based on the name and docs. And in my experience, people writing custom matchers for their application or project (as opposed to for a general-use library) tend not to put too much effort in making their matchers well named and documented.</p>
+
+<p>That means that readers will often need to look at the customer matcher’s code to grok what’s going on, and that tends to be hard since matchers are very often written with generics, reflection, or macros.</p>
+
+<p>This comprehensibility cost is high and very under-appreciated: it slows down reading (and extending) your tests and makes it harder to onboard new people to your part of the codebase.</p>
+
+<p>I’d recommend preferring more verbose but easier to read code to keep to keep your team going fast. When you need a helper, I’d suggest writing it as a simple function rather than as a matcher.</p>
+
+  </div>
+<a class="u-url" href="/2022/02/08/complex-assertions.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

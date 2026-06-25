@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>testing in Go | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="testing in Go" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="This is part of a series of posts on testing in Go:" />
+<meta property="og:description" content="This is part of a series of posts on testing in Go:" />
+<link rel="canonical" href="http://localhost:4000/2022/02/08/testing-in-go.html" />
+<meta property="og:url" content="http://localhost:4000/2022/02/08/testing-in-go.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-02-08T14:55:23-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="testing in Go" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-02-08T14:55:23-07:00","datePublished":"2022-02-08T14:55:23-07:00","description":"This is part of a series of posts on testing in Go:","headline":"testing in Go","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2022/02/08/testing-in-go.html"},"url":"http://localhost:4000/2022/02/08/testing-in-go.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#testing-in-go">testing in Go</a>
+<ul>
+<li class="toc-entry toc-h2"><a href="#why-do-people-use-non-testing-libraries">Why do people use non-testing libraries</a></li>
+<li class="toc-entry toc-h2"><a href="#terse">Terse</a></li>
+<li class="toc-entry toc-h2"><a href="#bdd">BDD</a></li>
+<li class="toc-entry toc-h2"><a href="#langx-port">LangX port</a></li>
+<li class="toc-entry toc-h2"><a href="#functionality-gaps-ecosystem-drag-and-expressiveness">Functionality gaps, ecosystem drag, and expressiveness</a></li>
+<li class="toc-entry toc-h2"><a href="#prefer-testing">Prefer testing</a></li>
+</ul>
+</li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#testing-in-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>testing in Go</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2022-02-08T14:55:23-07:00" itemprop="datePublished">Feb 8, 2022
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>This is part of a series of posts on testing in Go:</p>
+
+<ul>
+  <li><a href="/2020/10/08/stubbing-grpc-clients">Stubbing gRPC clients in Go tests</a></li>
+  <li><strong>testing in Go</strong></li>
+  <li><a href="/2022/02/08/complex-assertions">Complex assertions</a></li>
+</ul>
+
+<p>Go has a <a href="https://pkg.go.dev/testing">“testing” library</a> in the stdlib, and <a href="https://go.dev/doc/tutorial/add-a-test">is opinionated about how to use that library to write tests</a>. Despite that, a fair amount of projects choose to use other libraries for their testing and test assertions.</p>
+
+<p>This post was inspired by a long internal conversation within the Google Go readability crowd recently, in which <a href="https://google.github.io/styleguide/go/decisions#assert">we collectively re-affirmed our position to disallow</a> assertion libraries other than testing in Go at Google.</p>
+
+<p>I’m not going to rehash that conversation in full here. But, I wanted to briefly touch on why I think that people <em>do</em> reach for non-“testing” libraries, and talk about why I think in general that you <em>should</em> reach for “testing”.</p>
+
+<p>For context, I’ve used several non-“testing” libraries on pre-established projects, including <a href="https://github.com/stretchr/testify">testify</a>, <a href="https://github.com/onsi/ginkgo">ginko/gomega</a>, and <a href="https://github.com/go-check/check">check</a>. I’ve also used “testing” on many projects, both internal to Google, and on the Go project, and in numerous open source projects. So, I think that I’ve seen a fair amount of both sides.</p>
+
+<h2 id="why-do-people-use-non-testing-libraries">
+<a class="anchor" href="#why-do-people-use-non-testing-libraries" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why do people use non-testing libraries</h2>
+
+<p>In my experience, people tend to use non-“testing” libraries for one or some of these three reasons:</p>
+
+<ul>
+  <li>LibraryX is more terse than using Go conditionals and “testing”.</li>
+  <li>LibraryX feels more BDD than Go conditionals and “testing”.</li>
+  <li>LibraryX feels like Lang-Y (often Java/JUnit).</li>
+</ul>
+
+<p>Let’s evaluate and talk about each of these. I’ll use testify to compare against “testing”, but you can substitute most of what’s below with any LibraryX of your choice.</p>
+
+<h2 id="terse">
+<a class="anchor" href="#terse" aria-hidden="true"><span class="octicon octicon-link"></span></a>Terse</h2>
+
+<p>Here is a simple “testing” test:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span> <span class="n">TestFoo</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="n">got</span><span class="p">,</span> <span class="n">want</span> <span class="o">:=</span> <span class="n">Foo</span><span class="p">(),</span> <span class="m">5</span><span class="p">;</span> <span class="n">got</span> <span class="o">!=</span> <span class="n">want</span> <span class="p">{</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"got %d, want %d"</span><span class="p">,</span> <span class="n">got</span><span class="p">,</span> <span class="n">want</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Here is the same test with testify:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">func</span> <span class="n">TestFoo</span><span class="p">(</span><span class="n">t</span> <span class="o">*</span><span class="n">testing</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="o">.</span><span class="n">Equal</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">want</span><span class="p">,</span> <span class="n">Foo</span><span class="p">())</span> <span class="c">// We saved 2 LoC.</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The argument for terseness is very valid and similarly often repeated about error checking (<a href="https://github.com/golang/go/issues/32437">ex1</a>, <a href="https://github.com/golang/go/issues/21161">ex2</a>, <a href="https://github.com/golang/go/issues/71203">ex3</a>).</p>
+
+<h2 id="bdd">
+<a class="anchor" href="#bdd" aria-hidden="true"><span class="octicon octicon-link"></span></a>BDD</h2>
+
+<p>Some folks strongly prefer writing tests with assertions that read more like ordinary human sentences. That style is often associated with <a href="https://en.wikipedia.org/wiki/Behavior-driven_development">BDD</a> or <a href="https://en.wikipedia.org/wiki/Cucumber_(software)">Gherkin-style testing</a>.</p>
+
+<p>I actually used to work at a consultancy (Pivotal) that was fairly big on pushing this. The idea was that PMs and other non-Programmer types would be able to read and perhaps even write tests, and that the tests would be this external contract to the code.</p>
+
+<p>I’ve never once seen this play out as described in practice, so I have to admit to being a skeptic. But even then, some programmers are used to it and just prefer the style over the more “ordinary code” style the ordinary “testing” tests use, with explicit conditionals, loops, and general programming happening in the test.</p>
+
+<h2 id="langx-port">
+<a class="anchor" href="#langx-port" aria-hidden="true"><span class="octicon octicon-link"></span></a>LangX port</h2>
+
+<p>Some folks coming from LangX are comfortable with the testing idioms in that language, and like to port them to Go. AFAICT that’s probably how <a href="https://github.com/stretchr/testify/commit/2930d903bf969b4e153bb2f2d05a65455d214949">testify started in 2012</a> as basically a port of JUnit4:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>assertEquals(expected, actual) // JUnit4
+assert.Equal(t, expected, actual) // testify
+</code></pre></div></div>
+
+<h2 id="functionality-gaps-ecosystem-drag-and-expressiveness">
+<a class="anchor" href="#functionality-gaps-ecosystem-drag-and-expressiveness" aria-hidden="true"><span class="octicon octicon-link"></span></a>Functionality gaps, ecosystem drag, and expressiveness</h2>
+
+<p>I’ve not seen other reasons to use non-“testing” libraries to test Go code. I’m not aware of any functionality that they provide that you don’t have available to you with ordinary Go code and “testing”.</p>
+
+<p>And in fact, I’d say that they provide <em>far less</em> functionality and expressiveness. I call this ecosystem drag: libraries struggle to maintain feature parity with Go advancements.</p>
+
+<p>These libraries often don’t support things like <a href="https://pkg.go.dev/testing#T.Parallel">parallel testing</a>, <a href="https://pkg.go.dev/testing#hdr-Subtests_and_Sub_benchmarks">subtests</a>, and <a href="https://pkg.go.dev/testing#hdr-Benchmarks">benchmarking</a>; they struggle to keep up with Go advancements like <a href="https://pkg.go.dev/testing#hdr-Fuzzing">fuzz testing</a>, <a href="https://go.dev/blog/synctest">synctest</a>, and generics. As Go continues to advance and develop new features, libraries tend not to keep up.</p>
+
+<p>And in terms of expressiveness, libraries by definition can’t express the full range of things that ordinary Go code can. Worse, in trying to do so by flattening the Go language into assertions (ex <a href="https://pkg.go.dev/github.com/stretchr/testify/assert">testify has 312 assertions</a> as of writing), they can end up with a considerably more complex and less easy to use alternative than just writing Go code.</p>
+
+<h2 id="prefer-testing">
+<a class="anchor" href="#prefer-testing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prefer testing</h2>
+
+<p>I sympathise with all three benefits to using non-“testing” libraries. But, I tend not to agree with the motivations:</p>
+
+<ul>
+  <li>
+    <p>Porting idioms to Go is pretty self-explanatory: Go is not LangX.</p>
+  </li>
+  <li>
+    <p>Terseness-<a href="https://github.com/stretchr/testify/blob/2a57335dc9cd6833daa820bc94d9b40c26a7917d/assert/assertions.go#L164">by-way-of-magic</a> runs opposite to how Go is designed to be written. <a href="https://go.dev/doc/effective_go#introduction">Go’s design philosophy is expressly to be simple</a> and non-magical, sometimes at the cost of some boilerplate. I’m not mentioning this to be a language purist: I mention this because if you’re fighting any given language’s design ethos, you’ll often find yourself writing code that is harder for your peers to understand, and sometimes more code than you needed, or worse code than what you’d have ended up with using that language’s stdlib.</p>
+  </li>
+  <li>
+    <p>And BDD <a href="https://go.dev/doc/tutorial/add-a-test">is not a Go idiom</a>. I do however understand this motivation if it’s a <em>cultural</em> idiom for someone, or their team, or their company.</p>
+  </li>
+</ul>
+
+<p>My recommendation is to lean into Go’s design ethos and use “testing” and ordinary Go in your tests. I think that the advantages far outweigh what you lose above:</p>
+
+<ul>
+  <li>You keep the full, huge range of “testing” functionality and Go expressiveness.</li>
+  <li>Your tests can be read by newcomers to your project, since they’re ordinary Go code. No library knowledge required.</li>
+  <li>Your tests depend only on the stdlib, and are all but guaranteed to be fast and <a href="https://github.com/stretchr/testify/issues?q=is%3Aissue%20state%3Aopen%20label%3Abug">free of bugs</a> (or, if not, it’ll be fixed very soon!).</li>
+</ul>
+
+<p>These benefits are massive, and in my opinion far outweigh what you’d get otherwise.</p>
+
+  </div>
+<a class="u-url" href="/2022/02/08/testing-in-go.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

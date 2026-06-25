@@ -3,21 +3,21 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
-<title>Stubbing gRPC in Go | Jean Barkhuysen</title>
+<title>Stubbing gRPC clients in Go tests | Jean Barkhuysen</title>
 <meta name="generator" content="Jekyll v4.3.4" />
-<meta property="og:title" content="Stubbing gRPC in Go" />
+<meta property="og:title" content="Stubbing gRPC clients in Go tests" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="Introduction" />
-<meta property="og:description" content="Introduction" />
-<link rel="canonical" href="http://localhost:4000/2020/10/08/stubbing-grpc.html" />
-<meta property="og:url" content="http://localhost:4000/2020/10/08/stubbing-grpc.html" />
+<meta name="description" content="This is part of a series of posts on testing in Go:" />
+<meta property="og:description" content="This is part of a series of posts on testing in Go:" />
+<link rel="canonical" href="http://localhost:4000/2020/10/08/stubbing-grpc-clients.html" />
+<meta property="og:url" content="http://localhost:4000/2020/10/08/stubbing-grpc-clients.html" />
 <meta property="og:site_name" content="Jean Barkhuysen" />
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2020-10-08T15:55:23-06:00" />
 <meta name="twitter:card" content="summary" />
-<meta property="twitter:title" content="Stubbing gRPC in Go" />
+<meta property="twitter:title" content="Stubbing gRPC clients in Go tests" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2020-10-08T15:55:23-06:00","datePublished":"2020-10-08T15:55:23-06:00","description":"Introduction","headline":"Stubbing gRPC in Go","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2020/10/08/stubbing-grpc.html"},"url":"http://localhost:4000/2020/10/08/stubbing-grpc.html"}</script>
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2020-10-08T15:55:23-06:00","datePublished":"2020-10-08T15:55:23-06:00","description":"This is part of a series of posts on testing in Go:","headline":"Stubbing gRPC clients in Go tests","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2020/10/08/stubbing-grpc-clients.html"},"url":"http://localhost:4000/2020/10/08/stubbing-grpc-clients.html"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
 <body><header class="site-header" role="banner">
@@ -38,8 +38,7 @@
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
         <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#stubbing-grpc-in-go">Stubbing gRPC in Go</a></li>
-<li class="toc-entry toc-h1"><a href="#introduction">Introduction</a></li>
+<li class="toc-entry toc-h1"><a href="#stubbing-grpc-clients-in-go-tests">Stubbing gRPC clients in Go tests</a></li>
 <li class="toc-entry toc-h1"><a href="#mocking">Mocking</a></li>
 <li class="toc-entry toc-h1"><a href="#stubbing">Stubbing</a></li>
 <li class="toc-entry toc-h1"><a href="#bonus-actually-testing-main-forreal">Bonus: actually testing main, forreal</a></li>
@@ -48,19 +47,24 @@
 
   <header class="post-header">
     <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#stubbing-grpc-in-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stubbing gRPC in Go</h1>
+<a class="anchor" href="#stubbing-grpc-clients-in-go-tests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stubbing gRPC clients in Go tests</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2020-10-08T15:55:23-06:00" itemprop="datePublished">Oct 8, 2020
       </time></p>
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h1 id="introduction">
-<a class="anchor" href="#introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction</h1>
+    <p>This is part of a series of posts on testing in Go:</p>
+
+<ul>
+  <li><strong>Stubbing gRPC clients in Go tests</strong></li>
+  <li><a href="/2022/02/08/testing-in-go">testing in Go</a></li>
+  <li><a href="/2022/02/09/complex-assertions">Complex assertions</a></li>
+</ul>
 
 <p>I’ve several times been met with the question, “How do you stub gRPC in Go”?</p>
 
-<p>This is a short blog post about how to do that.</p>
+<p>This is a short blog post about how to do that. It focuses on</p>
 
 <h1 id="mocking">
 <a class="anchor" href="#mocking" aria-hidden="true"><span class="octicon octicon-link"></span></a>Mocking</h1>
@@ -393,7 +397,7 @@ libraries, and obviates the need for pre-provided fakes/mocks/emulators/etc.</p>
 
 
   </div>
-<a class="u-url" href="/2020/10/08/stubbing-grpc.html" hidden></a>
+<a class="u-url" href="/2020/10/08/stubbing-grpc-clients.html" hidden></a>
 </article>
 
       </div>
