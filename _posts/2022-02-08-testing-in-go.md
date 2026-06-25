@@ -16,7 +16,7 @@ Go has a ["testing" library](https://pkg.go.dev/testing) in the stdlib, and [is 
 
 This post was inspired by a long internal conversation within the Google Go readability crowd recently, in which [we collectively re-affirmed our position to disallow](https://google.github.io/styleguide/go/decisions#assert) assertion libraries other than testing in Go at Google.
 
-I'm not going to rehash that conversation in full here. But, I wanted to briefly touch on why I think that people _do_ reach for non-"testing" libraries, and talk about why I think in general that you _should_ reach for "testing".
+I'm not going to rehash that conversation in full here. But, I wanted to briefly touch on why I think that people _do_ reach for non-"testing" libraries, and why I think that you should instead generally reach for using "testing".
 
 For context, I've used several non-"testing" libraries on pre-established projects, including [testify](https://github.com/stretchr/testify), [ginko/gomega](https://github.com/onsi/ginkgo), and [check](https://github.com/go-check/check). I've also used "testing" on many projects, both internal to Google, and on the Go project, and in numerous open source projects. So, I think that I've seen a fair amount of both sides.
 
@@ -85,7 +85,7 @@ I sympathise with all three benefits to using non-"testing" libraries. But, I te
 
 - Porting idioms to Go is pretty self-explanatory: Go is not LangX.
 
-- Terseness-[by-way-of-magic](https://github.com/stretchr/testify/blob/2a57335dc9cd6833daa820bc94d9b40c26a7917d/assert/assertions.go#L164) runs opposite to how Go is designed to be written. [Go's design philosophy is expressly to be simple](https://go.dev/doc/effective_go#introduction) and non-magical, sometimes at the cost of some boilerplate. I'm not mentioning this to be a language purist: I mention this because if you're fighting any given language's design ethos, you'll often find yourself writing code that is harder for your peers to understand, and sometimes more code than you needed, or worse code than what you'd have ended up with using that language's stdlib.
+- Terseness-[by-way-of-magic](https://github.com/stretchr/testify/blob/2a57335dc9cd6833daa820bc94d9b40c26a7917d/assert/assertions.go#L164) runs opposite to how Go is designed to be written. [Go's design philosophy is expressly to be simple](https://go.dev/doc/effective_go#introduction) and non-magical, sometimes at the cost of some boilerplate. I'm not mentioning this to be a language purist: I mention this because if you're fighting any given language's design ethos, you'll often find yourself writing code that is harder for your peers to understand, and sometimes more code than you needed, or worse code than what you'd have ended up with using that language's idioms.
 
 - And BDD [is not a Go idiom](https://go.dev/doc/tutorial/add-a-test). I do however understand this motivation if it's a _cultural_ idiom for someone, or their team, or their company.
 
