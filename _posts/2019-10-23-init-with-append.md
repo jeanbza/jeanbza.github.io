@@ -3,7 +3,7 @@ layout: post
 title:  "Bad Times Initializing With Append"
 date:   2019-10-23 15:55:23 -0600
 categories: [go]
-description: "Initializing a variable with append can quietly share a backing array. Here's how that bites."
+description: "Initializing a variable can be a bad idea."
 toc: true
 ---
 

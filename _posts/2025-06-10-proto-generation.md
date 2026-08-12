@@ -3,7 +3,7 @@ layout: post
 title:  "Generating protobuf-generated Go code without a registry"
 date:   2025-06-10 01:55:23 -0600
 categories: [protobuf]
-description: "Generating Go code from protobufs when you have no proto registry to lean on."
+description: "Generating Go code from protobufs without the buf BSR."
 toc: true
 ---
 

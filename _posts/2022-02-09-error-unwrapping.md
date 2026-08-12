@@ -3,7 +3,7 @@ layout: post
 title:  "Error unwrapping for library authors"
 date:   2022-02-08 15:55:23 -0600
 categories: [errors, go]
-description: "What library authors owe their callers when they wrap and unwrap errors."
+description: "Go's Unwrap is part of your library's API."
 toc: true
 ---
 

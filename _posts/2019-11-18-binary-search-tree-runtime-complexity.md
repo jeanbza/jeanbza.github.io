@@ -3,7 +3,7 @@ layout: post
 title:  "Binary Search Tree Runtime Complexities"
 date:   2019-11-23 15:55:23 -0600
 categories: [algorithms]
-description: "Building intuition for binary search tree complexities rather than memorizing them."
+description: "Building intuition for binary search tree complexities."
 ---
 
 # Introduction

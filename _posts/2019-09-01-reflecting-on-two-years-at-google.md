@@ -3,7 +3,7 @@ layout: post
 title:  "Reflecting on two years at Google"
 date:   2019-09-01 15:55:23 -0600
 categories: [career]
-description: "What two years at Google taught me about scale, process, and my own habits."
+description: "Two years at Google."
 toc: true
 ---
 

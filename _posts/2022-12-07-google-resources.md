@@ -3,7 +3,7 @@ layout: post
 title:  "Engineering resources from Google"
 date:   2022-12-07 01:55:23 -0600
 categories: [career]
-description: "A collection of Google's public engineering resources that are worth the read."
+description: "A collection of Google's public engineering resources."
 toc: true
 ---
 

@@ -3,7 +3,7 @@ layout: post
 title:  "Storing protobuf-generated Go code without a registry"
 date:   2025-06-10 02:55:23 -0600
 categories: [protobuf, modules]
-description: "Where to store protobuf-generated Go code when there's no registry in the picture."
+description: "Where to store protobuf-generated Go code without the buf BSR."
 toc: true
 ---
 

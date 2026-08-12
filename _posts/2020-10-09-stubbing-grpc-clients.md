@@ -3,7 +3,7 @@ layout: post
 title:  "Stubbing gRPC clients in Go tests"
 date:   2020-10-08 15:55:23 -0600
 categories: [testing, go]
-description: "Stubbing gRPC clients so Go tests stay fast, hermetic, and readable."
+description: "Stubbing gRPC clients in Go tests."
 toc: true
 ---
 
