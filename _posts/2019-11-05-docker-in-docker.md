@@ -2,7 +2,8 @@
 layout: post
 title:  "Docker in Docker"
 date:   2019-11-05 15:55:23 -0600
-categories: 
+categories: [tooling]
+description: "What people actually mean by docker-in-docker, and how to set it up without the cargo cult."
 toc: true
 ---
 

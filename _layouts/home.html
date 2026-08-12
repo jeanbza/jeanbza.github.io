@@ -16,12 +16,26 @@ layout: default
       <li>
         {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
         <span class="post-meta">{{ post.date | date: date_format }}</span>
+        {%- if post.categories.size > 0 -%}
+          <span class="post-categories">
+            {%- for category in post.categories -%}
+              <a class="post-category"
+                 href="{{ '/categories/' | relative_url }}#{{ category | slugify }}">{{ category | escape }}</a>
+            {%- endfor -%}
+          </span>
+        {%- endif -%}
         <h3>
           <a class="post-link" href="{{ post.url | relative_url }}">
             {{ post.title | escape }}
           </a>
         </h3>
-        {%- if site.show_excerpts -%}
+        {%- comment -%}
+          Sub-heading: an explicit `description:` in front matter wins; otherwise
+          fall back to the auto-generated excerpt when site.show_excerpts is on.
+        {%- endcomment -%}
+        {%- if post.description -%}
+          <p class="post-subtitle">{{ post.description | escape }}</p>
+        {%- elsif site.show_excerpts -%}
           {{ post.excerpt }}
         {%- endif -%}
       </li>

@@ -2,7 +2,8 @@
 layout: post
 title:  "testing in Go"
 date:   2022-02-08 15:55:23 -0600
-categories:
+categories: [testing, go]
+description: "How I structure tests in Go, and the index for the rest of this series."
 toc: true
 ---
 

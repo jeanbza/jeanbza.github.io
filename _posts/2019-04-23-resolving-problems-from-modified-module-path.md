@@ -2,7 +2,8 @@
 layout: post
 title:  "Resolving Problems From Modified Module Path"
 date:   2019-04-23 15:55:23 -0600
-categories: 
+categories: [modules, crosspost]
+description: "Recovering when a module's path changes out from under its dependents."
 ---
 
 Posted at [go.dev/wiki/Resolving-Problems-From-Modified-Module-Path](https://go.dev/wiki/Resolving-Problems-From-Modified-Module-Path), but copied here for posterity:

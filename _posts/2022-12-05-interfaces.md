@@ -2,7 +2,8 @@
 layout: post
 title:  "Interfaces in depth"
 date:   2022-12-05 01:55:23 -0600
-categories: 
+categories: [go]
+description: "A deep dive into Go interfaces and method sets, replacing intuition with the actual rules."
 toc: true
 ---
 

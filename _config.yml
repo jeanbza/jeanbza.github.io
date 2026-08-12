@@ -36,6 +36,26 @@ plugins:
   - jekyll-feed
   - jekyll-toc
 
+# Pages listed in the header nav. Without this, minima lists *every* page it
+# finds. GitHub Pages enables jekyll-optional-front-matter, which promotes
+# assets/MathJax-2.7.9/README.md into a page titled "MathJax" -- so the nav
+# grew a bogus MathJax link in prod but not locally.
+header_pages:
+  - about.md
+  - categories.md
+
+# minima 2.5.2 (the newest release) still uses `@import` and lighten()/darken(),
+# all deprecated in Dart Sass. These are the theme's warnings, not ours, and
+# there is no newer minima to upgrade to. quiet_deps hides warnings originating
+# in imported dependencies; silence_deprecations covers the ones reported
+# against our own entry file. Drop these if minima ever modernizes its Sass.
+sass:
+  quiet_deps: true
+  silence_deprecations:
+    - import
+    - global-builtin
+    - color-functions
+
 # Exclude from processing.
 # The following items will not be processed, by default.
 # Any item listed under the `exclude:` key here will be automatically added to

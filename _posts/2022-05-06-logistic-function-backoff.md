@@ -2,7 +2,8 @@
 layout: post
 title:  "Graceful degradation with the logistic function"
 date:   2022-05-05 15:55:23 -0600
-categories: 
+categories: [infrastructure]
+description: "Using the logistic function to shed load gradually instead of falling off a cliff."
 toc: true
 ---
 

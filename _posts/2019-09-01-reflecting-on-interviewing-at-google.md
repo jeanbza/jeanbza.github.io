@@ -2,7 +2,8 @@
 layout: post
 title:  "Reflecting on interviewing at Google"
 date:   2019-09-01 15:55:23 -0600
-categories: 
+categories: [career]
+description: "An unofficial, entirely personal account of what interviewing at Google was like."
 toc: true
 ---
 

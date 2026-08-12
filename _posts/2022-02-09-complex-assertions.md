@@ -2,7 +2,8 @@
 layout: post
 title:  "Complex assertions"
 date:   2022-02-08 15:55:23 -0600
-categories:
+categories: [testing, go]
+description: "Keeping assertions on large, nested structures readable and maintainable."
 toc: true
 ---
 

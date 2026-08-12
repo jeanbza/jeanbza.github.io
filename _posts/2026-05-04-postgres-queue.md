@@ -2,7 +2,8 @@
 layout: post
 title:  "Queues in Postgres"
 date:   2026-05-06 02:55:23 -0600
-categories: 
+categories: [infrastructure]
+description: "Building a distributed priority queue on Postgres instead of Redis, and what that traded away."
 toc: true
 ---
 

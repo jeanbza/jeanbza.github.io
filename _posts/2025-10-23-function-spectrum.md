@@ -2,7 +2,8 @@
 layout: post
 title:  "Inlining function code"
 date:   2025-10-23 02:55:23 -0600
-categories: 
+categories: [design]
+description: "When to inline code and when to extract it, prompted by Carmack's email on the subject."
 toc: true
 ---
 

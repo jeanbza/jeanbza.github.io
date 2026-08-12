@@ -1,8 +1,9 @@
 ---
 layout: post
-title:  "LSCs, AI agents, and determinism"
+title:  "Reproducible, AI-driven large scale changes"
 date:   2026-08-08 02:55:23 -0600
-categories: 
+categories: [ai, infrastructure]
+description: "Making AI-driven large scale code changes deterministic, cheap, and auditable."
 toc: true
 ---
 

@@ -1,0 +1,105 @@
+---
+# Only the main Sass file needs front matter (the dashes are enough).
+# This file shadows minima's own assets/main.scss so we can override the theme.
+---
+
+@import "minima";
+
+// ---------------------------------------------------------------------------
+// Content width
+//
+// minima caps `.wrapper` at `$content-width` (800px), which is ~40% of a wide
+// screen. Widen it to a proportion of the viewport instead. Tune $wide-width
+// to taste; the media query leaves phones alone, where 80% would just waste
+// margin.
+// ---------------------------------------------------------------------------
+$wide-width: 55%;
+
+@media screen and (min-width: 801px) {
+  .wrapper {
+    max-width: $wide-width;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Index list: category chips + per-post sub-heading
+//
+// Rendered by _layouts/home.html. Categories come from each post's
+// `categories:` front matter; the sub-heading from `description:`.
+// ---------------------------------------------------------------------------
+.post-categories {
+  margin-left: 8px;
+}
+
+// Chips are anchors into /categories/, so undo minima's link styling and give
+// them their own hover state.
+a.post-category,
+a.post-category:visited {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-right: 4px;
+  border: 1px solid #d0d7de;
+  border-radius: 2em;
+  background-color: #f6f8fa;
+  color: #57606a;
+  font-size: 12px;
+  line-height: 1.6;
+  vertical-align: middle;
+  text-decoration: none;
+}
+
+a.post-category:hover {
+  border-color: #8c959f;
+  background-color: #eaeef2;
+  color: #24292f;
+  text-decoration: none;
+}
+
+// Keep an anchor target from landing flush against the top of the viewport
+// when you jump to it -- applies to category headings and in-post TOC links.
+.post-content h2,
+.post-content h3 {
+  scroll-margin-top: $spacing-unit * 0.5;
+}
+
+.post-subtitle {
+  margin-top: -6px;
+  color: $grey-color;
+}
+
+// ---------------------------------------------------------------------------
+// Code blocks — GitHub's light palette
+//
+// minima uses #eef (pale purple) for both `pre`/`code` and rouge-highlighted
+// blocks. These are GitHub's primer colors.
+// ---------------------------------------------------------------------------
+$gh-code-bg:     #f6f8fa;
+$gh-code-border: #d0d7de;
+
+pre,
+code {
+  border: 1px solid $gh-code-border;
+  background-color: $gh-code-bg;
+}
+
+.highlight {
+  .highlighter-rouge & {
+    background: $gh-code-bg;
+  }
+
+  .c, .cm, .c1, .cd { color: #6e7781; font-style: italic } // comments
+  .cp, .cs          { color: #6e7781; font-weight: bold; font-style: normal }
+  .k, .kc, .kd, .kn, .kp, .kr, .kv { color: #cf222e; font-weight: normal } // keywords
+  .o, .ow           { color: #cf222e; font-weight: normal } // operators
+  .s, .s1, .s2, .sb, .sc, .sd, .sh, .si, .sx, .sr, .ss, .se { color: #0a3069 } // strings
+  .m, .mf, .mh, .mi, .mo, .il, .no, .nb, .bp { color: #0550ae } // numbers, constants
+  .nf, .nd, .ne     { color: #8250df } // functions, decorators
+  .nc, .nn, .nl     { color: #953800 } // classes, namespaces
+  .na, .nt          { color: #116329 } // attributes, tags
+  .nv, .vc, .vg, .vi { color: #953800 } // variables
+  .err              { color: #f6f8fa; background-color: #82071e } // errors
+  .gd               { color: #82071e; background-color: #ffebe9 } // diff removed
+  .gi               { color: #116329; background-color: #dafbe1 } // diff added
+  .gh, .gu          { color: #0550ae; font-weight: bold } // headings
+  .gr, .gt          { color: #82071e }
+}

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.9.0 -->
+<title>Graceful degradation with the logistic function | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Graceful degradation with the logistic function" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Using the logistic function to shed load gradually instead of falling off a cliff." />
+<meta name="twitter:description" property="og:description" content="Using the logistic function to shed load gradually instead of falling off a cliff." />
+<link rel="canonical" href="jeanbza.github.io/infrastructure/2022/05/05/logistic-function-backoff.html" />
+<meta property="og:url" content="jeanbza.github.io/infrastructure/2022/05/05/logistic-function-backoff.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-05-05T15:55:23-06:00" />
+<meta property="article:modified_time" content="2022-05-05T15:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Graceful degradation with the logistic function" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-05-05T15:55:23-06:00","datePublished":"2022-05-05T15:55:23-06:00","description":"Using the logistic function to shed load gradually instead of falling off a cliff.","headline":"Graceful degradation with the logistic function","mainEntityOfPage":{"@type":"WebPage","@id":"jeanbza.github.io/infrastructure/2022/05/05/logistic-function-backoff.html"},"url":"jeanbza.github.io/infrastructure/2022/05/05/logistic-function-backoff.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="jeanbza.github.io/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/categories/">Categories</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</a></li>
+<li class="toc-entry toc-h1"><a href="#graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</a></li>
+<li class="toc-entry toc-h1"><a href="#abrupt-degradation">Abrupt degradation</a></li>
+<li class="toc-entry toc-h1"><a href="#gradual-degradation">Gradual degradation</a></li>
+<li class="toc-entry toc-h1"><a href="#linear-function-downsides">Linear function downsides</a></li>
+<li class="toc-entry toc-h1"><a href="#graceful-degradation">Graceful degradation</a></li>
+<li class="toc-entry toc-h1"><a href="#implementing-logistic-function-server-throttling">Implementing logistic function server throttling</a></li>
+<li class="toc-entry toc-h1"><a href="#conclusion">Conclusion</a></li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#graceful-degradation-with-the-logistic-function" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful degradation with the logistic function</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2022-05-05T15:55:23-06:00" itemprop="datePublished">May 5, 2022
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h1 id="graceful-degradation-with-the-logistic-function">
+<a class="anchor" href="#graceful-degradation-with-the-logistic-function" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful degradation with the logistic function</h1>
+
+<p>I recently worked on a server throttling feature in one of our build stack’s busiest binaries. We serve files from this binary, which is deployed as tens of thousands of tasks, which cumulatively serve millions of QPS.</p>
+
+<p>Sometimes, one of these tasks gets a large memory spike. The cause for this is that the task is asked to hold a single file, and before it gets replicated, the file is needed by tens of thousands of peers, who all bombard the task with RPCs. Handling all these requests causes a huge spike in memory, and the task falls over.</p>
+
+<p>Eventually replication catches up, and there are enough peers to spread the load. But we’d like to fail more gracefully than just OOM =&gt; death. We’d like to monitor the current and allocated memory, and gradually reject requests (throttle) when current memory exceeds allocated memory.</p>
+
+<h1 id="abrupt-degradation">
+<a class="anchor" href="#abrupt-degradation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Abrupt degradation</h1>
+
+<p>A simple way to abruptly degrade is to reject requests above the allocated amount. We can model that with a simple step function. For the sake of example, let’s imagine that our allocated memory is <code class="language-plaintext highlighter-rouge">3GiB = 3221225472 bytes</code>. We don’t want to hit 3GiB exactly, since that’s roughly where we’ll OOM, so let’s start throttling a bit before that: at <code class="language-plaintext highlighter-rouge">3000000000 bytes = 3e9 bytes</code> (number chosen because it’s conveniently round, and close to 3GiB 🙂).</p>
+
+\[f(x) = \left\{
+        \begin{array}{ll}
+            1 &amp; \quad x \ge 3e9 \\
+            0 &amp; \quad x &lt; 3e9
+        \end{array}
+    \right.\]
+
+<p>Here, 0 means “don’t reject”, and 1 means “reject”.</p>
+
+<p>But, this is inefficient: we’re not using all our available memory. In a resource constrained environment, or when we’re highly scaled, we really want to squeeze every bit of memory that we can, and leaving a huge buffer untouched is far too wasteful.</p>
+
+<h1 id="gradual-degradation">
+<a class="anchor" href="#gradual-degradation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Gradual degradation</h1>
+
+<p>It’s starting to sound like we need a linear function, not a stepwise function: something that rejects more and more requests the more memory we’re using. We now need a range to operate our throttler within: at the bottom of the range, we reject no requests; at the top, all requests.</p>
+
+<p>Let’s define our range as <code class="language-plaintext highlighter-rouge">[3e9 bytes, 3221225472 bytes]</code>, using the same bounds as our step function above.</p>
+
+<p>So, let’s build a linear function for this. Note that the values that we want from our linear function are <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>. As above, 0 means “don’t reject”, and 1 means “reject”. Any value between that represents that chance that a request will be rejected. That is, we’ll compare the result of our linear function against a number taken randomly from a uniform distribution of <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>.</p>
+
+<p>To build this linear function, let’s start with what we know:</p>
+
+<ul>
+  <li>Linear functions look like $f(x)=a \cdot x + b$</li>
+  <li>$f(3e9)=0$</li>
+  <li>$f(3221225472)=1$</li>
+</ul>
+
+<p>We can use this to solve the equation:</p>
+
+\[\begin{split}
+0 = a \cdot 3e9 + b\\
+-b = 3e9 \cdot a\\
+b = -3e9 \cdot a
+\end{split}
+\quad\quad
+\begin{split}
+1 = a \cdot 3221225472 + b\\
+1 - b = a \cdot 3221225472\\
+-b = a \cdot 3221225472 - 1\\
+b = -a \cdot 3221225472 + 1
+\end{split}\\ \text{ } \\ \text{ } \\
+-3e9 \cdot a = -a \cdot 3221225472 + 1 \\
+-3e9 \cdot a + a \cdot 3221225472 = 1 \\
+a \cdot (-3e9 + 3221225472) = 1 \\
+a = 1/221225472\]
+
+<p>Now that we know <code class="language-plaintext highlighter-rouge">a</code>, let’s use that and either of the two partial solutions above to find <code class="language-plaintext highlighter-rouge">b</code>:</p>
+
+\[1 = a \cdot 3221225472 + b\\
+1 = 3221225472/221225472 + b\\
+b = 1 - 3221225472/221225472\\
+b = -1953125/144027\]
+
+<p>Our stepwise function accordingly gets an embedded linear function:</p>
+
+\[f(x) = \left\{
+        \begin{array}{ll}
+            x/221225472 - 1953125/144027  &amp; \quad x \ge 3e9 \\
+            0 &amp; \quad x &lt; 3e9
+        \end{array}
+    \right.\]
+
+<p><img src="/assets/linear.png" alt=""></p>
+
+<p>We can verify that this works by plugging in our original numbers:</p>
+
+\[\begin{split}
+f(x) = x/221225472 - 1953125/144027\\
+f(x) = 3e9/221225472 - 1953125/144027\\
+f(x) = 0
+\end{split}
+\quad\quad
+\begin{split}
+f(x) = x/221225472 - 1953125/144027\\
+f(x) = 3221225472/221225472 - 1953125/144027\\
+f(x) = 1
+\end{split}\\\]
+
+<h1 id="linear-function-downsides">
+<a class="anchor" href="#linear-function-downsides" aria-hidden="true"><span class="octicon octicon-link"></span></a>Linear function downsides</h1>
+
+<p>This is a lot nicer, but we can do better. If our binary is <em>expected</em> to consistently “run hot” (use most of its allocated memory), the linear function may be too aggressive.</p>
+
+<p>Consider a binary that fairly consistently runs somewhere in the bottom 10-30% of the throttle memory range. A linear function will accordingly throttle 10-30% of requests. That’s expensive! Particularly if the incoming RPCs have a wide range of memory footprints: throttling 10-30% of requests when those requests may have negligible impact on memory is wasteful. And we can’t just make our memory range smaller. Doing so is dangerous: the smaller the range, the easier it is for a request to cause our memory to jump to the end of the range and OOM the process.</p>
+
+<p>And, the second half of the linear function range is a problem too: it ramps up too slowly! When we’re 90% into our range, we’d like to be throttling most all requests, since it may only take a few expensive requests to jump right to the end and OOM the process.</p>
+
+<p>We need to find a function with a better shape.</p>
+
+<h1 id="graceful-degradation">
+<a class="anchor" href="#graceful-degradation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful degradation</h1>
+
+<p>The <a href="https://en.wikipedia.org/wiki/Logistic_function">logistic function</a> has a better shape for server throttling.</p>
+
+<p>Here’s the shape of the logistic function:</p>
+
+<p><img src="/assets/logistic.png" alt=""></p>
+
+<p>Its S-shaped curve allows more requests through when we’re at the bottom of our range, and aggressively throttles at the end of our range.</p>
+
+<p>The equation for the logistic function is as follows,</p>
+
+\[\begin{align*}
+f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}
+\end{align*}\]
+
+<p>Where,</p>
+
+<ul>
+  <li>$x_0$ is the x value of the sigmoid’s midpoint</li>
+  <li>L is the curve’s maximum value</li>
+  <li>k is the logistic growth rate or steepness of the curve</li>
+</ul>
+
+<p>Let’s adapt this to our problem:</p>
+
+<p>L is the easiest: we want the maximum value to be 1 (we want our range to be <code class="language-plaintext highlighter-rouge">[0.0, 1.0]</code>), So, <code class="language-plaintext highlighter-rouge">L=1</code>.</p>
+
+<p>$x_0$ is fairly straightforward: the midpont should be the midpoint between the start and end of our range. So,</p>
+
+\[\begin{align}
+x_0 = 3221225472-\left(\dfrac{3221225472-3e9}{2}\right)\\
+x_0 = 3110612736
+\end{align}\]
+
+<p>Now we have,</p>
+
+\[\begin{align*}
+f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}\\
+f(x) = \dfrac{1}{1 + e^{-k(x-3110612736)}}
+\end{align*}\]
+
+<p>k is the hardest. Let’s start by solving for k in the equation above:</p>
+
+\[\begin{align*}
+f(x) = \dfrac{1}{1 + e^{-k\left(x-3110612736\right)}}\\
+f(x)\left(1 + e^{-k(x-3110612736)}\right) = 1\\
+1 + e^{-k(x-3110612736)} = \dfrac{1}{f(x)}\\
+e^{-k(x-3110612736)} = \dfrac{1}{f(x)}-1\\
+-k(x-3110612736) = ln\left(\dfrac{1}{f(x)}-1\right)\\
+k(x-3110612736) = -ln\left(\dfrac{1}{f(x)}-1\right)\\
+k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
+\end{align*}\]
+
+<p>Now we return to what we know about how this curve <em>should</em> behave:</p>
+
+<ul>
+  <li>$f(3e9)=0$</li>
+  <li>$f(3221225472)=1$</li>
+</ul>
+
+<p>Unfortunately, using either of these results in an unsolvable equation:</p>
+
+\[\begin{split}
+k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
+k = \dfrac{-ln\left(\dfrac{1}{0}-1\right)}{3e9-3110612736}\\
+\text{NaN: can't divide by 0}
+\end{split}
+\quad\quad
+\begin{split}
+k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
+k = \dfrac{-ln\left(\dfrac{1}{1}-1\right)}{3221225472-3110612736}\\
+k = \dfrac{-ln(0)}{3221225472-3110612736}\\
+\text{NaN: natural log of 0 is undefined}
+\end{split}\]
+
+<p>So, that’s a bummer. But it makes sense: the logistic function is asymptotic, with asymptotes 0 and 1: it will never actually reach those values!</p>
+
+<p>So, let’s estimate k by choosing a value close to the asymptotes: either .01 for the lower bound, or .99 for the upper bound. It doesn’t matter which one we do, as the curve is reflected around the midpoint. So, let’s use the upper:</p>
+
+\[k = \dfrac{-ln\left(\dfrac{1}{f(x)}-1\right)}{x-3110612736}\\
+k = \dfrac{-ln\left(\dfrac{1}{.99}-1\right)}{3221225472-3110612736}\\
+k = \dfrac{-ln(0.0101010101)}{110612736}\\
+k = \dfrac{4.59511985023}{110612736}\\
+k = \dfrac{4.595119}{110612736}\\
+k = .0000000415424043\]
+
+<p>Great! Let’s put it all together:</p>
+
+\[\begin{align*}
+f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}\\
+f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}
+\end{align*}\]
+
+<p><img src="/assets/logistic_real.png" alt=""></p>
+
+<p>We can verify that this works by plugging in our original numbers:</p>
+
+\[\begin{split}
+f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}\\
+f(x) = \dfrac{1}{1 + e^{-.0000000415424043(3e9-3110612736)}}\\
+f(x) = 0.01000000841
+\end{split}
+\quad\quad
+\begin{split}
+f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}\\
+f(x) = \dfrac{1}{1 + e^{-.0000000415424043(3221225472-3110612736)}}\\
+f(x) = 0.98999999158
+\end{split}\\\]
+
+<p>Since we’re approximating values and will never reach 0 or 1, it’s helpful to continue using the stepwise function to guarantee no throttling when we’re below our threshold, and to always throttle when we’re above our allowable range:</p>
+
+\[f(x) = \left\{
+        \begin{array}{ll}
+            1 &amp; \quad x \ge 3221225472 \\
+            \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}  &amp; \quad 3e9 \le x &lt; 3221225472  \\
+            0 &amp; \quad x &lt; 3e9
+        \end{array}
+    \right.\]
+
+<h1 id="implementing-logistic-function-server-throttling">
+<a class="anchor" href="#implementing-logistic-function-server-throttling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Implementing logistic function server throttling</h1>
+
+<p>Implementing server throttling with the logistic function is fairly straight forward, adding another positive to its list of positives:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// This example written in Go. It uses RPC semantics, like protobufs and</span>
+<span class="c">// google.golang.org/grpc/status, but the tools don't really matter. http or any</span>
+<span class="c">// other communication protocol works as well.</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">c</span> <span class="o">*</span><span class="n">Client</span><span class="p">)</span> <span class="n">HandleSomeRPC</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">req</span> <span class="o">*</span><span class="n">mypb</span><span class="o">.</span><span class="n">Request</span><span class="p">,</span> <span class="n">resp</span> <span class="o">*</span><span class="n">mypb</span><span class="o">.</span><span class="n">Response</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="n">shouldThrottle</span><span class="p">(</span><span class="n">currentMemoryBytes</span><span class="p">(),</span> <span class="n">allocatedMemoryBytes</span><span class="p">(),</span> <span class="n">throttleRangeBytes</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="n">codes</span><span class="o">.</span><span class="n">ResourceExhausted</span><span class="p">,</span> <span class="s">"out of memory - try again later"</span><span class="p">)</span>
+  <span class="p">}</span>
+  <span class="c">// ...</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="n">shouldThrottle</span><span class="p">(</span><span class="n">currentMemoryBytes</span><span class="p">,</span> <span class="n">allocatedMemoryBytes</span><span class="p">,</span> <span class="n">throttleRangeBytes</span> <span class="kt">uint64</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="n">currentMemoryBytes</span> <span class="o">&lt;</span> <span class="n">allocatedMemoryBytes</span><span class="o">-</span><span class="n">throttleRangeBytes</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="no">false</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="n">currentMemoryBytes</span> <span class="o">&gt;</span> <span class="n">allocatedMemoryBytes</span><span class="o">+</span><span class="n">throttleRangeBytes</span> <span class="p">{</span>
+		<span class="c">// Relevant if your process is in a scenario where max available memory</span>
+		<span class="c">// is greater than max allocated memory (shared containers etc).</span>
+		<span class="k">return</span> <span class="no">true</span>
+	<span class="p">}</span>
+
+	<span class="n">x</span> <span class="o">:=</span> <span class="n">currentMemoryBytes</span>
+	<span class="n">x0</span> <span class="o">:=</span> <span class="n">allocatedMemoryBytes</span> <span class="o">-</span> <span class="p">(</span><span class="kt">uint64</span><span class="p">)(</span><span class="n">throttleRangeBytes</span><span class="o">/</span><span class="m">2</span><span class="p">)</span>
+	<span class="n">L</span> <span class="o">:=</span> <span class="m">1.0</span>
+	<span class="n">k</span> <span class="o">:=</span> <span class="p">(</span><span class="o">-</span><span class="m">1</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">Log</span><span class="p">((</span><span class="n">L</span><span class="o">/</span><span class="m">.99</span><span class="p">)</span><span class="o">-</span><span class="m">1</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="kt">float64</span><span class="p">(</span><span class="n">allocatedMemoryBytes</span><span class="p">)</span> <span class="o">-</span> <span class="kt">float64</span><span class="p">(</span><span class="n">x0</span><span class="p">))</span>
+
+	<span class="c">// y1 is probability (0.00-1.00) which we roll against to determine whether</span>
+	<span class="c">// to throttle or not. When it is 0, we never throttle (memory below allowed</span>
+	<span class="c">// exceed). When it is 1, we always throttle (memory above allowed exceed).</span>
+	<span class="n">y1</span> <span class="o">:=</span> <span class="n">L</span> <span class="o">/</span> <span class="p">(</span><span class="m">1.0</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">Exp</span><span class="p">(</span><span class="o">-</span><span class="n">k</span><span class="o">*</span><span class="p">(</span><span class="kt">float64</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">-</span><span class="kt">float64</span><span class="p">(</span><span class="n">x0</span><span class="p">))))</span>
+
+	<span class="c">// y2 is a number between 0 and 1 to compare against y1.</span>
+	<span class="n">y2</span> <span class="o">:=</span> <span class="n">rand</span><span class="o">.</span><span class="n">Float64</span><span class="p">()</span>
+
+	<span class="k">return</span> <span class="n">y2</span> <span class="o">&lt;=</span> <span class="n">y1</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h1 id="conclusion">
+<a class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h1>
+
+<p>At tremendous scale, it’s important to eke every last bit of memory from servers. It’s also important to be able to gracefully degrade during memory spikes, to avoid out-of-memory crashes. The logistic function is an excellent function for deciding whether to throttle requests, which strikes a good balance between the competing priorities of using all available memory and avoiding out-of-memory crashes.</p>
+
+<script type="text/javascript" async="" src="/assets/MathJax-2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+        processEscapes: true
+      },
+      extensions: [
+        "MathMenu.js",
+        "MathZoom.js",
+        "AssistiveMML.js"
+      ],
+      jax: ["input/TeX", "output/CommonHTML"],
+      TeX: {
+        extensions: [
+          "AMSmath.js",
+          "AMSsymbols.js",
+          "noErrors.js",
+          "noUndefined.js",
+        ]
+      }
+    });
+  </script>
+
+
+  </div>
+<a class="u-url" href="/infrastructure/2022/05/05/logistic-function-backoff.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
