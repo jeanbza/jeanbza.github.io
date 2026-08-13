@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.9.0 -->
+<title>Google styleguide code review skills | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Google styleguide code review skills" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A plugin containing skills for Claude to perform Google’s styleguide reviews." />
+<meta name="twitter:description" property="og:description" content="A plugin containing skills for Claude to perform Google’s styleguide reviews." />
+<link rel="canonical" href="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" />
+<meta property="og:url" content="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-08T02:55:23-06:00" />
+<meta property="article:modified_time" content="2026-08-08T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Google styleguide code review skills" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-08-08T02:55:23-06:00","datePublished":"2026-08-08T02:55:23-06:00","description":"A plugin containing skills for Claude to perform Google’s styleguide reviews.","headline":"Google styleguide code review skills","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"},"url":"http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/categories/">Categories</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#google-styleguide-code-review-skills">Google styleguide code review skills</a></li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#google-styleguide-code-review-skills" aria-hidden="true"><span class="octicon octicon-link"></span></a>Google styleguide code review skills</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-08-08T02:55:23-06:00" itemprop="datePublished">Aug 8, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>At Google, code changes require both a language readability and a domain review.
+The former is what you’d expect from a code review, whereas the latter was a
+review from someone[^1] very proficient in the language, intended to help drive best
+practices of that language across the company, and sometimes to drive
+conformance towards a certain style of the language.</p>
+
+<p>Each language maintained a style guide: a list of best practice and style
+decisions, curated by the hundreds or thousands of readability experts for that
+language.</p>
+
+<p>I was a C++ and Go readability reviewer, and contributed some tidbits to the Go
+styleguide, as well as to many discussions about how to write Go. The styleguide
+was a great place to put best practices for the language, but also a great place
+to go to learn, since best practices were usually followed with an explanation.
+That way, newcomers to the language could ask for a change and simultaneously
+reference the styleguide as the high-quality explanation for the change request.</p>
+
+<p>Google has <em>very</em> generously open sourced the styleguides for its languages at
+https://google.github.io/styleguide/. I highly encourage practitioners of any
+of the languages there to give them a read. I can greatly recommend the C++ and
+Go ones, but I’m sure the others are good too.</p>
+
+<p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
+it varying degrees of helpful to have Claude read those styleguides, and apply
+edits based on advice in them. It’s not been perfect - far from it,
+unfortunately. But it’s generally been better than not having it do so.</p>
+
+<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
+
+<p>To install it, simply run the following inside a Claude session:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/plugin marketplace add jeanbza/claude-extensions
+/plugin install google-go-review@jeanbza
+/reload-plugins
+</code></pre></div></div>
+
+<p>To use it, simply run <code class="language-plaintext highlighter-rouge">/jeanbza:google-go-review</code> (or cpp, or py - the other
+two I’ve added so far).</p>
+
+<p>There’s more for me to do, in terms of prompt engineering: Claude frequently
+does a poor job at <a href="https://google.github.io/styleguide/go/decisions#handle-errors">“Handle errors”</a>
+for example. (My pet theory is that Claude doesn’t bother to check the
+signatures) I’ll keep working on it, both for myself and whomever else wants to
+use it. I’m also working on a project to go a bit lower down the stack and try
+to inject some evaluators into its reward model with lifecycle hooks. But for
+now, I hope it’s helpful to you as it’s been for me!</p>
+
+  </div>
+<a class="u-url" href="/ai/claude/2026/08/08/google-codereview-skills.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

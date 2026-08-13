@@ -1,5 +1,50 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-12T13:47:58-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Reproducible, AI-driven large scale changes</title><link href="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html" rel="alternate" type="text/html" title="Reproducible, AI-driven large scale changes" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch</id><content type="html" xml:base="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html"><![CDATA[<p>Large scale code changes (LSCs) are groups of code changes that all try to
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-13T14:59:55-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Google styleguide code review skills</title><link href="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" rel="alternate" type="text/html" title="Google styleguide code review skills" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills</id><content type="html" xml:base="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"><![CDATA[<p>At Google, code changes require both a language readability and a domain review.
+The former is what you’d expect from a code review, whereas the latter was a
+review from someone[^1] very proficient in the language, intended to help drive best
+practices of that language across the company, and sometimes to drive
+conformance towards a certain style of the language.</p>
+
+<p>Each language maintained a style guide: a list of best practice and style
+decisions, curated by the hundreds or thousands of readability experts for that
+language.</p>
+
+<p>I was a C++ and Go readability reviewer, and contributed some tidbits to the Go
+styleguide, as well as to many discussions about how to write Go. The styleguide
+was a great place to put best practices for the language, but also a great place
+to go to learn, since best practices were usually followed with an explanation.
+That way, newcomers to the language could ask for a change and simultaneously
+reference the styleguide as the high-quality explanation for the change request.</p>
+
+<p>Google has <em>very</em> generously open sourced the styleguides for its languages at
+https://google.github.io/styleguide/. I highly encourage practitioners of any
+of the languages there to give them a read. I can greatly recommend the C++ and
+Go ones, but I’m sure the others are good too.</p>
+
+<p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
+it varying degrees of helpful to have Claude read those styleguides, and apply
+edits based on advice in them. It’s not been perfect - far from it,
+unfortunately. But it’s generally been better than not having it do so.</p>
+
+<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
+
+<p>To install it, simply run the following inside a Claude session:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/plugin marketplace add jeanbza/claude-extensions
+/plugin install google-go-review@jeanbza
+/reload-plugins
+</code></pre></div></div>
+
+<p>To use it, simply run <code class="language-plaintext highlighter-rouge">/jeanbza:google-go-review</code> (or cpp, or py - the other
+two I’ve added so far).</p>
+
+<p>There’s more for me to do, in terms of prompt engineering: Claude frequently
+does a poor job at <a href="https://google.github.io/styleguide/go/decisions#handle-errors">“Handle errors”</a>
+for example. (My pet theory is that Claude doesn’t bother to check the
+signatures) I’ll keep working on it, both for myself and whomever else wants to
+use it. I’m also working on a project to go a bit lower down the stack and try
+to inject some evaluators into its reward model with lifecycle hooks. But for
+now, I hope it’s helpful to you as it’s been for me!</p>]]></content><author><name></name></author><category term="ai" /><category term="claude" /><summary type="html"><![CDATA[A plugin containing skills for Claude to perform Google's styleguide reviews.]]></summary></entry><entry><title type="html">Reproducible, AI-driven large scale changes</title><link href="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html" rel="alternate" type="text/html" title="Reproducible, AI-driven large scale changes" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch</id><content type="html" xml:base="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html"><![CDATA[<p>Large scale code changes (LSCs) are groups of code changes that all try to
 accomplish the same goal, across a huge number of codebases.</p>
 
 <p>For example, a common LSC is to migrate all codebases at a company from
@@ -1345,40 +1390,4 @@ http://localhost:8080, where the frontend is hosted.</p>
 
 <span class="o">#</span> <span class="k">Drop</span> <span class="n">it</span> <span class="k">all</span> <span class="k">and</span> <span class="k">start</span> <span class="n">over</span><span class="p">.</span>
 <span class="k">TRUNCATE</span> <span class="n">documentation</span><span class="p">,</span> <span class="n">documentation_symbols</span><span class="p">,</span> <span class="n">excluded_prefixes</span><span class="p">,</span> <span class="n">imports</span><span class="p">,</span> <span class="n">imports_unique</span><span class="p">,</span> <span class="n">latest_module_versions</span><span class="p">,</span> <span class="n">legacy_documentation_symbols</span><span class="p">,</span> <span class="n">licenses</span><span class="p">,</span> <span class="n">module_version_states</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">package_symbols</span><span class="p">,</span> <span class="n">package_version_states</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">readmes</span><span class="p">,</span> <span class="n">search_documents</span><span class="p">,</span> <span class="n">symbol_history</span><span class="p">,</span> <span class="n">symbol_names</span><span class="p">,</span> <span class="n">symbol_search_documents</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">version_map</span><span class="p">;</span>
-</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="tooling" /><summary type="html"><![CDATA[Running pkgsite yourself against a private enterprise GitHub and goproxy.]]></summary></entry><entry><title type="html">Engineering resources from Google</title><link href="http://localhost:4000/career/2022/12/07/google-resources.html" rel="alternate" type="text/html" title="Engineering resources from Google" /><published>2022-12-07T00:55:23-07:00</published><updated>2022-12-07T00:55:23-07:00</updated><id>http://localhost:4000/career/2022/12/07/google-resources</id><content type="html" xml:base="http://localhost:4000/career/2022/12/07/google-resources.html"><![CDATA[<h1 id="engineering-resources-from-google">Engineering resources from Google</h1>
-
-<p>This is a collection of extremely useful internal resources, which are made
-publicly available. I thought I’d share these, since they are a bit hard to find
-externally. And, they really are fantastic - years and years of tweaks and
-discussions and refinement have gone into these, from some of the great minds
-of computer science.</p>
-
-<p>So, enjoy, as I have:</p>
-
-<ul>
-  <li><a href="https://abseil.io/resources/swe-book">The SWE book</a></li>
-  <li><a href="https://sre.google/sre-book/table-of-contents/">The SRE book</a></li>
-  <li><a href="https://abseil.io/fast/">Fast TotW</a></li>
-  <li><a href="https://abseil.io/fast/hints.html">Jeff &amp; Sanjay’s fast tips</a></li>
-  <li><a href="https://google.github.io/eng-practices/">Code review guide</a></li>
-  <li><a href="https://google.github.io/styleguide/">Style guides</a>
-    <ul>
-      <li><a href="https://google.github.io/styleguide/go/">Go</a></li>
-      <li><a href="https://google.github.io/styleguide/cppguide.html">C++</a></li>
-      <li><a href="https://google.github.io/styleguide/javaguide.html">Java</a></li>
-      <li><a href="https://google.github.io/styleguide/pyguide.html">Python</a></li>
-    </ul>
-  </li>
-  <li>Guides
-    <ul>
-      <li><a href="https://abseil.io/docs/cpp/">C++</a></li>
-      <li><a href="https://abseil.io/docs/python/">Python</a></li>
-    </ul>
-  </li>
-</ul>
-
-<h1 id="post-note">Post-note</h1>
-
-<p>I will continue editing this article as I find more. Stay tuned!</p>
-
-<p>(I wonder if this will turn into a “How to re-create Google’s engineering department in your company”… 🤔)</p>]]></content><author><name></name></author><category term="career" /><summary type="html"><![CDATA[A collection of Google's public engineering resources.]]></summary></entry></feed>
+</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="tooling" /><summary type="html"><![CDATA[Running pkgsite yourself against a private enterprise GitHub and goproxy.]]></summary></entry></feed>
