@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-13T14:59:55-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-15T12:34:47-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Google styleguide code review skills</title><link href="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" rel="alternate" type="text/html" title="Google styleguide code review skills" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills</id><content type="html" xml:base="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"><![CDATA[<p>At Google, code changes require both a language readability and a domain review.
 The former is what you’d expect from a code review, whereas the latter was a
 review from someone[^1] very proficient in the language, intended to help drive best
@@ -503,12 +503,14 @@ bookmark associated with the rev if one exists.</p>
   <li>
     <p>Create <code class="language-plaintext highlighter-rouge">~/.bash_it/custom/jj.plugins.bash</code> with:</p>
 
-    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c"># Set jj prompt to be enabled by default</span>
+    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c"># ~/.bash_it/custom/jj.plugins.bash</span>
+
+ <span class="c"># Set jj prompt to be enabled by default</span>
  <span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="k">:-</span><span class="nv">true</span><span class="k">}</span><span class="s2">"</span>
 
  <span class="c"># jj repo check</span>
  <span class="k">function </span>is_jj_repo <span class="o">{</span>
- <span class="k">if </span>jj root <span class="o">&gt;</span>/dev/null 2&gt;&amp;1<span class="p">;</span> <span class="k">then
+ <span class="k">if</span> <span class="o">[</span> <span class="nt">-d</span> <span class="s2">".jj"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
      return </span>0
  <span class="k">else
      return </span>1
@@ -531,12 +533,11 @@ bookmark associated with the rev if one exists.</p>
      return
      fi</span>
 
-     <span class="c"># --- DYNAMIC HIGHLIGHTING ---</span>
+     <span class="c"># --- FINAL DYNAMIC HIGHLIGHTING ---</span>
      <span class="c"># Get the shortest unique prefix using the template you found</span>
      <span class="nb">local </span><span class="nv">prefix</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'self.change_id().shortest()'</span> 2&gt;/dev/null<span class="si">)</span>
 
-     <span class="c"># Fallback: if the command fails, default to the first character. Maybe</span>
-     <span class="c"># unnecessary.</span>
+     <span class="c"># Fallback: if the command fails, default to the first character</span>
      <span class="k">if</span> <span class="o">[[</span> <span class="nt">-z</span> <span class="s2">"</span><span class="nv">$prefix</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
      </span><span class="nv">prefix</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">short_hash</span>:0:1<span class="k">}</span><span class="s2">"</span>
      <span class="k">fi</span>
@@ -556,7 +557,7 @@ bookmark associated with the rev if one exists.</p>
      <span class="c"># Wrap in parentheses</span>
      <span class="nv">jj_info</span><span class="o">=</span><span class="s2">"(</span><span class="nv">$jj_info</span><span class="s2">)"</span>
 
-     <span class="c"># --- ASTERISK LOGIC ---</span>
+     <span class="c"># --- ASTERISK LOGIC (UNCHANGED) ---</span>
      <span class="nb">local </span><span class="nv">first_bookmark</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">jj_bookmarks</span><span class="p">%% *</span><span class="k">}</span><span class="s2">"</span>
      <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$first_bookmark</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
      </span><span class="nb">local </span>any_diff
@@ -566,7 +567,7 @@ bookmark associated with the rev if one exists.</p>
      <span class="k">fi
      fi
 
-     </span><span class="nb">echo</span> <span class="nt">-e</span> <span class="s2">"</span><span class="k">${</span><span class="nv">SCM_THEME_PROMPT_PREFIX</span><span class="k">}</span><span class="s2">jj:</span><span class="k">${</span><span class="nv">jj_info</span><span class="k">}${</span><span class="nv">SCM_THEME_PROMPT_SUFFIX</span><span class="k">}</span><span class="s2">"</span>
+     </span><span class="nb">echo</span> <span class="nt">-e</span> <span class="s2">"</span><span class="k">${</span><span class="nv">SCM_THEME_PROMPT_PREFIX</span><span class="k">}${</span><span class="nv">jj_info</span><span class="k">}${</span><span class="nv">SCM_THEME_PROMPT_SUFFIX</span><span class="k">}</span><span class="s2">"</span>
  <span class="k">fi</span>
  <span class="o">}</span>
 </code></pre></div>    </div>
@@ -574,34 +575,44 @@ bookmark associated with the rev if one exists.</p>
   <li>
     <p>Update <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/&lt;theme&gt;/&lt;theme&gt;.bash</code> (ex
 <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>), amending the prompt_command:</p>
+
+    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
+ <span class="nb">local </span><span class="nv">scm_info</span><span class="o">=</span><span class="s2">""</span>
+
+ <span class="c"># 1. Check if it is a JJ repo first (Priority)</span>
+ <span class="c"># We use the 'is_jj_repo' function defined in your plugin.</span>
+ <span class="k">if </span><span class="nb">type </span>is_jj_repo &amp;&gt;/dev/null <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then</span>
+     <span class="c"># If JJ, show ONLY JJ info (suppress Git)</span>
+     <span class="nv">scm_info</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]\$</span><span class="s2">(jj_prompt_info)"</span>
+        
+ <span class="c"># 2. If not JJ, check if it is a Git repo</span>
+ <span class="k">elif</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="si">$(</span>git branch 2&gt; /dev/null<span class="si">)</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
+     <span class="c"># If Git, show " on " + Git info</span>
+     <span class="nv">scm_info</span><span class="o">=</span><span class="s2">" on </span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)"</span>
+ <span class="k">fi</span>
+
+ <span class="c"># Build the PS1 using the selected scm_info</span>
+ <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="k">${</span><span class="nv">scm_info</span><span class="k">}</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+
+ <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SEXY_THEME_SHOW_PYTHON</span><span class="s2">"</span> <span class="o">=</span> <span class="nb">true</span> <span class="o">]</span> <span class="p">;</span> <span class="k">then
+     </span><span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">WHITE</span><span class="k">}</span><span class="se">\]</span><span class="si">$(</span>env_prompt<span class="si">)</span><span class="s2"> "</span><span class="nv">$PS1</span>
+ <span class="k">fi</span>
+ <span class="o">}</span>
+</code></pre></div>    </div>
   </li>
 </ol>
 
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
-  <span class="nb">local </span><span class="nv">scm_info</span><span class="o">=</span><span class="s2">""</span>
+<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>
 
-  <span class="c"># 1. Check if it is a JJ repo first (Priority)</span>
-  <span class="c"># We use the 'is_jj_repo' function defined in your plugin.</span>
-  <span class="k">if </span><span class="nb">type </span>is_jj_repo &amp;&gt;/dev/null <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then</span>
-      <span class="c"># If JJ, show ONLY JJ info (suppress Git)</span>
-      <span class="nv">scm_info</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]\$</span><span class="s2">(jj_prompt_info)"</span>
-      
-  <span class="c"># 2. If not JJ, check if it is a Git repo</span>
-  <span class="k">elif</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="si">$(</span>git branch 2&gt; /dev/null<span class="si">)</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-      <span class="c"># If Git, show " on " + Git info</span>
-      <span class="nv">scm_info</span><span class="o">=</span><span class="s2">" on </span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)"</span>
-  <span class="k">fi</span>
+<hr />
 
-  <span class="c"># Build the PS1 using the selected scm_info</span>
-  <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="k">${</span><span class="nv">scm_info</span><span class="k">}</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
+<p><br />I’m also partial to the following <code class="language-plaintext highlighter-rouge">jj config edit --user</code>:</p>
 
-  <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SEXY_THEME_SHOW_PYTHON</span><span class="s2">"</span> <span class="o">=</span> <span class="nb">true</span> <span class="o">]</span> <span class="p">;</span> <span class="k">then
-    </span><span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">WHITE</span><span class="k">}</span><span class="se">\]</span><span class="si">$(</span>env_prompt<span class="si">)</span><span class="s2"> "</span><span class="nv">$PS1</span>
-  <span class="k">fi</span>
-<span class="o">}</span>
+<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">[</span><span class="n">revsets</span><span class="k">]</span>
+<span class="n">log</span> <span class="o">=</span><span class="w"> </span><span class="s">"present(@) | ancestors(mine() &amp; immutable_heads().., 2) | trunk()"</span>
 </code></pre></div></div>
 
-<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A bash-it plugin that surfaces jj repository state in your shell prompt.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/protobuf/modules/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/protobuf/modules/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/protobuf/modules/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
+<p>That does a good job showing me <em>my</em> commits when I <code class="language-plaintext highlighter-rouge">jj log</code>.</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A bash-it plugin that surfaces jj repository state in your shell prompt.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/protobuf/modules/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/protobuf/modules/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/protobuf/modules/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
 
 <h2 id="local-protos">Local protos</h2>
 
