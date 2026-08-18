@@ -1,50 +1,183 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-15T12:34:47-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Google styleguide code review skills</title><link href="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" rel="alternate" type="text/html" title="Google styleguide code review skills" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills</id><content type="html" xml:base="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"><![CDATA[<p>At Google, code changes require both a language readability and a domain review.
-The former is what you’d expect from a code review, whereas the latter was a
-review from someone[^1] very proficient in the language, intended to help drive best
-practices of that language across the company, and sometimes to drive
-conformance towards a certain style of the language.</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-18T09:38:26-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Graceful shutdown with HTTP &amp;amp; gRPC in Go</title><link href="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" rel="alternate" type="text/html" title="Graceful shutdown with HTTP &amp;amp; gRPC in Go" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown</id><content type="html" xml:base="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html"><![CDATA[<p>At Netflix, we run our containers on Kubernetes. Sometimes Kubernetes has to
+terminate your container, for any number of reasons: a new version is being
+deployed, or your container is being migrated elsewhere, or a scale down is
+happening, etc. As the <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">Kubernetes Pod Lifecycle docs</a>
+describes, the application in your container will be sent a SIGTERM/SIGINT, and
+then Kubernetes will for your application to gracefully shut down, and if it
+hasn’t done so after a small grace period, Kubernetes will SIGKILL it.</p>
 
-<p>Each language maintained a style guide: a list of best practice and style
-decisions, curated by the hundreds or thousands of readability experts for that
-language.</p>
+<p>So, I often find myself starting applications by writing graceful shutdown
+logic. And since most of the application programming that I do uses HTTP and
+gRPC servers, I end up writing graceful shutdown for those fairly frequently.</p>
 
-<p>I was a C++ and Go readability reviewer, and contributed some tidbits to the Go
-styleguide, as well as to many discussions about how to write Go. The styleguide
-was a great place to put best practices for the language, but also a great place
-to go to learn, since best practices were usually followed with an explanation.
-That way, newcomers to the language could ask for a change and simultaneously
-reference the styleguide as the high-quality explanation for the change request.</p>
+<p>I thought I’d codify that here for myself, and for anyone else interested in
+seeing how to gracefully shut down your gRPC and HTTP servers in Go.</p>
 
-<p>Google has <em>very</em> generously open sourced the styleguides for its languages at
-https://google.github.io/styleguide/. I highly encourage practitioners of any
-of the languages there to give them a read. I can greatly recommend the C++ and
-Go ones, but I’m sure the others are good too.</p>
+<p>The key parts are:</p>
 
-<p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
-it varying degrees of helpful to have Claude read those styleguides, and apply
-edits based on advice in them. It’s not been perfect - far from it,
-unfortunately. But it’s generally been better than not having it do so.</p>
+<ol>
+  <li>We use <code class="language-plaintext highlighter-rouge">signal.NotifyContext</code> to attach SIGINT/SIGTERM to context
+cancellation.</li>
+  <li>We then feed that context to an <code class="language-plaintext highlighter-rouge">errgroup.WithContext</code> to create context
+cancellation (SIGTERM/SIGINT) aware goroutines.</li>
+  <li>We spawn 2 goroutines to serve HTTP/gRPC, respectively.</li>
+  <li>We spawn 2 more HTTP/gRPC goroutines to watch for context cancellation
+(SIGTERM/SIGINT) and begin graceful shutdown.</li>
+  <li>We bound graceful shutdown to a timeout, after which we forcefully shut down.
+    <ul>
+      <li>This part is take it or leave it: Kubernetes will send SIGKILL after
+ whatever grace period it allows. So, you could just use that mechanism. I
+ personally prefer to own shutdown as much as I can, though, so that I can
+ make sure to call all the logs/metrics/tracing flushing.</li>
+    </ul>
+  </li>
+</ol>
 
-<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">main</span>
 
-<p>To install it, simply run the following inside a Claude session:</p>
+<span class="k">import</span> <span class="p">(</span>
+	<span class="s">"context"</span>
+	<span class="s">"errors"</span>
+	<span class="s">"flag"</span>
+	<span class="s">"fmt"</span>
+	<span class="s">"log/slog"</span>
+	<span class="s">"net"</span>
+	<span class="s">"net/http"</span>
+	<span class="s">"os"</span>
+	<span class="s">"os/signal"</span>
+	<span class="s">"syscall"</span>
+	<span class="s">"time"</span>
 
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/plugin marketplace add jeanbza/claude-extensions
-/plugin install google-go-review@jeanbza
-/reload-plugins
+	<span class="s">"golang.org/x/sync/errgroup"</span>
+	<span class="s">"google.golang.org/grpc"</span>
+
+	<span class="n">pb</span> <span class="s">"google.golang.org/grpc/examples/helloworld/helloworld"</span>
+<span class="p">)</span>
+
+<span class="k">var</span> <span class="n">httpPort</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">Int</span><span class="p">(</span><span class="s">"httpPort"</span><span class="p">,</span> <span class="m">7000</span><span class="p">,</span> <span class="s">"The port to serve HTTP on"</span><span class="p">)</span>
+<span class="k">var</span> <span class="n">grpcPort</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">Int</span><span class="p">(</span><span class="s">"grpcPort"</span><span class="p">,</span> <span class="m">8000</span><span class="p">,</span> <span class="s">"The port to server gRPC on"</span><span class="p">)</span>
+
+<span class="k">const</span> <span class="n">httpShutdownTimeout</span> <span class="o">=</span> <span class="m">5</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Second</span> <span class="c">// How long HTTP shutdown is allowed to take.</span>
+<span class="k">const</span> <span class="n">grpcShutdownTimeout</span> <span class="o">=</span> <span class="m">5</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Second</span> <span class="c">// How long gRPC shutdown is allowed to take.</span>
+
+<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
+
+	<span class="n">ctx</span><span class="p">,</span> <span class="n">stop</span> <span class="o">:=</span> <span class="n">signal</span><span class="o">.</span><span class="n">NotifyContext</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="n">syscall</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">syscall</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
+	<span class="k">defer</span> <span class="n">stop</span><span class="p">()</span>
+
+	<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">run</span><span class="p">(</span><span class="n">ctx</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"application exited with 1"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+		<span class="c">// Make sure to flush logs/metrics/traces/etc by this point! And keep in</span>
+		<span class="c">// mind that defer doesn't run when you os.Exit(1), so you might need</span>
+		<span class="c">// to invoke them manually depending on where you performed init.</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="m">1</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"application exited with 0"</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="n">run</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+	<span class="c">// Start with port binding.</span>
+	<span class="n">httpListener</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">":%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">httpPort</span><span class="p">))</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"http listen on port %d failed: %v"</span><span class="p">,</span> <span class="o">*</span><span class="n">httpPort</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">defer</span> <span class="n">httpListener</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+
+	<span class="n">grpcServerListener</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">":%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">grpcPort</span><span class="p">))</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"grpc listen on port %d failed: %v"</span><span class="p">,</span> <span class="o">*</span><span class="n">grpcPort</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">defer</span> <span class="n">grpcServerListener</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+
+	<span class="n">eg</span><span class="p">,</span> <span class="n">gCtx</span> <span class="o">:=</span> <span class="n">errgroup</span><span class="o">.</span><span class="n">WithContext</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+
+	<span class="c">// HTTP server.</span>
+	<span class="n">mux</span> <span class="o">:=</span> <span class="n">http</span><span class="o">.</span><span class="n">NewServeMux</span><span class="p">()</span>
+	<span class="n">mux</span><span class="o">.</span><span class="n">HandleFunc</span><span class="p">(</span><span class="s">"/foo"</span><span class="p">,</span> <span class="k">func</span><span class="p">(</span><span class="n">w</span> <span class="n">http</span><span class="o">.</span><span class="n">ResponseWriter</span><span class="p">,</span> <span class="n">_</span> <span class="o">*</span><span class="n">http</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="p">{</span>
+		<span class="c">// An example HTTP endpoint. But you might implement something else.</span>
+		<span class="k">if</span> <span class="n">_</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Fprintln</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="s">"bar"</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"/foo failed during write"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+	<span class="n">httpServer</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">http</span><span class="o">.</span><span class="n">Server</span><span class="p">{</span><span class="n">Handler</span><span class="o">:</span> <span class="n">mux</span><span class="p">}</span>
+
+	<span class="c">// Start HTTP serve and shutdown goroutines.</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// HTTP serve.</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"HTTP server starting at port :%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">httpPort</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">httpServer</span><span class="o">.</span><span class="n">Serve</span><span class="p">(</span><span class="n">httpListener</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">errors</span><span class="o">.</span><span class="n">Is</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">http</span><span class="o">.</span><span class="n">ErrServerClosed</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"HTTP server failed"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">err</span>
+		<span class="p">}</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"HTTP server shut down"</span><span class="p">)</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// HTTP graceful -&gt; forceful shutdown.</span>
+		<span class="o">&lt;-</span><span class="n">gCtx</span><span class="o">.</span><span class="n">Done</span><span class="p">()</span>
+		<span class="n">shutdownCtx</span><span class="p">,</span> <span class="n">shutdownCancel</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">WithTimeout</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="n">httpShutdownTimeout</span><span class="p">)</span>
+		<span class="k">defer</span> <span class="n">shutdownCancel</span><span class="p">()</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"HTTP server gracefully shutting down"</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">httpServer</span><span class="o">.</span><span class="n">Shutdown</span><span class="p">(</span><span class="n">shutdownCtx</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"HTTP server shutdown failed. forcefully shutting down"</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">Join</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">httpServer</span><span class="o">.</span><span class="n">Close</span><span class="p">())</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+
+	<span class="c">// gRPC server.</span>
+	<span class="n">grpcServer</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">NewServer</span><span class="p">()</span>
+	<span class="n">pb</span><span class="o">.</span><span class="n">RegisterGreeterServer</span><span class="p">(</span><span class="n">grpcServer</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fooService</span><span class="p">{})</span>
+
+	<span class="c">// Start gRPC serve and shutdown goroutines.</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// gRPC serve.</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"gRPC server starting at port :%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">grpcPort</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpcServer</span><span class="o">.</span><span class="n">Serve</span><span class="p">(</span><span class="n">grpcServerListener</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"gRPC server failed"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">err</span>
+		<span class="p">}</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"gRPC server shut down"</span><span class="p">)</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// gRPC graceful -&gt; forceful shutdown.</span>
+		<span class="o">&lt;-</span><span class="n">gCtx</span><span class="o">.</span><span class="n">Done</span><span class="p">()</span>
+		<span class="n">stopped</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="k">chan</span> <span class="k">struct</span><span class="p">{})</span>
+		<span class="k">go</span> <span class="k">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"gRPC server gracefully shutting down"</span><span class="p">)</span>
+			<span class="n">grpcServer</span><span class="o">.</span><span class="n">GracefulStop</span><span class="p">()</span>
+			<span class="nb">close</span><span class="p">(</span><span class="n">stopped</span><span class="p">)</span>
+		<span class="p">}()</span>
+		<span class="k">select</span> <span class="p">{</span>
+		<span class="k">case</span> <span class="o">&lt;-</span><span class="n">stopped</span><span class="o">:</span>
+		<span class="k">case</span> <span class="o">&lt;-</span><span class="n">time</span><span class="o">.</span><span class="n">After</span><span class="p">(</span><span class="n">grpcShutdownTimeout</span><span class="p">)</span><span class="o">:</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"gRPC server forcefully shutting down"</span><span class="p">)</span>
+			<span class="n">grpcServer</span><span class="o">.</span><span class="n">Stop</span><span class="p">()</span>
+			<span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"gRPC server was unable to gracefully shut down"</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+
+	<span class="c">// This returns nil if shutdown was successful, or the first err for any</span>
+	<span class="c">// shutdown issue.</span>
+	<span class="k">return</span> <span class="n">eg</span><span class="o">.</span><span class="n">Wait</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="k">type</span> <span class="n">fooService</span> <span class="k">struct</span> <span class="p">{</span>
+	<span class="n">pb</span><span class="o">.</span><span class="n">UnimplementedGreeterServer</span>
+<span class="p">}</span>
 </code></pre></div></div>
 
-<p>To use it, simply run <code class="language-plaintext highlighter-rouge">/jeanbza:google-go-review</code> (or cpp, or py - the other
-two I’ve added so far).</p>
+<p>Let’s run it and send it a SIGINT:</p>
 
-<p>There’s more for me to do, in terms of prompt engineering: Claude frequently
-does a poor job at <a href="https://google.github.io/styleguide/go/decisions#handle-errors">“Handle errors”</a>
-for example. (My pet theory is that Claude doesn’t bother to check the
-signatures) I’ll keep working on it, both for myself and whomever else wants to
-use it. I’m also working on a project to go a bit lower down the stack and try
-to inject some evaluators into its reward model with lifecycle hooks. But for
-now, I hope it’s helpful to you as it’s been for me!</p>]]></content><author><name></name></author><category term="ai" /><category term="claude" /><summary type="html"><![CDATA[A plugin containing skills for Claude to perform Google's styleguide reviews.]]></summary></entry><entry><title type="html">Reproducible, AI-driven large scale changes</title><link href="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html" rel="alternate" type="text/html" title="Reproducible, AI-driven large scale changes" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch</id><content type="html" xml:base="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html"><![CDATA[<p>Large scale code changes (LSCs) are groups of code changes that all try to
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>go run <span class="nb">.</span>
+2026/08/18 09:19:39 INFO HTTP server starting at port :7000
+2026/08/18 09:19:39 INFO gRPC server starting at port :8000
+^C2026/08/18 09:19:40 INFO gRPC server gracefully shutting down
+2026/08/18 09:19:40 INFO HTTP server gracefully shutting down
+2026/08/18 09:19:40 INFO HTTP server shut down
+2026/08/18 09:19:40 INFO gRPC server shut down
+2026/08/18 09:19:40 INFO application exited with 0
+</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="kubernetes" /><category term="grpc" /><summary type="html"><![CDATA[A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes.]]></summary></entry><entry><title type="html">Reproducible, AI-driven large scale changes</title><link href="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html" rel="alternate" type="text/html" title="Reproducible, AI-driven large scale changes" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch</id><content type="html" xml:base="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html"><![CDATA[<p>Large scale code changes (LSCs) are groups of code changes that all try to
 accomplish the same goal, across a huge number of codebases.</p>
 
 <p>For example, a common LSC is to migrate all codebases at a company from
@@ -216,7 +349,52 @@ everything else: by reading the source and the logs.</p>
       <p>4m is the rough median. Low end was 2m16s, high end was 8m53s. <a href="#fnref:2" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
-</div>]]></content><author><name></name></author><category term="ai" /><category term="infrastructure" /><summary type="html"><![CDATA[Making AI-driven large scale code changes deterministic, cheap, and auditable.]]></summary></entry><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/infrastructure/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
+</div>]]></content><author><name></name></author><category term="ai" /><category term="infrastructure" /><summary type="html"><![CDATA[Making AI-driven large scale code changes deterministic, cheap, and auditable.]]></summary></entry><entry><title type="html">Google styleguide code review skills</title><link href="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" rel="alternate" type="text/html" title="Google styleguide code review skills" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills</id><content type="html" xml:base="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"><![CDATA[<p>At Google, code changes require both a language readability and a domain review.
+The former is what you’d expect from a code review, whereas the latter was a
+review from someone[^1] very proficient in the language, intended to help drive best
+practices of that language across the company, and sometimes to drive
+conformance towards a certain style of the language.</p>
+
+<p>Each language maintained a style guide: a list of best practice and style
+decisions, curated by the hundreds or thousands of readability experts for that
+language.</p>
+
+<p>I was a C++ and Go readability reviewer, and contributed some tidbits to the Go
+styleguide, as well as to many discussions about how to write Go. The styleguide
+was a great place to put best practices for the language, but also a great place
+to go to learn, since best practices were usually followed with an explanation.
+That way, newcomers to the language could ask for a change and simultaneously
+reference the styleguide as the high-quality explanation for the change request.</p>
+
+<p>Google has <em>very</em> generously open sourced the styleguides for its languages at
+https://google.github.io/styleguide/. I highly encourage practitioners of any
+of the languages there to give them a read. I can greatly recommend the C++ and
+Go ones, but I’m sure the others are good too.</p>
+
+<p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
+it varying degrees of helpful to have Claude read those styleguides, and apply
+edits based on advice in them. It’s not been perfect - far from it,
+unfortunately. But it’s generally been better than not having it do so.</p>
+
+<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
+
+<p>To install it, simply run the following inside a Claude session:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/plugin marketplace add jeanbza/claude-extensions
+/plugin install google-go-review@jeanbza
+/reload-plugins
+</code></pre></div></div>
+
+<p>To use it, simply run <code class="language-plaintext highlighter-rouge">/jeanbza:google-go-review</code> (or cpp, or py - the other
+two I’ve added so far).</p>
+
+<p>There’s more for me to do, in terms of prompt engineering: Claude frequently
+does a poor job at <a href="https://google.github.io/styleguide/go/decisions#handle-errors">“Handle errors”</a>
+for example. (My pet theory is that Claude doesn’t bother to check the
+signatures) I’ll keep working on it, both for myself and whomever else wants to
+use it. I’m also working on a project to go a bit lower down the stack and try
+to inject some evaluators into its reward model with lifecycle hooks. But for
+now, I hope it’s helpful to you as it’s been for me!</p>]]></content><author><name></name></author><category term="ai" /><category term="claude" /><summary type="html"><![CDATA[A plugin containing skills for Claude to perform Google's styleguide reviews.]]></summary></entry><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/infrastructure/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
 built on Redis. It’s great in many ways, but also pretty expensive and complex.</p>
 
 <p>I’ll detail that another time. For now, I’m going to focus on a much simpler way
@@ -1201,204 +1379,4 @@ but may be interesting to others.</p>
 
 <p>The assertions are not particularly enjoyable, either. Groovy looks for any free boolean: whether a direct comparison like <code class="language-plaintext highlighter-rouge">1 == 1</code>, or a function that returns a boolean like <code class="language-plaintext highlighter-rouge">myOptional.isPresent</code>, and calls that an assertion. This is too magical and completely uncustomisable.</p>
 
-<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>]]></content><author><name></name></author><category term="testing" /><summary type="html"><![CDATA[Gripes with Spock and the Groovy test framework.]]></summary></entry><entry><title type="html">Running your own pkgsite</title><link href="http://localhost:4000/go/tooling/2025/01/29/pkgsite.html" rel="alternate" type="text/html" title="Running your own pkgsite" /><published>2025-01-29T00:55:23-07:00</published><updated>2025-01-29T00:55:23-07:00</updated><id>http://localhost:4000/go/tooling/2025/01/29/pkgsite</id><content type="html" xml:base="http://localhost:4000/go/tooling/2025/01/29/pkgsite.html"><![CDATA[<h2 id="who-this-is-for">Who this is for</h2>
-
-<p>Netflix has a private enterprise GitHub (and goproxy), which means that
-<a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
-to run pkgsite myself against this private enterprise GitHub.</p>
-
-<p>This article is for anyone else setting out to do similarly.</p>
-
-<h2 id="understanding-pkgsite">Understanding pkgsite</h2>
-
-<p><a href="https://github.com/golang/pkgsite/blob/master/doc/design.md">github.com/golang/pkgsite/blob/master/doc/design.md</a>
-describes pkgsite’s components.
-<a href="https://sum.golang.org/">sum.golang.org</a> describes the proxy and index that
-enables pkgsite.</p>
-
-<h3 id="code-layout">Code layout</h3>
-
-<p>pkgsite is canonically hosted at <a href="https://go.googlesource.com/pkgsite">go.googlesource.com/pkgsite</a>
-and can be cloned with <code class="language-plaintext highlighter-rouge">git clone https://go.googlesource.com/pkgsite</code>. The
-important parts for this article are,</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____cmd
-| |____frontend
-| | |____main.go
-| |____pkgsite
-| | |____main.go
-| |____worker
-| | |____main.go
-|____migrations
-| |____000073_create_documentation_symbols.down.sql
-| |____000018_add_module_version_states_status_index.up.sql
-| |____...etc...
-|____devtools
-| |____cmd
-| | |____seeddb
-| | | |____seed.txt
-| | | |____main.go
-</code></pre></div></div>
-
-<p>Let’s quickly describe each:</p>
-
-<ul>
-  <li><strong>cmd/pkgsite</strong>: The simplest and best documented. Running this lets you host
-a minimal pkgsite. It’s not connected to a database and doesn’t have a worker
-searching for modules. So, it doesn’t have a usable search feature. It’s useful
-for looking at one or two of your own projects but without search, it’s not good
-enough for an entire org.</li>
-  <li><strong>frontend</strong>: The web-serving frontend. When run, serves the frontend at
-<code class="language-plaintext highlighter-rouge">localhost:8080</code>.</li>
-  <li><strong>worker</strong>: The data-fetching backend that updates the database. When run,
-serves a work management page at <code class="language-plaintext highlighter-rouge">localhost:8000</code>.</li>
-  <li><strong>migrations</strong>: A series of sql scripts that when run in order will set up
-all the necessary tables and schemas.</li>
-  <li><strong>seeddb</strong>: A one-shot program that reads a <code class="language-plaintext highlighter-rouge">seed.txt</code> file, fetches modules
-listed there-in, and populates the database with the information.</li>
-</ul>
-
-<h3 id="modifiable-config">Modifiable config</h3>
-
-<p>The frontend and worker both use <code class="language-plaintext highlighter-rouge">internal/config/serverconfig/config.go</code>, which
-is modifiable with environment variables. Here’s a few you may care about:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Proxy config.
-ProxyURL:   GetEnv("GO_MODULE_PROXY_URL", "https://proxy.golang.org"),
-
-# Database config.
-DBHost:               chooseOne(GetEnv("GO_DISCOVERY_DATABASE_HOST", "localhost")),
-DBUser:               GetEnv("GO_DISCOVERY_DATABASE_USER", "postgres"),
-DBPassword:           os.Getenv("GO_DISCOVERY_DATABASE_PASSWORD"),
-DBSecondaryHost:      chooseOne(os.Getenv("GO_DISCOVERY_DATABASE_SECONDARY_HOST")),
-DBPort:               GetEnv("GO_DISCOVERY_DATABASE_PORT", "5432"),
-DBName:               GetEnv("GO_DISCOVERY_DATABASE_NAME", "discovery-db"),
-</code></pre></div></div>
-
-<h2 id="running-pkgsite">Running pkgsite</h2>
-
-<h3 id="a-simple-pkgsite">A simple pkgsite</h3>
-
-<p>You can run a simple pkgsite with <code class="language-plaintext highlighter-rouge">go run cmd/pkgsite/main.go -proxy=URL</code>, but
-it only hosts documentation for a single repo. So, we’ll move on from this.</p>
-
-<h3 id="standing-up-a-real-pkgsite">Standing up a real pkgsite</h3>
-
-<p>We’ll need five things running:</p>
-
-<ul>
-  <li>A go proxy server.</li>
-  <li>A go index server.</li>
-  <li>A postgres database.</li>
-  <li>The pkgsite frontend.</li>
-  <li>The pkgsite worker.</li>
-</ul>
-
-<h4 id="proxy">Proxy</h4>
-
-<p>We’ll assume you already have a proxy server. But if not, check out
-<a href="https://github.com/goproxy/goproxy">github.com/goproxy/goproxy</a> as one
-option.</p>
-
-<h4 id="index">Index</h4>
-
-<p>A simple index server is given at
-<a href="https://github.com/jeanbza/golang-index">github.com/jeanbza/golang-index</a>. You
-may wish to build your own, though. Its role is simple, and described at
-<a href="https://github.com/golang/pkgsite/blob/master/doc/design.md">github.com/golang/pkgsite/blob/master/doc/design.md</a>.</p>
-
-<h4 id="postgres">Postgres</h4>
-
-<p>There are numerous ways to run a postgres database. Here’s something quick,
-written for a Mac, to get you started:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>brew <span class="nb">install </span>postgresql@17
-<span class="c"># Note: Don't forget the part where homebrew asks you to add to your PATH.</span>
-<span class="c"># Note: homebrew may make $USERNAME the default username, not "postgres".</span>
-brew services start postgresql@17
-createdb discovery-db
-
-<span class="c"># Now, let's set up the tables necessary by running all the migrations.</span>
-go <span class="nb">install</span> <span class="nt">-tags</span> <span class="s1">'postgres'</span> github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-migrate <span class="nt">-source</span> file:migrations <span class="nt">-database</span> <span class="s2">"postgresql://</span><span class="nv">$GO_DISCOVERY_DATABASE_USER</span><span class="s2">@127.0.0.1:5432/discovery-db?sslmode=disable"</span> up
-</code></pre></div></div>
-
-<p>Check out your tables with,</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>psql <span class="nt">-d</span> discovery-db
-<span class="se">\d</span>t
-</code></pre></div></div>
-
-<h4 id="frontend">Frontend</h4>
-
-<p>Now, let’s run the frontend:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>pkgsite
-<span class="c"># You may need to set GO_DISCOVERY_DATABASE_USER=myusername.</span>
-go run cmd/frontend/main.go <span class="se">\</span>
-    <span class="nt">-local</span> <span class="se">\</span>
-    <span class="nt">-proxy_url</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
-    <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
-</code></pre></div></div>
-
-<h4 id="worker">Worker</h4>
-
-<p>Finally, let’s run the worker:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># You may need to set GO_DISCOVERY_DATABASE_USER=myusername.</span>
-<span class="nv">GO_MODULE_PROXY_URL</span><span class="o">=</span>https://url-to-my-proxy <span class="se">\</span>
-    <span class="nv">GO_MODULE_INDEX_URL</span><span class="o">=</span>https://url-to-my-index <span class="se">\</span>
-    go run cmd/worker/main.go <span class="se">\</span>
-    <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
-</code></pre></div></div>
-
-<p>Note: If you’re using <code class="language-plaintext highlighter-rouge">github.com/jeanbza/golang-index</code>, the index runs (as of
-this writing) at <code class="language-plaintext highlighter-rouge">http://localhost:8081</code>. You’ll note this is raw http. Trying
-to run the worker with a non-TLS’d GO_MODULE_INDEX_URL will result in an error.
-Get around this by making the worker accept a non-https index by commenting out
-the https validation at <code class="language-plaintext highlighter-rouge">pkgsite/internal/index/index.go</code>’s <code class="language-plaintext highlighter-rouge">New()</code> function.</p>
-
-<h3 id="poke-the-worker">Poke the worker</h3>
-
-<p>The worker will periodically do work, but you can poke it by either visiting
-http://localhost:8000 and clicking the poll/enqueue buttons, or by something
-like,</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Assuming the worker is running at localhost:8000.</span>
-<span class="k">while </span><span class="nb">true</span> <span class="p">;</span> <span class="k">do </span><span class="nb">date</span> <span class="o">&amp;&amp;</span> curl localhost:8000/enqueue <span class="o">&amp;&amp;</span> curl localhost:8000/poll <span class="o">&amp;&amp;</span> <span class="nb">sleep </span>20<span class="p">;</span> <span class="k">done</span><span class="p">;</span>
-</code></pre></div></div>
-
-<h3 id="see-the-results">See the results</h3>
-
-<p>Check the “modules” page at http://localhost:8000 to see how the worker is
-getting along.</p>
-
-<p>As it progresses, it populates the postgres database. You should begin to start
-seeing modules through the frontend. To do so, navigate to
-http://localhost:8080, where the frontend is hosted.</p>
-
-<h2 id="useful-debugging">Useful debugging</h2>
-
-<p>I found the following db commands useful:</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">psql</span> <span class="o">-</span><span class="n">d</span> <span class="n">discovery</span><span class="o">-</span><span class="n">db</span>
-
-<span class="o">#</span> <span class="n">List</span> <span class="n">tables</span><span class="p">.</span>
-<span class="err">\</span><span class="n">dt</span>
-
-<span class="o">#</span> <span class="k">Show</span> <span class="n">upcoming</span> <span class="n">processing</span><span class="p">.</span>
-<span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="n">module_version_states</span><span class="p">;</span>
-<span class="k">SELECT</span> <span class="n">module_path</span><span class="p">,</span> <span class="n">last_processed_at</span><span class="p">,</span> <span class="n">next_processed_after</span> <span class="k">FROM</span> <span class="n">module_version_states</span><span class="p">;</span>
-
-<span class="o">#</span> <span class="k">Update</span> <span class="n">processing</span> <span class="nb">time</span><span class="p">.</span>
-<span class="k">UPDATE</span> <span class="n">module_version_states</span> <span class="k">SET</span> <span class="n">next_processed_after</span> <span class="o">=</span> <span class="n">next_processed_after</span> <span class="o">-</span> <span class="n">INTERVAL</span> <span class="s1">'2 HOUR'</span><span class="p">;</span>
-
-<span class="o">#</span> <span class="n">How</span> <span class="n">many</span> <span class="n">we</span> <span class="n">know</span> <span class="n">about</span><span class="p">.</span>
-<span class="k">SELECT</span> <span class="k">DISTINCT</span><span class="p">(</span><span class="n">module_path</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">modules</span><span class="p">;</span>
-<span class="k">SELECT</span> <span class="k">COUNT</span><span class="p">(</span><span class="k">version</span><span class="p">)</span> <span class="k">FROM</span> <span class="n">modules</span><span class="p">;</span>
-
-<span class="o">#</span> <span class="k">Drop</span> <span class="n">it</span> <span class="k">all</span> <span class="k">and</span> <span class="k">start</span> <span class="n">over</span><span class="p">.</span>
-<span class="k">TRUNCATE</span> <span class="n">documentation</span><span class="p">,</span> <span class="n">documentation_symbols</span><span class="p">,</span> <span class="n">excluded_prefixes</span><span class="p">,</span> <span class="n">imports</span><span class="p">,</span> <span class="n">imports_unique</span><span class="p">,</span> <span class="n">latest_module_versions</span><span class="p">,</span> <span class="n">legacy_documentation_symbols</span><span class="p">,</span> <span class="n">licenses</span><span class="p">,</span> <span class="n">module_version_states</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">package_symbols</span><span class="p">,</span> <span class="n">package_version_states</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">readmes</span><span class="p">,</span> <span class="n">search_documents</span><span class="p">,</span> <span class="n">symbol_history</span><span class="p">,</span> <span class="n">symbol_names</span><span class="p">,</span> <span class="n">symbol_search_documents</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">version_map</span><span class="p">;</span>
-</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="tooling" /><summary type="html"><![CDATA[Running pkgsite yourself against a private enterprise GitHub and goproxy.]]></summary></entry></feed>
+<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>]]></content><author><name></name></author><category term="testing" /><summary type="html"><![CDATA[Gripes with Spock and the Groovy test framework.]]></summary></entry></feed>

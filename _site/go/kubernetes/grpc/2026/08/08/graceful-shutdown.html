@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.9.0 -->
+<title>Graceful shutdown with HTTP &amp; gRPC in Go | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Graceful shutdown with HTTP &amp; gRPC in Go" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes." />
+<meta name="twitter:description" property="og:description" content="A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes." />
+<link rel="canonical" href="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" />
+<meta property="og:url" content="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-08T02:55:23-06:00" />
+<meta property="article:modified_time" content="2026-08-08T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Graceful shutdown with HTTP &amp; gRPC in Go" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-08-08T02:55:23-06:00","datePublished":"2026-08-08T02:55:23-06:00","description":"A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes.","headline":"Graceful shutdown with HTTP &amp; gRPC in Go","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html"},"url":"http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/categories/">Categories</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <ul id="toc" class="section-nav">
+<li class="toc-entry toc-h1"><a href="#graceful-shutdown-with-http--grpc-in-go">Graceful shutdown with HTTP &amp; gRPC in Go</a></li>
+</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">
+<a class="anchor" href="#graceful-shutdown-with-http--grpc-in-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful shutdown with HTTP &amp; gRPC in Go</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-08-08T02:55:23-06:00" itemprop="datePublished">Aug 8, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>At Netflix, we run our containers on Kubernetes. Sometimes Kubernetes has to
+terminate your container, for any number of reasons: a new version is being
+deployed, or your container is being migrated elsewhere, or a scale down is
+happening, etc. As the <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">Kubernetes Pod Lifecycle docs</a>
+describes, the application in your container will be sent a SIGTERM/SIGINT, and
+then Kubernetes will for your application to gracefully shut down, and if it
+hasn’t done so after a small grace period, Kubernetes will SIGKILL it.</p>
+
+<p>So, I often find myself starting applications by writing graceful shutdown
+logic. And since most of the application programming that I do uses HTTP and
+gRPC servers, I end up writing graceful shutdown for those fairly frequently.</p>
+
+<p>I thought I’d codify that here for myself, and for anyone else interested in
+seeing how to gracefully shut down your gRPC and HTTP servers in Go.</p>
+
+<p>The key parts are:</p>
+
+<ol>
+  <li>We use <code class="language-plaintext highlighter-rouge">signal.NotifyContext</code> to attach SIGINT/SIGTERM to context
+cancellation.</li>
+  <li>We then feed that context to an <code class="language-plaintext highlighter-rouge">errgroup.WithContext</code> to create context
+cancellation (SIGTERM/SIGINT) aware goroutines.</li>
+  <li>We spawn 2 goroutines to serve HTTP/gRPC, respectively.</li>
+  <li>We spawn 2 more HTTP/gRPC goroutines to watch for context cancellation
+(SIGTERM/SIGINT) and begin graceful shutdown.</li>
+  <li>We bound graceful shutdown to a timeout, after which we forcefully shut down.
+    <ul>
+      <li>This part is take it or leave it: Kubernetes will send SIGKILL after
+ whatever grace period it allows. So, you could just use that mechanism. I
+ personally prefer to own shutdown as much as I can, though, so that I can
+ make sure to call all the logs/metrics/tracing flushing.</li>
+    </ul>
+  </li>
+</ol>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">main</span>
+
+<span class="k">import</span> <span class="p">(</span>
+	<span class="s">"context"</span>
+	<span class="s">"errors"</span>
+	<span class="s">"flag"</span>
+	<span class="s">"fmt"</span>
+	<span class="s">"log/slog"</span>
+	<span class="s">"net"</span>
+	<span class="s">"net/http"</span>
+	<span class="s">"os"</span>
+	<span class="s">"os/signal"</span>
+	<span class="s">"syscall"</span>
+	<span class="s">"time"</span>
+
+	<span class="s">"golang.org/x/sync/errgroup"</span>
+	<span class="s">"google.golang.org/grpc"</span>
+
+	<span class="n">pb</span> <span class="s">"google.golang.org/grpc/examples/helloworld/helloworld"</span>
+<span class="p">)</span>
+
+<span class="k">var</span> <span class="n">httpPort</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">Int</span><span class="p">(</span><span class="s">"httpPort"</span><span class="p">,</span> <span class="m">7000</span><span class="p">,</span> <span class="s">"The port to serve HTTP on"</span><span class="p">)</span>
+<span class="k">var</span> <span class="n">grpcPort</span> <span class="o">=</span> <span class="n">flag</span><span class="o">.</span><span class="n">Int</span><span class="p">(</span><span class="s">"grpcPort"</span><span class="p">,</span> <span class="m">8000</span><span class="p">,</span> <span class="s">"The port to server gRPC on"</span><span class="p">)</span>
+
+<span class="k">const</span> <span class="n">httpShutdownTimeout</span> <span class="o">=</span> <span class="m">5</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Second</span> <span class="c">// How long HTTP shutdown is allowed to take.</span>
+<span class="k">const</span> <span class="n">grpcShutdownTimeout</span> <span class="o">=</span> <span class="m">5</span> <span class="o">*</span> <span class="n">time</span><span class="o">.</span><span class="n">Second</span> <span class="c">// How long gRPC shutdown is allowed to take.</span>
+
+<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
+
+	<span class="n">ctx</span><span class="p">,</span> <span class="n">stop</span> <span class="o">:=</span> <span class="n">signal</span><span class="o">.</span><span class="n">NotifyContext</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="n">syscall</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">syscall</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
+	<span class="k">defer</span> <span class="n">stop</span><span class="p">()</span>
+
+	<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">run</span><span class="p">(</span><span class="n">ctx</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"application exited with 1"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+		<span class="c">// Make sure to flush logs/metrics/traces/etc by this point! And keep in</span>
+		<span class="c">// mind that defer doesn't run when you os.Exit(1), so you might need</span>
+		<span class="c">// to invoke them manually depending on where you performed init.</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="m">1</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"application exited with 0"</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="n">run</span><span class="p">(</span><span class="n">ctx</span> <span class="n">context</span><span class="o">.</span><span class="n">Context</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+	<span class="c">// Start with port binding.</span>
+	<span class="n">httpListener</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">":%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">httpPort</span><span class="p">))</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"http listen on port %d failed: %v"</span><span class="p">,</span> <span class="o">*</span><span class="n">httpPort</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">defer</span> <span class="n">httpListener</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+
+	<span class="n">grpcServerListener</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">net</span><span class="o">.</span><span class="n">Listen</span><span class="p">(</span><span class="s">"tcp"</span><span class="p">,</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">":%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">grpcPort</span><span class="p">))</span>
+	<span class="k">if</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"grpc listen on port %d failed: %v"</span><span class="p">,</span> <span class="o">*</span><span class="n">grpcPort</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">defer</span> <span class="n">grpcServerListener</span><span class="o">.</span><span class="n">Close</span><span class="p">()</span>
+
+	<span class="n">eg</span><span class="p">,</span> <span class="n">gCtx</span> <span class="o">:=</span> <span class="n">errgroup</span><span class="o">.</span><span class="n">WithContext</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+
+	<span class="c">// HTTP server.</span>
+	<span class="n">mux</span> <span class="o">:=</span> <span class="n">http</span><span class="o">.</span><span class="n">NewServeMux</span><span class="p">()</span>
+	<span class="n">mux</span><span class="o">.</span><span class="n">HandleFunc</span><span class="p">(</span><span class="s">"/foo"</span><span class="p">,</span> <span class="k">func</span><span class="p">(</span><span class="n">w</span> <span class="n">http</span><span class="o">.</span><span class="n">ResponseWriter</span><span class="p">,</span> <span class="n">_</span> <span class="o">*</span><span class="n">http</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="p">{</span>
+		<span class="c">// An example HTTP endpoint. But you might implement something else.</span>
+		<span class="k">if</span> <span class="n">_</span><span class="p">,</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Fprintln</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="s">"bar"</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"/foo failed during write"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+	<span class="n">httpServer</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">http</span><span class="o">.</span><span class="n">Server</span><span class="p">{</span><span class="n">Handler</span><span class="o">:</span> <span class="n">mux</span><span class="p">}</span>
+
+	<span class="c">// Start HTTP serve and shutdown goroutines.</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// HTTP serve.</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"HTTP server starting at port :%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">httpPort</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">httpServer</span><span class="o">.</span><span class="n">Serve</span><span class="p">(</span><span class="n">httpListener</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">errors</span><span class="o">.</span><span class="n">Is</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">http</span><span class="o">.</span><span class="n">ErrServerClosed</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"HTTP server failed"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">err</span>
+		<span class="p">}</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"HTTP server shut down"</span><span class="p">)</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// HTTP graceful -&gt; forceful shutdown.</span>
+		<span class="o">&lt;-</span><span class="n">gCtx</span><span class="o">.</span><span class="n">Done</span><span class="p">()</span>
+		<span class="n">shutdownCtx</span><span class="p">,</span> <span class="n">shutdownCancel</span> <span class="o">:=</span> <span class="n">context</span><span class="o">.</span><span class="n">WithTimeout</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="n">httpShutdownTimeout</span><span class="p">)</span>
+		<span class="k">defer</span> <span class="n">shutdownCancel</span><span class="p">()</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"HTTP server gracefully shutting down"</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">httpServer</span><span class="o">.</span><span class="n">Shutdown</span><span class="p">(</span><span class="n">shutdownCtx</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"HTTP server shutdown failed. forcefully shutting down"</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">errors</span><span class="o">.</span><span class="n">Join</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">httpServer</span><span class="o">.</span><span class="n">Close</span><span class="p">())</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+
+	<span class="c">// gRPC server.</span>
+	<span class="n">grpcServer</span> <span class="o">:=</span> <span class="n">grpc</span><span class="o">.</span><span class="n">NewServer</span><span class="p">()</span>
+	<span class="n">pb</span><span class="o">.</span><span class="n">RegisterGreeterServer</span><span class="p">(</span><span class="n">grpcServer</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fooService</span><span class="p">{})</span>
+
+	<span class="c">// Start gRPC serve and shutdown goroutines.</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// gRPC serve.</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="n">fmt</span><span class="o">.</span><span class="n">Sprintf</span><span class="p">(</span><span class="s">"gRPC server starting at port :%d"</span><span class="p">,</span> <span class="o">*</span><span class="n">grpcPort</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">err</span> <span class="o">:=</span> <span class="n">grpcServer</span><span class="o">.</span><span class="n">Serve</span><span class="p">(</span><span class="n">grpcServerListener</span><span class="p">);</span> <span class="n">err</span> <span class="o">!=</span> <span class="no">nil</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"gRPC server failed"</span><span class="p">,</span> <span class="s">"error"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+			<span class="k">return</span> <span class="n">err</span>
+		<span class="p">}</span>
+		<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"gRPC server shut down"</span><span class="p">)</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+	<span class="n">eg</span><span class="o">.</span><span class="n">Go</span><span class="p">(</span><span class="k">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="c">// gRPC graceful -&gt; forceful shutdown.</span>
+		<span class="o">&lt;-</span><span class="n">gCtx</span><span class="o">.</span><span class="n">Done</span><span class="p">()</span>
+		<span class="n">stopped</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="k">chan</span> <span class="k">struct</span><span class="p">{})</span>
+		<span class="k">go</span> <span class="k">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Info</span><span class="p">(</span><span class="s">"gRPC server gracefully shutting down"</span><span class="p">)</span>
+			<span class="n">grpcServer</span><span class="o">.</span><span class="n">GracefulStop</span><span class="p">()</span>
+			<span class="nb">close</span><span class="p">(</span><span class="n">stopped</span><span class="p">)</span>
+		<span class="p">}()</span>
+		<span class="k">select</span> <span class="p">{</span>
+		<span class="k">case</span> <span class="o">&lt;-</span><span class="n">stopped</span><span class="o">:</span>
+		<span class="k">case</span> <span class="o">&lt;-</span><span class="n">time</span><span class="o">.</span><span class="n">After</span><span class="p">(</span><span class="n">grpcShutdownTimeout</span><span class="p">)</span><span class="o">:</span>
+			<span class="n">slog</span><span class="o">.</span><span class="n">Error</span><span class="p">(</span><span class="s">"gRPC server forcefully shutting down"</span><span class="p">)</span>
+			<span class="n">grpcServer</span><span class="o">.</span><span class="n">Stop</span><span class="p">()</span>
+			<span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">Errorf</span><span class="p">(</span><span class="s">"gRPC server was unable to gracefully shut down"</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="no">nil</span>
+	<span class="p">})</span>
+
+	<span class="c">// This returns nil if shutdown was successful, or the first err for any</span>
+	<span class="c">// shutdown issue.</span>
+	<span class="k">return</span> <span class="n">eg</span><span class="o">.</span><span class="n">Wait</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="k">type</span> <span class="n">fooService</span> <span class="k">struct</span> <span class="p">{</span>
+	<span class="n">pb</span><span class="o">.</span><span class="n">UnimplementedGreeterServer</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Let’s run it and send it a SIGINT:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>go run <span class="nb">.</span>
+2026/08/18 09:19:39 INFO HTTP server starting at port :7000
+2026/08/18 09:19:39 INFO gRPC server starting at port :8000
+^C2026/08/18 09:19:40 INFO gRPC server gracefully shutting down
+2026/08/18 09:19:40 INFO HTTP server gracefully shutting down
+2026/08/18 09:19:40 INFO HTTP server shut down
+2026/08/18 09:19:40 INFO gRPC server shut down
+2026/08/18 09:19:40 INFO application exited with 0
+</code></pre></div></div>
+
+  </div>
+<a class="u-url" href="/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
