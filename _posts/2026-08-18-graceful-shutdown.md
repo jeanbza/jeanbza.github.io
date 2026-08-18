@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Graceful shutdown with HTTP & gRPC in Go"
+title:  "Graceful shutdown with HTTP and gRPC in Go"
 date:   2026-08-08 02:55:23 -0600
 categories: [go, kubernetes, grpc]
 description: "A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes."

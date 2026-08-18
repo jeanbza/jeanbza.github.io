@@ -27,7 +27,7 @@ description: >-
   This is my personal website. The views represented here are my own, and do not
   represent my employer.
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "jeanbza.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+url: "https://jeanbza.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  jeanbza
 
 # Build settings

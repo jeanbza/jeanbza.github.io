@@ -1,0 +1,31 @@
+{%- comment -%}
+  Local override of minima 2.5.2's _includes/head.html.
+
+  Two reasons this file exists rather than us using the theme's copy:
+
+  1. Analytics. minima 2.5.2 predates the `custom-head.html` hook (added in
+     minima 3.x), so shadowing the whole include is the only way to get a tag
+     into <head>.
+  2. The theme's built-in `site.google_analytics` knob emits legacy
+     analytics.js (Universal Analytics), which Google shut down in July 2023.
+     It is a dead script tag, so it is dropped here entirely.
+
+  Keep the rest in sync with the gem if minima is ever upgraded:
+  `bundle info minima --path`/_includes/head.html
+{%- endcomment -%}
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {%- seo -%}
+  <link rel="stylesheet" href="{{ "/assets/main.css" | relative_url }}">
+  {%- feed_meta -%}
+  {%- comment -%}
+    GoatCounter. Guarded on the environment so `jekyll serve` during writing
+    does not count as traffic; GitHub Pages sets JEKYLL_ENV=production.
+  {%- endcomment -%}
+  {%- if jekyll.environment == 'production' -%}
+    <script data-goatcounter="https://jeanbza.goatcounter.com/count"
+            async src="https://gc.zgo.at/count.js"></script>
+  {%- endif -%}
+</head>
