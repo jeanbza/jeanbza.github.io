@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-18T09:42:24-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-18T09:44:08-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Graceful shutdown with HTTP &amp;amp; gRPC in Go</title><link href="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" rel="alternate" type="text/html" title="Graceful shutdown with HTTP &amp;amp; gRPC in Go" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown</id><content type="html" xml:base="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html"><![CDATA[<p>At Netflix, we run our containers on Kubernetes. Sometimes Kubernetes has to
 terminate your container, for any number of reasons: a new version is being
 deployed, or your container is being migrated elsewhere, or a scale down is
 happening, etc. As the <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">Kubernetes Pod Lifecycle docs</a>
 describes, the application in your container will be sent a SIGTERM/SIGINT, and
-then Kubernetes will for your application to gracefully shut down, and if it
-hasn’t done so after a small grace period, Kubernetes will SIGKILL it.</p>
+then Kubernetes will wait for your application to gracefully shut down, and if
+it hasn’t done so after a small grace period, Kubernetes will SIGKILL it.</p>
 
 <p>So, I often find myself starting applications by writing graceful shutdown
 logic. And since most of the application programming that I do uses HTTP and

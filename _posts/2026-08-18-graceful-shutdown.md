@@ -12,8 +12,8 @@ terminate your container, for any number of reasons: a new version is being
 deployed, or your container is being migrated elsewhere, or a scale down is
 happening, etc. As the [Kubernetes Pod Lifecycle docs](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
 describes, the application in your container will be sent a SIGTERM/SIGINT, and
-then Kubernetes will for your application to gracefully shut down, and if it
-hasn't done so after a small grace period, Kubernetes will SIGKILL it.
+then Kubernetes will wait for your application to gracefully shut down, and if
+it hasn't done so after a small grace period, Kubernetes will SIGKILL it.
 
 So, I often find myself starting applications by writing graceful shutdown
 logic. And since most of the application programming that I do uses HTTP and
