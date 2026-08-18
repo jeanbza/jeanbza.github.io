@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-18T09:44:08-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-18T09:46:56-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Graceful shutdown with HTTP &amp;amp; gRPC in Go</title><link href="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" rel="alternate" type="text/html" title="Graceful shutdown with HTTP &amp;amp; gRPC in Go" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown</id><content type="html" xml:base="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html"><![CDATA[<p>At Netflix, we run our containers on Kubernetes. Sometimes Kubernetes has to
 terminate your container, for any number of reasons: a new version is being
 deployed, or your container is being migrated elsewhere, or a scale down is
@@ -20,10 +20,17 @@ seeing how to gracefully shut down your gRPC and HTTP servers in Go.</p>
   <li>We use <code class="language-plaintext highlighter-rouge">signal.NotifyContext</code> to attach SIGINT/SIGTERM to context
 cancellation.</li>
   <li>We then feed that context to an <code class="language-plaintext highlighter-rouge">errgroup.WithContext</code> to create context
-cancellation (SIGTERM/SIGINT) aware goroutines.</li>
-  <li>We spawn 2 goroutines to serve HTTP/gRPC, respectively.</li>
-  <li>We spawn 2 more HTTP/gRPC goroutines to watch for context cancellation
-(SIGTERM/SIGINT) and begin graceful shutdown.</li>
+cancellation aware goroutines.</li>
+  <li>We use that errgroup to spawn goroutines to serve HTTP/gRPC.</li>
+  <li>We use that errgroup to spawn HTTP/gRPC goroutines that watch for context
+cancellation and begin graceful shutdown.
+    <ul>
+      <li>Apart from the cancellation provided by <code class="language-plaintext highlighter-rouge">signal.NotifyContext</code>, any other
+ reason for cancellation also triggers graceful shutdown. So this is a nice
+ generic way to wire up your application for shutdown due to any reason you
+ might care to express.</li>
+    </ul>
+  </li>
   <li>We bound graceful shutdown to a timeout, after which we forcefully shut down.
     <ul>
       <li>This part is take it or leave it: Kubernetes will send SIGKILL after

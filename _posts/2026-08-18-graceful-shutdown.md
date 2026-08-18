@@ -25,12 +25,16 @@ seeing how to gracefully shut down your gRPC and HTTP servers in Go.
 The key parts are:
 
 1. We use `signal.NotifyContext` to attach SIGINT/SIGTERM to context
-   cancellation.
+cancellation.
 1. We then feed that context to an `errgroup.WithContext` to create context
-cancellation (SIGTERM/SIGINT) aware goroutines.
-1. We spawn 2 goroutines to serve HTTP/gRPC, respectively.
-1. We spawn 2 more HTTP/gRPC goroutines to watch for context cancellation
-(SIGTERM/SIGINT) and begin graceful shutdown.
+cancellation aware goroutines.
+1. We use that errgroup to spawn goroutines to serve HTTP/gRPC.
+1. We use that errgroup to spawn HTTP/gRPC goroutines that watch for context
+cancellation and begin graceful shutdown.
+	- Apart from the cancellation provided by `signal.NotifyContext`, any other
+	reason for cancellation also triggers graceful shutdown. So this is a nice
+	generic way to wire up your application for shutdown due to any reason you
+	might care to express.
 1. We bound graceful shutdown to a timeout, after which we forcefully shut down.
     - This part is take it or leave it: Kubernetes will send SIGKILL after
     whatever grace period it allows. So, you could just use that mechanism. I
