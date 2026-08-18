@@ -105,7 +105,6 @@ func run(ctx context.Context) error {
 	// HTTP server.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/foo", func(w http.ResponseWriter, _ *http.Request) {
-		// An example HTTP endpoint. But you might implement something else.
 		if _, err := fmt.Fprintln(w, "bar"); err != nil {
 			slog.Error("/foo failed during write", "error", err)
 		}
