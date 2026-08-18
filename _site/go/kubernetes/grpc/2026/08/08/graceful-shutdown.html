@@ -123,6 +123,7 @@ cancellation and begin graceful shutdown.
 <span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
 	<span class="n">flag</span><span class="o">.</span><span class="n">Parse</span><span class="p">()</span>
 
+	<span class="c">// SIGINT/SIGTERM signals to our application will result in the ctx being cancelled.</span>
 	<span class="n">ctx</span><span class="p">,</span> <span class="n">stop</span> <span class="o">:=</span> <span class="n">signal</span><span class="o">.</span><span class="n">NotifyContext</span><span class="p">(</span><span class="n">context</span><span class="o">.</span><span class="n">Background</span><span class="p">(),</span> <span class="n">syscall</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">syscall</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">)</span>
 	<span class="k">defer</span> <span class="n">stop</span><span class="p">()</span>
 

@@ -72,6 +72,7 @@ const grpcShutdownTimeout = 5 * time.Second // How long gRPC shutdown is allowed
 func main() {
 	flag.Parse()
 
+	// SIGINT/SIGTERM signals to our application will result in the ctx being cancelled.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
