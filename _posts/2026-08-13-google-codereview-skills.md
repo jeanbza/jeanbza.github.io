@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Google styleguide code review skills"
-date:   2026-08-08 02:55:23 -0600
+date:   2026-08-13 02:55:23 -0600
 categories: [ai, claude]
 description: "A plugin containing skills for Claude to perform Google's styleguide reviews."
 toc: true

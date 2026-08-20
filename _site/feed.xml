@@ -1,5 +1,183 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-18T13:52:33-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Graceful shutdown with HTTP and gRPC in Go</title><link href="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html" rel="alternate" type="text/html" title="Graceful shutdown with HTTP and gRPC in Go" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown</id><content type="html" xml:base="http://localhost:4000/go/kubernetes/grpc/2026/08/08/graceful-shutdown.html"><![CDATA[<p>At Netflix, we run our containers on Kubernetes. Sometimes Kubernetes has to
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-19T21:07:21-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A generic heap in Go</title><link href="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html" rel="alternate" type="text/html" title="A generic heap in Go" /><published>2026-08-19T02:55:23-06:00</published><updated>2026-08-19T02:55:23-06:00</updated><id>http://localhost:4000/go/heap/2026/08/19/go-generic-heap</id><content type="html" xml:base="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html"><![CDATA[<p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
+package with generics instead of an interface.</p>
+
+<h3 id="usage-without-generic-methods">Usage without generic methods</h3>
+
+<p><a href="https://go.dev/play/p/3-QCvtyZVH1">Here’s how a user uses heap today:</a></p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">main</span>
+
+<span class="k">import</span> <span class="p">(</span>
+	<span class="s">"container/heap"</span>
+	<span class="s">"fmt"</span>
+<span class="p">)</span>
+
+<span class="k">type</span> <span class="n">IntHeap</span> <span class="p">[]</span><span class="kt">int</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="n">IntHeap</span><span class="p">)</span> <span class="n">Len</span><span class="p">()</span> <span class="kt">int</span>           <span class="p">{</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="p">}</span>
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="n">IntHeap</span><span class="p">)</span> <span class="n">Less</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span> <span class="k">return</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">h</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="p">}</span>
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="n">IntHeap</span><span class="p">)</span> <span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="kt">int</span><span class="p">)</span>      <span class="p">{</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">h</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">}</span>
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">IntHeap</span><span class="p">)</span> <span class="n">Push</span><span class="p">(</span><span class="n">x</span> <span class="n">any</span><span class="p">)</span>        <span class="p">{</span> <span class="o">*</span><span class="n">h</span> <span class="o">=</span> <span class="nb">append</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span> <span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">IntHeap</span><span class="p">)</span> <span class="n">Pop</span><span class="p">()</span> <span class="n">any</span> <span class="p">{</span>
+	<span class="n">old</span> <span class="o">:=</span> <span class="o">*</span><span class="n">h</span>
+	<span class="n">n</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="n">old</span><span class="p">)</span>
+	<span class="n">x</span> <span class="o">:=</span> <span class="n">old</span><span class="p">[</span><span class="n">n</span><span class="o">-</span><span class="m">1</span><span class="p">]</span>
+	<span class="o">*</span><span class="n">h</span> <span class="o">=</span> <span class="n">old</span><span class="p">[</span><span class="m">0</span> <span class="o">:</span> <span class="n">n</span><span class="o">-</span><span class="m">1</span><span class="p">]</span>
+	<span class="k">return</span> <span class="n">x</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="n">h</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">IntHeap</span><span class="p">{</span><span class="m">2</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">5</span><span class="p">}</span>
+	<span class="n">heap</span><span class="o">.</span><span class="n">Init</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+	<span class="n">heap</span><span class="o">.</span><span class="n">Push</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="m">3</span><span class="p">)</span>
+	<span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"minimum: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)[</span><span class="m">0</span><span class="p">])</span>
+	<span class="k">for</span> <span class="n">h</span><span class="o">.</span><span class="n">Len</span><span class="p">()</span> <span class="o">&gt;</span> <span class="m">0</span> <span class="p">{</span>
+		<span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"%d "</span><span class="p">,</span> <span class="n">heap</span><span class="o">.</span><span class="n">Pop</span><span class="p">(</span><span class="n">h</span><span class="p">))</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>And, in case you missed it, <code class="language-plaintext highlighter-rouge">Push</code>, <code class="language-plaintext highlighter-rouge">Pop</code>, and so on use <code class="language-plaintext highlighter-rouge">any</code>. So, you could
+write <code class="language-plaintext highlighter-rouge">heap.Push(h, 3)</code> and then <code class="language-plaintext highlighter-rouge">heap.Push(h, "foo")</code> and it’d compile! But
+you’d get a panic at runtime:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ go build .
+# aww
+$ go run .
+panic: interface conversion: interface {} is string, not int
+</code></pre></div></div>
+
+<p>Overall, it’s definitely usable and great not to have to re-implement heap
+bubbling, but the UX is a bit clunky. It’s not great to lose types, and it’s not
+great to have to implement 5 functions every time I have a different type of
+heap.</p>
+
+<h3 id="usage-with-generic-methods">Usage with generic methods</h3>
+
+<p>With generic methods, a differently-defined heap (which we’ll look at shortly)
+<a href="https://go.dev/play/p/GiRznCugGt-">could just be:</a></p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">package</span> <span class="n">main</span>
+
+<span class="k">import</span> <span class="p">(</span>
+	<span class="s">"container/heap"</span>
+	<span class="s">"fmt"</span>
+<span class="p">)</span>
+
+<span class="k">func</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="n">h</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="n">heap</span><span class="o">.</span><span class="n">Heap</span><span class="p">[</span><span class="kt">int</span><span class="p">]{</span><span class="m">2</span><span class="p">,</span> <span class="m">1</span><span class="p">,</span> <span class="m">5</span><span class="p">}</span>
+	<span class="n">h</span><span class="o">.</span><span class="n">Init</span><span class="p">()</span>
+	<span class="n">h</span><span class="o">.</span><span class="n">Push</span><span class="p">(</span><span class="m">3</span><span class="p">)</span>
+
+	<span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"minimum: %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)[</span><span class="m">0</span><span class="p">])</span>
+	<span class="k">for</span> <span class="n">h</span><span class="o">.</span><span class="n">Len</span><span class="p">()</span> <span class="o">&gt;</span> <span class="m">0</span> <span class="p">{</span>
+		<span class="n">fmt</span><span class="o">.</span><span class="n">Printf</span><span class="p">(</span><span class="s">"%d "</span><span class="p">,</span> <span class="n">h</span><span class="o">.</span><span class="n">Pop</span><span class="p">())</span>
+	<span class="p">}</span>
+	<span class="n">fmt</span><span class="o">.</span><span class="n">Println</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>So much easier! No more having to define 5 methods per type: we just declare a
+heap[<type>] and use it.</type></p>
+
+<p>And, we’re using generics instead of <code class="language-plaintext highlighter-rouge">any</code>, so we have types on our methods. If
+we try to do <code class="language-plaintext highlighter-rouge">h.Push("foo")</code>, we get a nice compiler error:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ go build .
+# example.com/foo
+./main.go:20:9: cannot use "foo" (untyped string constant) as int value in argument to h.Push
+# yay!
+</code></pre></div></div>
+
+<h3 id="implementing-heap-with-generic-methods">Implementing heap with generic methods</h3>
+
+<p>And finally, here’s how the heap package looks with generic methods. Mostly the
+same as it is, except we define Push and Pop directly on a heap type rather than
+as free functions that take an interface. And, cmp aleady gives us <code class="language-plaintext highlighter-rouge">cmp.Ordered</code>
+as the type constraint, so we can just use that directly. The bubbling logic
+remains the same:</p>
+
+<div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="s">"cmp"</span>
+
+<span class="k">type</span> <span class="n">Heap</span><span class="p">[</span><span class="n">T</span> <span class="n">cmp</span><span class="o">.</span><span class="n">Ordered</span><span class="p">]</span> <span class="p">[]</span><span class="n">T</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Len</span><span class="p">()</span> <span class="kt">int</span>           <span class="p">{</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="p">}</span>
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Less</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span> <span class="k">return</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">h</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="p">}</span>
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="kt">int</span><span class="p">)</span>      <span class="p">{</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">h</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">h</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Init</span><span class="p">()</span> <span class="p">{</span>
+	<span class="n">n</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)</span>
+	<span class="k">for</span> <span class="n">i</span> <span class="o">:=</span> <span class="n">n</span><span class="o">/</span><span class="m">2</span> <span class="o">-</span> <span class="m">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="m">0</span><span class="p">;</span> <span class="n">i</span><span class="o">--</span> <span class="p">{</span>
+		<span class="n">h</span><span class="o">.</span><span class="n">down</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Push</span><span class="p">(</span><span class="n">x</span> <span class="n">T</span><span class="p">)</span> <span class="p">{</span>
+	<span class="o">*</span><span class="n">h</span> <span class="o">=</span> <span class="nb">append</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+	<span class="n">h</span><span class="o">.</span><span class="n">up</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="m">1</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Pop</span><span class="p">()</span> <span class="n">T</span> <span class="p">{</span>
+	<span class="n">n</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="m">1</span>
+	<span class="n">h</span><span class="o">.</span><span class="n">Swap</span><span class="p">(</span><span class="m">0</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+	<span class="n">h</span><span class="o">.</span><span class="n">down</span><span class="p">(</span><span class="m">0</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+	<span class="n">x</span> <span class="o">:=</span> <span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)[</span><span class="n">n</span><span class="p">]</span>
+	<span class="o">*</span><span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)[</span><span class="o">:</span><span class="n">n</span><span class="p">]</span>
+	<span class="k">return</span> <span class="n">x</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Remove</span><span class="p">(</span><span class="n">i</span> <span class="kt">int</span><span class="p">)</span> <span class="n">T</span> <span class="p">{</span>
+	<span class="n">n</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="m">1</span>
+	<span class="k">if</span> <span class="n">n</span> <span class="o">!=</span> <span class="n">i</span> <span class="p">{</span>
+		<span class="n">h</span><span class="o">.</span><span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+		<span class="k">if</span> <span class="o">!</span><span class="n">h</span><span class="o">.</span><span class="n">down</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">h</span><span class="o">.</span><span class="n">up</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	<span class="n">x</span> <span class="o">:=</span> <span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)[</span><span class="n">n</span><span class="p">]</span>
+	<span class="o">*</span><span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">)[</span><span class="o">:</span><span class="n">n</span><span class="p">]</span>
+	<span class="k">return</span> <span class="n">x</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">Fix</span><span class="p">(</span><span class="n">i</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="o">!</span><span class="n">h</span><span class="o">.</span><span class="n">down</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="o">*</span><span class="n">h</span><span class="p">))</span> <span class="p">{</span>
+		<span class="n">h</span><span class="o">.</span><span class="n">up</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">up</span><span class="p">(</span><span class="n">j</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+	<span class="k">for</span> <span class="p">{</span>
+		<span class="n">i</span> <span class="o">:=</span> <span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="m">1</span><span class="p">)</span> <span class="o">/</span> <span class="m">2</span>
+		<span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="o">||</span> <span class="o">!</span><span class="n">h</span><span class="o">.</span><span class="n">Less</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">break</span>
+		<span class="p">}</span>
+		<span class="n">h</span><span class="o">.</span><span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+		<span class="n">j</span> <span class="o">=</span> <span class="n">i</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">func</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span><span class="n">Heap</span><span class="p">[</span><span class="n">T</span><span class="p">])</span> <span class="n">down</span><span class="p">(</span><span class="n">i0</span><span class="p">,</span> <span class="n">n</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="n">i</span> <span class="o">:=</span> <span class="n">i0</span>
+	<span class="k">for</span> <span class="p">{</span>
+		<span class="n">j1</span> <span class="o">:=</span> <span class="m">2</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="m">1</span>
+		<span class="k">if</span> <span class="n">j1</span> <span class="o">&gt;=</span> <span class="n">n</span> <span class="o">||</span> <span class="n">j1</span> <span class="o">&lt;</span> <span class="m">0</span> <span class="p">{</span>
+			<span class="k">break</span>
+		<span class="p">}</span>
+		<span class="n">j</span> <span class="o">:=</span> <span class="n">j1</span>
+		<span class="k">if</span> <span class="n">j2</span> <span class="o">:=</span> <span class="n">j1</span> <span class="o">+</span> <span class="m">1</span><span class="p">;</span> <span class="n">j2</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="o">&amp;&amp;</span> <span class="n">h</span><span class="o">.</span><span class="n">Less</span><span class="p">(</span><span class="n">j2</span><span class="p">,</span> <span class="n">j1</span><span class="p">)</span> <span class="p">{</span>
+			<span class="n">j</span> <span class="o">=</span> <span class="n">j2</span>
+		<span class="p">}</span>
+		<span class="k">if</span> <span class="o">!</span><span class="n">h</span><span class="o">.</span><span class="n">Less</span><span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">break</span>
+		<span class="p">}</span>
+		<span class="n">h</span><span class="o">.</span><span class="n">Swap</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+		<span class="n">i</span> <span class="o">=</span> <span class="n">j</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="n">i0</span>
+<span class="p">}</span>
+</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="heap" /><summary type="html"><![CDATA[An example of the heap package, re-imagined as a generic heap.]]></summary></entry><entry><title type="html">Graceful shutdown with HTTP and gRPC in Go</title><link href="http://localhost:4000/go/kubernetes/grpc/2026/08/18/graceful-shutdown.html" rel="alternate" type="text/html" title="Graceful shutdown with HTTP and gRPC in Go" /><published>2026-08-18T02:55:23-06:00</published><updated>2026-08-18T02:55:23-06:00</updated><id>http://localhost:4000/go/kubernetes/grpc/2026/08/18/graceful-shutdown</id><content type="html" xml:base="http://localhost:4000/go/kubernetes/grpc/2026/08/18/graceful-shutdown.html"><![CDATA[<p>At Netflix, we run our containers on Kubernetes. Sometimes Kubernetes has to
 terminate your container, for any number of reasons: a new version is being
 deployed, or your container is being migrated elsewhere, or a scale down is
 happening, etc. As the <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/">Kubernetes Pod Lifecycle docs</a>
@@ -184,7 +362,52 @@ cancellation and begin graceful shutdown.
 2026/08/18 09:19:40 INFO HTTP server shut down
 2026/08/18 09:19:40 INFO gRPC server shut down
 2026/08/18 09:19:40 INFO application exited with 0
-</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="kubernetes" /><category term="grpc" /><summary type="html"><![CDATA[A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes.]]></summary></entry><entry><title type="html">Reproducible, AI-driven large scale changes</title><link href="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html" rel="alternate" type="text/html" title="Reproducible, AI-driven large scale changes" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch</id><content type="html" xml:base="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html"><![CDATA[<p>Large scale code changes (LSCs) are groups of code changes that all try to
+</code></pre></div></div>]]></content><author><name></name></author><category term="go" /><category term="kubernetes" /><category term="grpc" /><summary type="html"><![CDATA[A quick example of how to do graceful shutdown of your gRPC and HTTP server in Go, particularly useful on Kubernetes.]]></summary></entry><entry><title type="html">Google styleguide code review skills</title><link href="http://localhost:4000/ai/claude/2026/08/13/google-codereview-skills.html" rel="alternate" type="text/html" title="Google styleguide code review skills" /><published>2026-08-13T02:55:23-06:00</published><updated>2026-08-13T02:55:23-06:00</updated><id>http://localhost:4000/ai/claude/2026/08/13/google-codereview-skills</id><content type="html" xml:base="http://localhost:4000/ai/claude/2026/08/13/google-codereview-skills.html"><![CDATA[<p>At Google, code changes require both a language readability and a domain review.
+The former is what you’d expect from a code review, whereas the latter was a
+review from someone[^1] very proficient in the language, intended to help drive best
+practices of that language across the company, and sometimes to drive
+conformance towards a certain style of the language.</p>
+
+<p>Each language maintained a style guide: a list of best practice and style
+decisions, curated by the hundreds or thousands of readability experts for that
+language.</p>
+
+<p>I was a C++ and Go readability reviewer, and contributed some tidbits to the Go
+styleguide, as well as to many discussions about how to write Go. The styleguide
+was a great place to put best practices for the language, but also a great place
+to go to learn, since best practices were usually followed with an explanation.
+That way, newcomers to the language could ask for a change and simultaneously
+reference the styleguide as the high-quality explanation for the change request.</p>
+
+<p>Google has <em>very</em> generously open sourced the styleguides for its languages at
+https://google.github.io/styleguide/. I highly encourage practitioners of any
+of the languages there to give them a read. I can greatly recommend the C++ and
+Go ones, but I’m sure the others are good too.</p>
+
+<p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
+it varying degrees of helpful to have Claude read those styleguides, and apply
+edits based on advice in them. It’s not been perfect - far from it,
+unfortunately. But it’s generally been better than not having it do so.</p>
+
+<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
+
+<p>To install it, simply run the following inside a Claude session:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/plugin marketplace add jeanbza/claude-extensions
+/plugin install google-go-review@jeanbza
+/reload-plugins
+</code></pre></div></div>
+
+<p>To use it, simply run <code class="language-plaintext highlighter-rouge">/jeanbza:google-go-review</code> (or cpp, or py - the other
+two I’ve added so far).</p>
+
+<p>There’s more for me to do, in terms of prompt engineering: Claude frequently
+does a poor job at <a href="https://google.github.io/styleguide/go/decisions#handle-errors">“Handle errors”</a>
+for example. (My pet theory is that Claude doesn’t bother to check the
+signatures) I’ll keep working on it, both for myself and whomever else wants to
+use it. I’m also working on a project to go a bit lower down the stack and try
+to inject some evaluators into its reward model with lifecycle hooks. But for
+now, I hope it’s helpful to you as it’s been for me!</p>]]></content><author><name></name></author><category term="ai" /><category term="claude" /><summary type="html"><![CDATA[A plugin containing skills for Claude to perform Google's styleguide reviews.]]></summary></entry><entry><title type="html">Reproducible, AI-driven large scale changes</title><link href="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html" rel="alternate" type="text/html" title="Reproducible, AI-driven large scale changes" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch</id><content type="html" xml:base="http://localhost:4000/ai/infrastructure/2026/08/08/ai-det-stoch.html"><![CDATA[<p>Large scale code changes (LSCs) are groups of code changes that all try to
 accomplish the same goal, across a huge number of codebases.</p>
 
 <p>For example, a common LSC is to migrate all codebases at a company from
@@ -356,52 +579,7 @@ everything else: by reading the source and the logs.</p>
       <p>4m is the rough median. Low end was 2m16s, high end was 8m53s. <a href="#fnref:2" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
-</div>]]></content><author><name></name></author><category term="ai" /><category term="infrastructure" /><summary type="html"><![CDATA[Making AI-driven large scale code changes deterministic, cheap, and auditable.]]></summary></entry><entry><title type="html">Google styleguide code review skills</title><link href="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html" rel="alternate" type="text/html" title="Google styleguide code review skills" /><published>2026-08-08T02:55:23-06:00</published><updated>2026-08-08T02:55:23-06:00</updated><id>http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills</id><content type="html" xml:base="http://localhost:4000/ai/claude/2026/08/08/google-codereview-skills.html"><![CDATA[<p>At Google, code changes require both a language readability and a domain review.
-The former is what you’d expect from a code review, whereas the latter was a
-review from someone[^1] very proficient in the language, intended to help drive best
-practices of that language across the company, and sometimes to drive
-conformance towards a certain style of the language.</p>
-
-<p>Each language maintained a style guide: a list of best practice and style
-decisions, curated by the hundreds or thousands of readability experts for that
-language.</p>
-
-<p>I was a C++ and Go readability reviewer, and contributed some tidbits to the Go
-styleguide, as well as to many discussions about how to write Go. The styleguide
-was a great place to put best practices for the language, but also a great place
-to go to learn, since best practices were usually followed with an explanation.
-That way, newcomers to the language could ask for a change and simultaneously
-reference the styleguide as the high-quality explanation for the change request.</p>
-
-<p>Google has <em>very</em> generously open sourced the styleguides for its languages at
-https://google.github.io/styleguide/. I highly encourage practitioners of any
-of the languages there to give them a read. I can greatly recommend the C++ and
-Go ones, but I’m sure the others are good too.</p>
-
-<p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
-it varying degrees of helpful to have Claude read those styleguides, and apply
-edits based on advice in them. It’s not been perfect - far from it,
-unfortunately. But it’s generally been better than not having it do so.</p>
-
-<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
-
-<p>To install it, simply run the following inside a Claude session:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/plugin marketplace add jeanbza/claude-extensions
-/plugin install google-go-review@jeanbza
-/reload-plugins
-</code></pre></div></div>
-
-<p>To use it, simply run <code class="language-plaintext highlighter-rouge">/jeanbza:google-go-review</code> (or cpp, or py - the other
-two I’ve added so far).</p>
-
-<p>There’s more for me to do, in terms of prompt engineering: Claude frequently
-does a poor job at <a href="https://google.github.io/styleguide/go/decisions#handle-errors">“Handle errors”</a>
-for example. (My pet theory is that Claude doesn’t bother to check the
-signatures) I’ll keep working on it, both for myself and whomever else wants to
-use it. I’m also working on a project to go a bit lower down the stack and try
-to inject some evaluators into its reward model with lifecycle hooks. But for
-now, I hope it’s helpful to you as it’s been for me!</p>]]></content><author><name></name></author><category term="ai" /><category term="claude" /><summary type="html"><![CDATA[A plugin containing skills for Claude to perform Google's styleguide reviews.]]></summary></entry><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/infrastructure/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
+</div>]]></content><author><name></name></author><category term="ai" /><category term="infrastructure" /><summary type="html"><![CDATA[Making AI-driven large scale code changes deterministic, cheap, and auditable.]]></summary></entry><entry><title type="html">Queues in Postgres</title><link href="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html" rel="alternate" type="text/html" title="Queues in Postgres" /><published>2026-05-06T02:55:23-06:00</published><updated>2026-05-06T02:55:23-06:00</updated><id>http://localhost:4000/infrastructure/2026/05/06/postgres-queue</id><content type="html" xml:base="http://localhost:4000/infrastructure/2026/05/06/postgres-queue.html"><![CDATA[<p>At Netflix, part of the infrastructure I work on is a distributed priority queue
 built on Redis. It’s great in many ways, but also pretty expensive and complex.</p>
 
 <p>I’ll detail that another time. For now, I’m going to focus on a much simpler way
@@ -1250,140 +1428,4 @@ git clone ... &amp;
 git clone ... &amp;
 <span class="nb">wait
 </span>buf generate
-</code></pre></div></div>]]></content><author><name></name></author><category term="protobuf" /><summary type="html"><![CDATA[Generating Go code from protobufs without the buf BSR.]]></summary></entry><entry><title type="html">Spock gripes</title><link href="http://localhost:4000/testing/2025/02/26/spock.html" rel="alternate" type="text/html" title="Spock gripes" /><published>2025-02-26T00:55:23-07:00</published><updated>2025-02-26T00:55:23-07:00</updated><id>http://localhost:4000/testing/2025/02/26/spock</id><content type="html" xml:base="http://localhost:4000/testing/2025/02/26/spock.html"><![CDATA[<p>I’ve recently been using Spock, the Groovy test framework. I’ve got several
-gripes with it that I wanted to document. This is mostly for my future self,
-but may be interesting to others.</p>
-
-<h2 id="subtests">Subtests</h2>
-
-<p><code class="language-plaintext highlighter-rouge">@Unroll</code> with a data provider is the way to run subtests. I have a major and a minor qualm with this:</p>
-
-<ul>
-  <li>
-    <p>Major: You can’t run a single subtest (for example with <code class="language-plaintext highlighter-rouge">./gradlew test --tests “*some test*”</code>).</p>
-  </li>
-  <li>
-    <p>Minor: For dynamic data providers you have to create a whole ‘nother class. It’s much more cumbersome than I’d prefer.</p>
-  </li>
-</ul>
-
-<h2 id="fixed-parallelism">Fixed parallelism</h2>
-
-<p>I should be able to run any number of tests concurrently. Indeed with Spock I can do that as described <a href="https://spockframework.org/spock/docs/2.0-M4/parallel_execution.html">here</a>. But, despite the appearance of supporting fixed test parallelism, it actually supports fixed execution parallelism. This leads to very surprising behaviour, as documented at <a href="https://github.com/spockframework/spock/issues/2117">spockframework/spock/issues/2117</a>.</p>
-
-<h2 id="poor-diff-quality">Poor diff quality</h2>
-
-<p>Here’s a Groovy diff comparing a want proto to a got proto:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Gradle Test Executor 102 &gt; EndToEndSpec &gt; assembleVideoForAimLow FAILED
-    Condition not satisfied:
-
-    GrpcUtils.invokeFunction(stub, in) == want
-    |         |              |     |   |  |
-    |         |              |     |   |  is_completed: true
-    |         |              |     |   |  is_successful: true
-    |         |              |     |   |  success_response {
-    |         |              |     |   |    class_name: "com.netflix.stratum.pod.functions.functions.protogen.HelloResponse"
-    |         |              |     |   |    value {
-    |         |              |     |   |      fields {
-    |         |              |     |   |        key: "response"
-    |         |              |     |   |        value {
-    |         |              |     |   |          string_value: "Hello from POD world, my name is red. Here is CosmosPode2eFunction"
-    |         |              |     |   |        }
-    |         |              |     |   |      }
-    |         |              |     |   |    }
-    |         |              |     |   |  }
-    |         |              |     |   false
-    |         |              |     {
-    |         |              |       "fullFunctionName": "com.netflix.stratum.pod.functions.AimLowVideoAssembler.assembleVideoForAimLow",
-    |         |              |       "arguments": [
-    |         |              |         {
-    |         |              |           "name": "listOfMountedEncodes",
-    |         |              |           "cloudObjects": {
-    |         |              |             "cloudObjects": [
-    |         |              |               {
-    |         |              |                 "url": "baggins://reloaded-test-temp/cosmos-e2e-tests/1730401804568/AIMLOWVIDEOENCODE_chunk.al"
-    |         |              |               }
-    |         |              |             ]
-    |         |              |           }
-    |         |              |         },
-    |         |              |         {
-    |         |              |           "name": "assembeledVideoOutput",
-    |         |              |           "direction": "OUTPUT_REF",
-    |         |              |           "cloudObject": {
-    |         |              |             "url": "baggins://reloaded-test-temp/cosmos-e2e-tests/1730401982908/assembledVideo.lo"
-    |         |              |           }
-    |         |              |         }
-    |         |              |       ],
-    |         |              |       "stack": ""
-    |         |              |     }
-    |         |              &lt;com.netflix.stratumintegtest.protogen.StratumIntegtestServiceGrpc$StratumIntegtestServiceBlockingStub@6f1dd321 channel=ManagedChannelOrphanWrapper{delegate=ManagedChannelImpl{logId=19, target=localhost:53139}} callOptions=CallOptions{deadline=null, authority=null, callCredentials=null, executor=null, compressorName=null, customOptions=[[internal-stub-type, BLOCKING]], waitForReady=false, maxInboundMessageSize=null, maxOutboundMessageSize=null, streamTracerFactories=[]}&gt;
-    |         is_completed: true
-    |         is_successful: true
-    |         success_response {
-    |           class_name: "com.google.protobuf.Empty"
-    |           value {
-    |           }
-    |         }
-    class GrpcUtils
-        at EndToEndSpec.assembleVideoForAimLow(EndToEndSpec.groovy:73)
-
-1 test completed, 1 failed
-</code></pre></div></div>
-
-<p>Can you tell the problem!? Nope! It’s inscrutable.</p>
-
-<p>Here’s the two side-by-side, by the way:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>    ---------- got:
-    is_completed: true
-    is_successful: true
-    success_response {
-      class_name: "com.google.protobuf.Empty"
-      value {
-      }
-    }
-
-    ---------- want:
-    is_completed: true
-    is_successful: true
-    success_response {
-      class_name: "com.netflix.stratum.pod.functions.functions.protogen.HelloResponse"
-      value {
-        fields {
-          key: "response"
-          value {
-            string_value: "Hello from POD world, my name is red. Here is CosmosPode2eFunction"
-          }
-        }
-      }
-    }
-</code></pre></div></div>
-
-<p>See how much easier that is to understand? That Spock diff is inexcusably bad.</p>
-
-<h2 id="poor-logging-support">Poor logging support</h2>
-
-<p>Preface: This is not a Java-ecosystem issue that’s not specific to Spock.</p>
-
-<p>So you’ve got bad diffs, but you think you’ll <code class="language-plaintext highlighter-rouge">println(got, want)</code> to get around them, right? Nope! Because printlns don’t show up when you run your tests. That’s right! You have to turn on info logging first (for example, <code class="language-plaintext highlighter-rouge">./gradlew test --info</code>). But, the problem is, everything info logs.</p>
-
-<p>I ran a single test, whose project has 6 ~small dependencies. It generated 689 lines of output. So, good luck finding your println in several hundreds (on the low end?) lines of output.</p>
-
-<p>(FWIW for fun I ran the same test with <code class="language-plaintext highlighter-rouge">--debug</code> and got 32,313 lines. Nice!)</p>
-
-<h2 id="dynamic-property-resolution">Dynamic property resolution</h2>
-
-<p>Preface: This is a Groovy issue, not Spock.</p>
-
-<p>Groovy closures use dynamic property resolution. This has the effect of things that should be compilation issues only being surfaced during runtime.</p>
-
-<p>For example, if you want to retry until something happens, you might use Spock’s PollingConditions, whose <code class="language-plaintext highlighter-rouge">eventually</code> takes a closure. If you have compilations in that closure, you’re going to compile, run, retry until you time out, and only after that will your compilation error be surfaced. This is an insane loss of productivity considering that Groovy is built on a strongly typed language!</p>
-
-<h2 id="verbosity-magic-and-assertions">Verbosity, magic, and assertions</h2>
-
-<p>Spock looks for any function that has an <code class="language-plaintext highlighter-rouge">expect:</code> or <code class="language-plaintext highlighter-rouge">then:</code> block, and calls it a test. This is needlessly magical, adds a lot of verbosity (what if I just want a <code class="language-plaintext highlighter-rouge">1==1</code> simple assertion? I need to go add <code class="language-plaintext highlighter-rouge">expect:</code> first), and restrain what you can do (it’s harder to have utility functions doing assertions, because it’d require an expect: block, which now means your utility function is a test!).</p>
-
-<p>The assertions are not particularly enjoyable, either. Groovy looks for any free boolean: whether a direct comparison like <code class="language-plaintext highlighter-rouge">1 == 1</code>, or a function that returns a boolean like <code class="language-plaintext highlighter-rouge">myOptional.isPresent</code>, and calls that an assertion. This is too magical and completely uncustomisable.</p>
-
-<p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>]]></content><author><name></name></author><category term="testing" /><summary type="html"><![CDATA[Gripes with Spock and the Groovy test framework.]]></summary></entry></feed>
+</code></pre></div></div>]]></content><author><name></name></author><category term="protobuf" /><summary type="html"><![CDATA[Generating Go code from protobufs without the buf BSR.]]></summary></entry></feed>
