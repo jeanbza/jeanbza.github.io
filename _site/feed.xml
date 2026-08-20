@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-19T21:07:21-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-19T22:08:04-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A generic heap in Go</title><link href="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html" rel="alternate" type="text/html" title="A generic heap in Go" /><published>2026-08-19T02:55:23-06:00</published><updated>2026-08-19T02:55:23-06:00</updated><id>http://localhost:4000/go/heap/2026/08/19/go-generic-heap</id><content type="html" xml:base="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html"><![CDATA[<p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
 package with generics instead of an interface.</p>
 
@@ -380,16 +380,18 @@ That way, newcomers to the language could ask for a change and simultaneously
 reference the styleguide as the high-quality explanation for the change request.</p>
 
 <p>Google has <em>very</em> generously open sourced the styleguides for its languages at
-https://google.github.io/styleguide/. I highly encourage practitioners of any
-of the languages there to give them a read. I can greatly recommend the C++ and
-Go ones, but I’m sure the others are good too.</p>
+<a href="https://google.github.io/styleguide/">https://google.github.io/styleguide/</a>. I
+highly encourage practitioners of any of the languages there to give them a
+read. I can greatly recommend the C++ and Go ones, but I’m sure the others are
+good too.</p>
 
 <p>For the last 6 months at Netflix, when asking Claude to write code, I’ve found
 it varying degrees of helpful to have Claude read those styleguides, and apply
 edits based on advice in them. It’s not been perfect - far from it,
 unfortunately. But it’s generally been better than not having it do so.</p>
 
-<p>So, I thought I’d open source it: https://github.com/jeanbza/claude-extensions.</p>
+<p>So, I thought I’d open source it:
+<a href="https://github.com/jeanbza/claude-extensions">https://github.com/jeanbza/claude-extensions</a>.</p>
 
 <p>To install it, simply run the following inside a Claude session:</p>
 

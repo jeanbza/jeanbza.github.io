@@ -25,16 +25,18 @@ That way, newcomers to the language could ask for a change and simultaneously
 reference the styleguide as the high-quality explanation for the change request.
 
 Google has _very_ generously open sourced the styleguides for its languages at
-https://google.github.io/styleguide/. I highly encourage practitioners of any
-of the languages there to give them a read. I can greatly recommend the C++ and
-Go ones, but I'm sure the others are good too.
+[https://google.github.io/styleguide/](https://google.github.io/styleguide/). I
+highly encourage practitioners of any of the languages there to give them a
+read. I can greatly recommend the C++ and Go ones, but I'm sure the others are
+good too.
 
 For the last 6 months at Netflix, when asking Claude to write code, I've found
 it varying degrees of helpful to have Claude read those styleguides, and apply
 edits based on advice in them. It's not been perfect - far from it,
 unfortunately. But it's generally been better than not having it do so.
 
-So, I thought I'd open source it: https://github.com/jeanbza/claude-extensions.
+So, I thought I'd open source it:
+[https://github.com/jeanbza/claude-extensions](https://github.com/jeanbza/claude-extensions).
 
 To install it, simply run the following inside a Claude session:
 
