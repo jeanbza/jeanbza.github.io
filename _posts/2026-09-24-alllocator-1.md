@@ -1,0 +1,170 @@
+---
+layout: post
+title:  "A simple, unaligned memory allocator"
+date:   2026-09-24 02:55:23 -0600
+categories: [c++, memory]
+description: "A simple memory allocator: unaligned, no splitting, and no coalescing. But very easy to understand!"
+toc: true
+---
+
+I took some time recently to write a simple memory allocator, and thought I'd
+write here the things I thought interesting. That's mostly so that I can come
+back in a while and recall all this, but maybe you'd find it interesting too.
+
+This post assumes you're familiar with a basic memory allocator, and some C++.
+If not for the former, you might be interested in ["Operating Systems: Three
+Easy Pieces"](https://pages.cs.wisc.edu/~remzi/OSTEP/), ch. 17 "Free-Space
+Management".
+
+A working version of all this code can be found [here](https://gist.github.com/jeanbza/7865168b77e53b61619138cebf9a15cd).
+
+![Unaligned](/assets/imhex1.png)
+
+## A simple, unaligned allocator
+
+Below is a very simple program with a malloc and free which can be used to
+allocate memory out of a contiguous 4096-sized address space:
+
+```cpp
+constexpr std::size_t heap_size = 4096;
+
+// This gets allocated in static space. It's basically equivalent to an MMAP.
+char heap[heap_size] = {};
+```
+
+We want usage to look something like this:
+
+```cpp
+// First one: gets its a memory range after the heap's header.
+void* p1 = specialmalloc(sizeof(int));
+int* x1 = new(p1)int{42};
+*x1 += 1;
+std::println("{}", *x1);
+
+// Second one: gets a memory range after the first.
+void* p2 = specialmalloc(sizeof(int));
+int* x2 = new(p2)int{11};
+std::println("{}", *x2);
+
+specialfree(p1);
+specialfree(p2);
+```
+
+## What do we want that code to do?
+
+So essentially we have a 4096 byte range and we want to hand out slices of it to
+code that calls `specialmalloc`, and give them a `specialfree` to return it to
+our ownership.
+
+Whenever we hand out some bytes, we need to prepend a small manifest ("header")
+before it which describes what follows. We also need to add a small manifest at
+the start and end of our heap so that we can notice when we're near the
+start/end.
+
+```cpp
+struct header {
+    int len = 0;
+    bool used = false;
+    bool header = false;
+    bool footer = false;
+
+    constexpr static int size() {
+        return sizeof(len) + sizeof(used) + sizeof(header) + sizeof(footer);
+    }
+};
+
+header read_header(std::span<const char> bytes) {
+    header out;
+    std::memcpy(&out.len, bytes.data(), sizeof out.len);
+    std::memcpy(&out.used, bytes.subspan(sizeof(out.len)).data(), sizeof out.used);
+    std::memcpy(&out.header, bytes.subspan(sizeof(out.len)+sizeof(out.used)).data(), sizeof out.header);
+    std::memcpy(&out.footer, bytes.subspan(sizeof(out.len)+sizeof(out.used)+sizeof(out.header)).data(), sizeof out.footer);
+    return out;
+}
+
+void write_header(std::span<char> bytes, const header& h) {
+    std::memcpy(bytes.subspan(0).data(), &h.len, sizeof(h.len));
+    std::memcpy(bytes.subspan(sizeof(h.len)).data(), &h.used, sizeof(h.used));
+    std::memcpy(bytes.subspan(sizeof(h.len)+sizeof(h.used)).data(), &h.header, sizeof(h.header));
+    std::memcpy(bytes.subspan(sizeof(h.len)+sizeof(h.used)+sizeof(h.header)).data(), &h.footer, sizeof(h.footer));
+}
+```
+
+You might have already noticed that we are doing zero alignment here. We're
+intentionally NOT doing `sizeof(header)` which would return 16, and instead
+doing `header::size()` which would return 8. And similarly we're intentionally
+mapping individual fields at their exact sizes rather than the entire struct.
+We're going to talk about alignment in the next article.
+
+## A simple malloc and free
+
+Let's write a really simple implicit free list malloc, where we just write
+`header{.header=true}`, `header{.len=xyz, .used=true}`, `payload`,
+`header{.len=xyz, .used=true}`, `payload`, ..., `header{.footer=true}`.
+
+And, let's forget about splitting and coalescing. We'll start really simple.
+
+Here's what our malloc and free look like:
+
+```cpp
+void* specialmalloc(int size) {
+    if (size <= 0) return nullptr; // junk request
+    int offset = 0;
+    header h;
+    while(true) {
+        offset += header::size();
+        h = read_header(std::span(heap).subspan(offset));
+        if (h.footer == true) {
+            return nullptr;
+        }
+        bool enough_space_in_heap = offset + header::size() + size <= heap_size - header::size();
+        if (h.len == 0 && !enough_space_in_heap) {
+            return nullptr; // Not enough space in heap.
+        }
+        bool unused = !h.used;
+        bool enough_space = h.len == 0 || h.len >= size;
+        if (unused && enough_space) {
+            break; // Got a spot: break and use it.
+        }
+        offset += h.len;
+    }
+    // If the pre-existing len is larger, we need to keep the larger size so
+    // that we can continue jumping over it.
+    int len = (h.len == 0) ? size : h.len;
+    write_header(std::span(heap).subspan(offset), header{.len = len, .used = true});
+    offset += header::size();
+    return &heap[offset];
+}
+
+void specialfree(void* ptr) {
+    if (ptr == nullptr) return; // Junk request.
+    uintptr_t addr = (uintptr_t)ptr;
+    uintptr_t base = (uintptr_t)heap;
+    uintptr_t offset = addr - base - header::size();
+    header h = read_header(std::span(heap).subspan(offset));
+    h.used = false;
+    write_header(std::span(heap).subspan(offset), h); // We could just directly bit flip too.
+}
+```
+
+## Viewing this with ImHex
+
+[ImHex](https://imhex.werwolv.net/) is a really neat little tool for viewing
+the bytes we've allocated:
+
+![Unaligned](/assets/imhex1.gif)
+
+(Note: this gif taken before adding the used bool, so you won't see that)
+
+This neatly shows the byte space being used by our heap, and the tight bit
+packing achieved.
+
+In this image, two ints were allocated and no free was called. If we called
+free on both pointers and allocated a new int, the first pointer's space would
+get re-used and the second pointer would just be marked used=false without
+zeroing out its space.
+
+## Next up
+
+In the next post we'll talk about the alignment issues here, and fix it. We'll
+also discuss splitting and coalescing that we might want to do.

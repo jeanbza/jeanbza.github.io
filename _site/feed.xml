@@ -1,5 +1,161 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-10T15:09:45-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A generic heap in Go</title><link href="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html" rel="alternate" type="text/html" title="A generic heap in Go" /><published>2026-08-19T02:55:23-06:00</published><updated>2026-08-19T02:55:23-06:00</updated><id>http://localhost:4000/go/heap/2026/08/19/go-generic-heap</id><content type="html" xml:base="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html"><![CDATA[<p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-24T17:15:06-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A simple, unaligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/alllocator-1.html" rel="alternate" type="text/html" title="A simple, unaligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/alllocator-1</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/alllocator-1.html"><![CDATA[<p>I took some time recently to write a simple memory allocator, and thought I’d
+write here the things I thought interesting. That’s mostly so that I can come
+back in a while and recall all this, but maybe you’d find it interesting too.</p>
+
+<p>This post assumes you’re familiar with a basic memory allocator, and some C++.
+If not for the former, you might be interested in <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">“Operating Systems: Three
+Easy Pieces”</a>, ch. 17 “Free-Space
+Management”.</p>
+
+<p>A working version of all this code can be found <a href="https://gist.github.com/jeanbza/7865168b77e53b61619138cebf9a15cd">here</a>.</p>
+
+<p><img src="/assets/imhex1.png" alt="Unaligned" /></p>
+
+<h2 id="a-simple-unaligned-allocator">A simple, unaligned allocator</h2>
+
+<p>Below is a very simple program with a malloc and free which can be used to
+allocate memory out of a contiguous 4096-sized address space:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">constexpr</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">heap_size</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">;</span>
+
+<span class="c1">// This gets allocated in static space. It's basically equivalent to an MMAP.</span>
+<span class="kt">char</span> <span class="n">heap</span><span class="p">[</span><span class="n">heap_size</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+</code></pre></div></div>
+
+<p>We want usage to look something like this:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// First one: gets its a memory range after the heap's header.</span>
+<span class="kt">void</span><span class="o">*</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">specialmalloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">x1</span> <span class="o">=</span> <span class="k">new</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="kt">int</span><span class="p">{</span><span class="mi">42</span><span class="p">};</span>
+<span class="o">*</span><span class="n">x1</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">println</span><span class="p">(</span><span class="s">"{}"</span><span class="p">,</span> <span class="o">*</span><span class="n">x1</span><span class="p">);</span>
+
+<span class="c1">// Second one: gets a memory range after the first.</span>
+<span class="kt">void</span><span class="o">*</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">specialmalloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<span class="kt">int</span><span class="o">*</span> <span class="n">x2</span> <span class="o">=</span> <span class="k">new</span><span class="p">(</span><span class="n">p2</span><span class="p">)</span><span class="kt">int</span><span class="p">{</span><span class="mi">11</span><span class="p">};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">println</span><span class="p">(</span><span class="s">"{}"</span><span class="p">,</span> <span class="o">*</span><span class="n">x2</span><span class="p">);</span>
+
+<span class="n">specialfree</span><span class="p">(</span><span class="n">p1</span><span class="p">);</span>
+<span class="n">specialfree</span><span class="p">(</span><span class="n">p2</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h2 id="what-do-we-want-that-code-to-do">What do we want that code to do?</h2>
+
+<p>So essentially we have a 4096 byte range and we want to hand out slices of it to
+code that calls <code class="language-plaintext highlighter-rouge">specialmalloc</code>, and give them a <code class="language-plaintext highlighter-rouge">specialfree</code> to return it to
+our ownership.</p>
+
+<p>Whenever we hand out some bytes, we need to prepend a small manifest (“header”)
+before it which describes what follows. We also need to add a small manifest at
+the start and end of our heap so that we can notice when we’re near the
+start/end.</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="nc">header</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">used</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">header</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">footer</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+
+    <span class="k">constexpr</span> <span class="k">static</span> <span class="kt">int</span> <span class="n">size</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">len</span><span class="p">)</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">used</span><span class="p">)</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">header</span><span class="p">)</span> <span class="o">+</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">footer</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">header</span> <span class="nf">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="n">bytes</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">header</span> <span class="n">out</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">out</span><span class="p">.</span><span class="n">len</span><span class="p">,</span> <span class="n">bytes</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="k">sizeof</span> <span class="n">out</span><span class="p">.</span><span class="n">len</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">out</span><span class="p">.</span><span class="n">used</span><span class="p">,</span> <span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">len</span><span class="p">)).</span><span class="n">data</span><span class="p">(),</span> <span class="k">sizeof</span> <span class="n">out</span><span class="p">.</span><span class="n">used</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">out</span><span class="p">.</span><span class="n">header</span><span class="p">,</span> <span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">len</span><span class="p">)</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">used</span><span class="p">)).</span><span class="n">data</span><span class="p">(),</span> <span class="k">sizeof</span> <span class="n">out</span><span class="p">.</span><span class="n">header</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">out</span><span class="p">.</span><span class="n">footer</span><span class="p">,</span> <span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">len</span><span class="p">)</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">used</span><span class="p">)</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="n">out</span><span class="p">.</span><span class="n">header</span><span class="p">)).</span><span class="n">data</span><span class="p">(),</span> <span class="k">sizeof</span> <span class="n">out</span><span class="p">.</span><span class="n">footer</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span> <span class="n">bytes</span><span class="p">,</span> <span class="k">const</span> <span class="n">header</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">data</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">));</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">)).</span><span class="n">data</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">.</span><span class="n">used</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">used</span><span class="p">));</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">)</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">used</span><span class="p">)).</span><span class="n">data</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">.</span><span class="n">header</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">header</span><span class="p">));</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">bytes</span><span class="p">.</span><span class="n">subspan</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">)</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">used</span><span class="p">)</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">header</span><span class="p">)).</span><span class="n">data</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">.</span><span class="n">footer</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">footer</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>You might have already noticed that we are doing zero alignment here. We’re
+intentionally NOT doing <code class="language-plaintext highlighter-rouge">sizeof(header)</code> which would return 16, and instead
+doing <code class="language-plaintext highlighter-rouge">header::size()</code> which would return 8. And similarly we’re intentionally
+mapping individual fields at their exact sizes rather than the entire struct.
+We’re going to talk about alignment in the next article.</p>
+
+<h2 id="a-simple-malloc-and-free">A simple malloc and free</h2>
+
+<p>Let’s write a really simple implicit free list malloc, where we just write
+<code class="language-plaintext highlighter-rouge">header{.header=true}</code>, <code class="language-plaintext highlighter-rouge">header{.len=xyz, .used=true}</code>, <code class="language-plaintext highlighter-rouge">payload</code>,
+<code class="language-plaintext highlighter-rouge">header{.len=xyz, .used=true}</code>, <code class="language-plaintext highlighter-rouge">payload</code>, …, <code class="language-plaintext highlighter-rouge">header{.footer=true}</code>.</p>
+
+<p>And, let’s forget about splitting and coalescing. We’ll start really simple.</p>
+
+<p>Here’s what our malloc and free look like:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span><span class="o">*</span> <span class="nf">specialmalloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span> <span class="c1">// junk request</span>
+    <span class="kt">int</span> <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">header</span> <span class="n">h</span><span class="p">;</span>
+    <span class="k">while</span><span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">offset</span> <span class="o">+=</span> <span class="n">header</span><span class="o">::</span><span class="n">size</span><span class="p">();</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">));</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">footer</span> <span class="o">==</span> <span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="kt">bool</span> <span class="n">enough_space_in_heap</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">header</span><span class="o">::</span><span class="n">size</span><span class="p">()</span> <span class="o">+</span> <span class="n">size</span> <span class="o">&lt;=</span> <span class="n">heap_size</span> <span class="o">-</span> <span class="n">header</span><span class="o">::</span><span class="n">size</span><span class="p">();</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">enough_space_in_heap</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span> <span class="c1">// Not enough space in heap.</span>
+        <span class="p">}</span>
+        <span class="kt">bool</span> <span class="n">unused</span> <span class="o">=</span> <span class="o">!</span><span class="n">h</span><span class="p">.</span><span class="n">used</span><span class="p">;</span>
+        <span class="kt">bool</span> <span class="n">enough_space</span> <span class="o">=</span> <span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">&gt;=</span> <span class="n">size</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">unused</span> <span class="o">&amp;&amp;</span> <span class="n">enough_space</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">break</span><span class="p">;</span> <span class="c1">// Got a spot: break and use it.</span>
+        <span class="p">}</span>
+        <span class="n">offset</span> <span class="o">+=</span> <span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// If the pre-existing len is larger, we need to keep the larger size so</span>
+    <span class="c1">// that we can continue jumping over it.</span>
+    <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="n">size</span> <span class="o">:</span> <span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">;</span>
+    <span class="n">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="n">header</span><span class="p">{.</span><span class="n">len</span> <span class="o">=</span> <span class="n">len</span><span class="p">,</span> <span class="p">.</span><span class="n">used</span> <span class="o">=</span> <span class="nb">true</span><span class="p">});</span>
+    <span class="n">offset</span> <span class="o">+=</span> <span class="n">header</span><span class="o">::</span><span class="n">size</span><span class="p">();</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="n">heap</span><span class="p">[</span><span class="n">offset</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">specialfree</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span> <span class="c1">// Junk request.</span>
+    <span class="kt">uintptr_t</span> <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
+    <span class="kt">uintptr_t</span> <span class="n">base</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">heap</span><span class="p">;</span>
+    <span class="kt">uintptr_t</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">-</span> <span class="n">base</span> <span class="o">-</span> <span class="n">header</span><span class="o">::</span><span class="n">size</span><span class="p">();</span>
+    <span class="n">header</span> <span class="n">h</span> <span class="o">=</span> <span class="n">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">));</span>
+    <span class="n">h</span><span class="p">.</span><span class="n">used</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="n">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="n">h</span><span class="p">);</span> <span class="c1">// We could just directly bit flip too.</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="viewing-this-with-imhex">Viewing this with ImHex</h2>
+
+<p><a href="https://imhex.werwolv.net/">ImHex</a> is a really neat little tool for viewing
+the bytes we’ve allocated:</p>
+
+<p><img src="/assets/imhex1.gif" alt="Unaligned" /></p>
+
+<p>(Note: this gif taken before adding the used bool, so you won’t see that)</p>
+
+<p>This neatly shows the byte space being used by our heap, and the tight bit
+packing achieved.</p>
+
+<p>In this image, two ints were allocated and no free was called. If we called
+free on both pointers and allocated a new int, the first pointer’s space would
+get re-used and the second pointer would just be marked used=false without
+zeroing out its space.</p>
+
+<h2 id="next-up">Next up</h2>
+
+<p>In the next post we’ll talk about the alignment issues here, and fix it. We’ll
+also discuss splitting and coalescing that we might want to do.</p>]]></content><author><name></name></author><category term="c++" /><category term="memory" /><summary type="html"><![CDATA[A simple memory allocator: unaligned, no splitting, and no coalescing. But very easy to understand!]]></summary></entry><entry><title type="html">A generic heap in Go</title><link href="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html" rel="alternate" type="text/html" title="A generic heap in Go" /><published>2026-08-19T02:55:23-06:00</published><updated>2026-08-19T02:55:23-06:00</updated><id>http://localhost:4000/go/heap/2026/08/19/go-generic-heap</id><content type="html" xml:base="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html"><![CDATA[<p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
 package with generics instead of an interface.</p>
 
 <h3 id="usage-without-generic-methods">Usage without generic methods</h3>
@@ -1092,342 +1248,4 @@ option go_package <span class="o">=</span> <span class="s2">"github.com/username
 
 <h2 id="proto-global-registry">Proto global registry</h2>
 
-<p>All protocol buffers declarations linked into a Go binary are inserted into an <a href="https://protobuf.dev/reference/go/faq/#namespace-conflict">in-memory global registry</a>. If two protobuf declarations linked into a Go binary have the same name, then this leads to a namespace conflict. Worse, this error is a runtime error, making it easy to find its way into a deployment.</p>]]></content><author><name></name></author><category term="protobuf" /><category term="modules" /><summary type="html"><![CDATA[Where to store protobuf-generated Go code without the buf BSR.]]></summary></entry><entry><title type="html">Generating protobuf-generated Go code without a registry</title><link href="http://localhost:4000/protobuf/2025/06/10/proto-generation.html" rel="alternate" type="text/html" title="Generating protobuf-generated Go code without a registry" /><published>2025-06-10T01:55:23-06:00</published><updated>2025-06-10T01:55:23-06:00</updated><id>http://localhost:4000/protobuf/2025/06/10/proto-generation</id><content type="html" xml:base="http://localhost:4000/protobuf/2025/06/10/proto-generation.html"><![CDATA[<p>I’ve recently had to generate Go code from protos, without the aid of a proto
-registry. This article covers my advice for anyone needing to do the same.</p>
-
-<h2 id="generating-go-code-with-protoc">Generating Go code with protoc</h2>
-
-<p>Generating code with <code class="language-plaintext highlighter-rouge">protoc</code> is best for protos that have few or no
-dependencies.</p>
-
-<h3 id="simple-code-generation">Simple code generation</h3>
-
-<p>Imagine two simple protos:</p>
-
-<pre><code class="language-pb">// protos/user/user.proto
-syntax = "proto3";
-
-package user;
-
-option go_package = "github.com/username/myrepo/protos/user";
-
-message User {
-    string name = 1;
-}
-</code></pre>
-
-<pre><code class="language-pb">// protos/server/server.proto
-syntax = "proto3";
-
-package server;
-
-option go_package = "github.com/username/myrepo/protos/server";
-
-import "user/user.proto";
-
-message Server {
-    repeated user.User users = 1;
-}
-</code></pre>
-
-<p>Generate Go code (.pb.gos) from this simple proto with <code class="language-plaintext highlighter-rouge">protoc</code>:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
-    <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
-    <span class="nt">-I</span> protos/ <span class="se">\</span>
-    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
-<span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____protos
-| |____server
-| | |____server.pb.go
-| | |____server.proto
-| |____user
-| | |____user.pb.go
-| | |____user.proto
-</code></pre></div></div>
-
-<p>Warning: This approach allows others to depend on your generated Go code.</p>
-
-<p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
-
-<p>If you need to produce gRPC language bindings, add the gRPC option equivalents <code class="language-plaintext highlighter-rouge">--go-grpc_out</code> and <code class="language-plaintext highlighter-rouge">--go-grpc_opt</code>:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
-    <span class="nt">--go_out</span><span class="o">=</span>protos <span class="se">\</span>
-    <span class="nt">--go-grpc_out</span><span class="o">=</span>protos <span class="se">\</span>
-    <span class="nt">-I</span> protos/ <span class="se">\</span>
-    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative <span class="se">\</span>
-    <span class="nt">--go-grpc_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
-</code></pre></div></div>
-
-<h3 id="foreign-protos">Foreign protos</h3>
-
-<p>Part of your dependency graph may include protos in other repos:</p>
-
-<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// protos/user/user.proto</span>
-<span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
-
-<span class="kn">package</span> <span class="nn">user</span><span class="p">;</span>
-
-<span class="k">option</span> <span class="na">go_package</span> <span class="o">=</span> <span class="s">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
-
-<span class="c1">// Not in this repo. Also not repo-rooted, which we'll discuss below. We could</span>
-<span class="c1">// change this if we owned user.proto, but if this occurred in a foreign proto</span>
-<span class="c1">// that we can't change then we'd have to work around it.</span>
-<span class="k">import</span> <span class="s">"non/repo/rooted/import.proto"</span><span class="p">;</span>
-
-<span class="kd">message</span> <span class="nc">User</span> <span class="p">{</span>
-    <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>You’ll need to git clone the foreign protos and include them with <code class="language-plaintext highlighter-rouge">-I</code> during your <code class="language-plaintext highlighter-rouge">protoc</code> invocation.</p>
-
-<p>You’ll may also need to account for quirks, such as:</p>
-
-<ul>
-  <li>
-    <p>Dealing with imports not rooted at its repo root. Consider your code A importing B, and B importing another proto C, but not at C’s repo root. Instead, B imports C at at <code class="language-plaintext highlighter-rouge">$REPO-ROOT/some/nested/dir</code>. Since you don’t own B (another team / company does), you can’t change B. Get around this with <code class="language-plaintext highlighter-rouge">-I</code> rooted at the place the import expects, as shown below.</p>
-  </li>
-  <li>
-    <p>Dealing with imports that do not define <code class="language-plaintext highlighter-rouge">option go_package</code>. When protos in your dependency graph don’t define <code class="language-plaintext highlighter-rouge">option go_package</code>, you’ll have to tell <code class="language-plaintext highlighter-rouge">protoc</code> which go_package to use with <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import path&gt;</code>. You’ll probably have to generate the foreign proto’s <code class="language-plaintext highlighter-rouge">.pb.go</code> into your module and point the aforementioned Go import path there, under the assumption that if they haven’t defined an option go_package then it’s also likely they are not generating and publishing Go bindings for you to use.</p>
-  </li>
-</ul>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">TMP</span><span class="o">=</span><span class="si">$(</span><span class="nb">mktemp</span> <span class="nt">-d</span><span class="si">)</span>
-git clone https://github.com/foreignorg/foreignrepo.git <span class="s2">"</span><span class="nv">$TMP</span><span class="s2">/foreign"</span>
-<span class="nb">mkdir</span> <span class="nt">-p</span> internal/protogen
-protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span class="se">\</span>
-    non/repo/rooted/import.proto <span class="se">\</span>
-    <span class="nt">--go_out</span><span class="o">=</span>internal/protogen <span class="se">\</span>
-    <span class="nt">-I</span> protos <span class="se">\</span>
-    <span class="nt">--go_opt</span><span class="o">=</span>Muser/user.proto<span class="o">=</span>github.com/username/myrepo/internal/protogen/user <span class="se">\</span>
-    <span class="nt">--go_opt</span><span class="o">=</span>Mserver/server.proto<span class="o">=</span>github.com/username/myrepo/internal/protogen/server <span class="se">\</span>
-    <span class="nt">-I</span> <span class="nv">$TMP</span>/path/to/expected/import/root <span class="se">\</span>
-    <span class="nt">--go_opt</span><span class="o">=</span>Mnon/repo/rooted/import.proto<span class="o">=</span>github.com/foreignorg/foreignrepo/path/to/expected/import/root <span class="se">\</span>
-    <span class="nt">--go_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
-</code></pre></div></div>
-
-<p>Which when run would generate:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____internal
-| |____protogen
-| | |____server
-| | | |____server.pb.go
-| | |____user
-| | | |____user.pb.go
-| | |____non
-| | | |____repo
-| | | | |____rooted
-| | | | | |____import.pb.go
-</code></pre></div></div>
-
-<p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
-
-<h3 id="large-dependency-graphs">Large dependency graphs</h3>
-
-<p>Using <code class="language-plaintext highlighter-rouge">protoc</code> becomes progressively more unwieldy the larger your proto dependency graph becomes, since you have to specify all transitive dependencies at <code class="language-plaintext highlighter-rouge">protoc</code> time.</p>
-
-<p>Let’s now look at a better tool for managing larger dependency graphs.</p>
-
-<h2 id="generating-go-code-with-buf">Generating Go code with buf</h2>
-
-<p>Generating code with <code class="language-plaintext highlighter-rouge">buf</code> is better for protos that have more than a few dependencies.</p>
-
-<h3 id="simple-code-generation-1">Simple code generation</h3>
-
-<p>Imagine two simple protos:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// protos/user/user.proto
-syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
-
-package user<span class="p">;</span>
-
-option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
-
-message User <span class="o">{</span>
-    string name <span class="o">=</span> 1<span class="p">;</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// protos/server/server.proto
-syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
-
-package server<span class="p">;</span>
-
-option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/server"</span><span class="p">;</span>
-
-import <span class="s2">"user/user.proto"</span><span class="p">;</span>
-
-message Server <span class="o">{</span>
-    repeated user.User <span class="nb">users</span> <span class="o">=</span> 1<span class="p">;</span>
-<span class="o">}</span>
-</code></pre></div></div>
-
-<p>Generate Go code (.pb.gos) from these protos with buf by adding:</p>
-
-<ul>
-  <li>
-    <p>A <code class="language-plaintext highlighter-rouge">buf.yaml</code>:</p>
-
-    <div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.yaml</span>
-  <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml</span>
-  <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
-  <span class="na">lint</span><span class="pi">:</span>
-    <span class="na">use</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">STANDARD</span>
-  <span class="na">breaking</span><span class="pi">:</span>
-    <span class="na">use</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">FILE</span>
-  <span class="na">modules</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
-</code></pre></div>    </div>
-  </li>
-  <li>
-    <p>A <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
-
-    <div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.gen.yaml</span>
-  <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml</span>
-  <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
-  <span class="na">plugins</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
-      <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
-      <span class="na">opt</span><span class="pi">:</span>
-        <span class="pi">-</span> <span class="s">paths=source_relative</span>
-</code></pre></div>    </div>
-  </li>
-</ul>
-
-<p>Generate code with <code class="language-plaintext highlighter-rouge">buf generate</code>:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>buf generate
-<span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____protos
-| |____server
-| | |____server.pb.go
-| | |____server.proto
-| |____user
-| | |____user.pb.go
-| | |____user.proto
-</code></pre></div></div>
-
-<p>Warning: This approach allows others to depend on your generated Go code.</p>
-
-<p>This example signs you up to maintaining generated Go code at <code class="language-plaintext highlighter-rouge">github.com/username/myrepo/protos/server</code> and <code class="language-plaintext highlighter-rouge">[...]/protos/user</code>. Whether or not this is a good idea is discussed in “Storing generated code”. For now suffice it to say that instead of declaring <code class="language-plaintext highlighter-rouge">option go_package</code> you could instead provide <code class="language-plaintext highlighter-rouge">--go_opt=M&lt;proto&gt;=&lt;go import&gt;</code>. And, instead of generating your <code class="language-plaintext highlighter-rouge">.pb.go</code>s into the publicly import-able <code class="language-plaintext highlighter-rouge">protos/</code>, you could generate them into an <code class="language-plaintext highlighter-rouge">internal/</code> directory which is not publicly import-able.</p>
-
-<p>If you need to produce gRPC language bindings, add the gRPC plugin to <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
-
-<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.gen.yaml</span>
-<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
-<span class="na">plugins</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
-    <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
-    <span class="na">opt</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">paths=source_relative</span>
-  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/grpc/go:v1.5.1</span>
-    <span class="na">out</span><span class="pi">:</span> <span class="s">protos</span>
-    <span class="na">opt</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">paths=source_relative</span>
-</code></pre></div></div>
-
-<h3 id="foreign-protos-1">Foreign protos</h3>
-
-<p>Part of your dependency graph may include protos in other repos:</p>
-
-<div class="language-proto highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// protos/user/user.proto</span>
-<span class="na">syntax</span> <span class="o">=</span> <span class="s">"proto3"</span><span class="p">;</span>
-
-<span class="kn">package</span> <span class="nn">user</span><span class="p">;</span>
-
-<span class="k">option</span> <span class="na">go_package</span> <span class="o">=</span> <span class="s">"github.com/username/myrepo/protos/user"</span><span class="p">;</span>
-
-<span class="c1">// Not in this repo. Also not repo-rooted, which we'll discuss below. We could</span>
-<span class="c1">// change this if we owned user.proto, but if this occurred in a foreign proto</span>
-<span class="c1">// that we can't change then we'd have to work around it.</span>
-<span class="k">import</span> <span class="s">"non/repo/rooted/import.proto"</span><span class="p">;</span>
-
-<span class="kd">message</span> <span class="nc">User</span> <span class="p">{</span>
-    <span class="kt">string</span> <span class="na">name</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>Foreign protos that are neither in your repo nor the Buf Schema Registry (BSR) can be imported, but in a roundabout way. You’ll need to git clone them yourself and include them as modules in buf.yaml.</p>
-
-<p>Before we do so, let’s quickly recap proto quirks you might run into, described above in “Generating code with protoc: Foreign protos”. We’ll need to contend with the fact that the <code class="language-plaintext highlighter-rouge">import.proto</code> import was not rooted at its repo root, and that <code class="language-plaintext highlighter-rouge">import.proto</code> does not define <code class="language-plaintext highlighter-rouge">option go_package</code>.</p>
-
-<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.yaml</span>
-<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
-<span class="na">lint</span><span class="pi">:</span>
-  <span class="na">use</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="s">STANDARD</span>
-<span class="na">breaking</span><span class="pi">:</span>
-  <span class="na">use</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="s">FILE</span>
-<span class="na">modules</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">protos/</span>
-  <span class="pi">-</span> <span class="na">path</span><span class="pi">:</span> <span class="s">tmp/path/to/expected/import/root</span>
-</code></pre></div></div>
-
-<p>The non-repo rooted import is handled by specifying the path at which the <code class="language-plaintext highlighter-rouge">import "non/repo/rooted/...";</code> import works.</p>
-
-<p>To handle the lack of <code class="language-plaintext highlighter-rouge">option go_package</code>, we’ll need to turn on managed mode in <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
-
-<div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># buf.gen.yaml</span>
-<span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
-<span class="na">plugins</span><span class="pi">:</span>
-  <span class="pi">-</span> <span class="na">remote</span><span class="pi">:</span> <span class="s">buf.build/protocolbuffers/go:v1.36.6</span>
-    <span class="na">out</span><span class="pi">:</span> <span class="s">internal/protogen</span>
-    <span class="na">opt</span><span class="pi">:</span>
-      <span class="pi">-</span> <span class="s">paths=source_relative</span>
-<span class="na">managed</span><span class="pi">:</span>
-  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
-  <span class="na">override</span><span class="pi">:</span>
-    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
-      <span class="na">path</span><span class="pi">:</span> <span class="s">non/repo/rooted/</span>
-      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/foreignorg/foreignrepo/path/to/expected/import/root</span>
-    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
-      <span class="na">path</span><span class="pi">:</span> <span class="s">user/user.proto</span>
-      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/username/myrepo/internal/protogen</span>
-    <span class="pi">-</span> <span class="na">file_option</span><span class="pi">:</span> <span class="s">go_package_prefix</span>
-      <span class="na">path</span><span class="pi">:</span> <span class="s">server/server.proto</span>
-      <span class="na">value</span><span class="pi">:</span> <span class="s">github.com/username/myrepo/internal/protogen</span>
-</code></pre></div></div>
-
-<p>Next, let’s perform the <code class="language-plaintext highlighter-rouge">git clone</code> and <code class="language-plaintext highlighter-rouge">tmp/</code> management:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/foreignorg/foreignrepo.git tmp/foreign
-buf generate
-</code></pre></div></div>
-
-<p>Which when run generates:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____internal
-| |____protogen
-| | |____server
-| | | |____server.pb.go
-| | |____user
-| | | |____user.pb.go
-| | |____non
-| | | |____repo
-| | | | |____rooted
-| | | | | |____import.pb.go
-</code></pre></div></div>
-
-<p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
-
-<h3 id="concurrent-git-clones">Concurrent git clones</h3>
-
-<p>If you have many <code class="language-plaintext highlighter-rouge">git clone</code> statements, consider using <code class="language-plaintext highlighter-rouge">&amp;</code> and <code class="language-plaintext highlighter-rouge">wait</code> to run them concurrently:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone ... &amp;
-git clone ... &amp;
-git clone ... &amp;
-<span class="nb">wait
-</span>buf generate
-</code></pre></div></div>]]></content><author><name></name></author><category term="protobuf" /><summary type="html"><![CDATA[Generating Go code from protobufs without the buf BSR.]]></summary></entry></feed>
+<p>All protocol buffers declarations linked into a Go binary are inserted into an <a href="https://protobuf.dev/reference/go/faq/#namespace-conflict">in-memory global registry</a>. If two protobuf declarations linked into a Go binary have the same name, then this leads to a namespace conflict. Worse, this error is a runtime error, making it easy to find its way into a deployment.</p>]]></content><author><name></name></author><category term="protobuf" /><category term="modules" /><summary type="html"><![CDATA[Where to store protobuf-generated Go code without the buf BSR.]]></summary></entry></feed>
