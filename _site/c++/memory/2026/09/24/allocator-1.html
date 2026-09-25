@@ -59,18 +59,36 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>I took some time recently to write a simple memory allocator, and thought I’d
-write here the things I thought interesting. That’s mostly so that I can come
-back in a while and recall all this, but maybe you’d find it interesting too.</p>
+    <p>When I worked on ObjFS at Google, I worked with a few peers who I can
+confidently say were C++ legends (hiya Matt, Frank, Sarah, Riba, Ambrose, and
+co). A few of them were easy to get into deep discussions about Computer
+Science, and I’d come away an hour or two later knowing far more than I’d
+started in the conversation. This is one of my biggest joys working with highly
+skilled colleagues.</p>
 
-<p>This post assumes you’re familiar with a basic memory allocator, and some C++.
-If not for the former, you might be interested in <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">“Operating Systems: Three
-Easy Pieces”</a>, ch. 17 “Free-Space
-Management”.</p>
+<p>A few times during these conversations, after spending a while talking about
+something very deep in the weeds, one of them would mention that this was a lot
+easier to reason about if you’d written one of these deep-in-the-weeds things
+before.</p>
+
+<p>I had several opportunities to do some version of that just by working on ObjFS,
+but I recently decided that I wanted to better understand the heap/stack/memory
+allocation. So, I built an allocator as a learning experience. I also figured
+out how to use ImHex to look at the bytes being allocated, which was a really
+helpful exercise in making the ideas stick. This article series details the
+building of that allocator and how you too can look at bytes and go, “Ahh right,
+that makes more sense now.”</p>
+
+<p>Sidenote: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">“Operating Systems: Three Easy
+Pieces”</a>, ch. 17 “Free-Space
+Management” is what I’d consider the best “professional” source of information
+for most of what I’m going to write about.</p>
 
 <p>A working version of all this code can be found <a href="https://gist.github.com/jeanbza/7865168b77e53b61619138cebf9a15cd">here</a>.</p>
 
 <p><img src="/assets/imhex1.png" alt="Unaligned"></p>
+
+<p><em>Memory allocated by my unaligned allocator, nicely byte packed but otherwise mostly a bad idea.</em></p>
 
 <h2 id="a-simple-unaligned-allocator">
 <a class="anchor" href="#a-simple-unaligned-allocator" aria-hidden="true"><span class="octicon octicon-link"></span></a>A simple, unaligned allocator</h2>
