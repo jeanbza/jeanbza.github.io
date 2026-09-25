@@ -59,25 +59,19 @@
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>When I worked on ObjFS at Google, I worked with a few peers who I can
-confidently say were C++ legends (hiya Matt, Frank, Sarah, Riba, Ambrose, and
-co). A few of them were easy to get into deep discussions about Computer
-Science, and I’d come away an hour or two later knowing far more than I’d
-started in the conversation. This is one of my biggest joys working with highly
-skilled colleagues.</p>
+    <p>When I worked on ObjFS at Google, I had the total honour of working with some
+C++ legends. Several times, deep in a discussion about some deep-in-the-woods thing, one of
+them would mention offhand that this was all a lot easier to reason about if
+you’d written one of these deep-in-the-woods things yourself.</p>
 
-<p>A few times during these conversations, after spending a while talking about
-something very deep in the weeds, one of them would mention that this was a lot
-easier to reason about if you’d written one of these deep-in-the-weeds things
-before.</p>
+<p>That stuck with me. I’ve particularly always had a curiousity to learn more
+about how memory gets allocated. So, I finally got around to building a memory
+allocator from first principles.</p>
 
-<p>I had several opportunities to do some version of that just by working on ObjFS,
-but I recently decided that I wanted to better understand the heap/stack/memory
-allocation. So, I built an allocator as a learning experience. I also figured
-out how to use ImHex to look at the bytes being allocated, which was a really
-helpful exercise in making the ideas stick. This article series details the
-building of that allocator and how you too can look at bytes and go, “Ahh right,
-that makes more sense now.”</p>
+<p>I also figured out how to use ImHex to look at the bytes being allocated, which
+was a really helpful exercise in making the ideas stick. This article series
+details the building of that allocator and how you too can look at bytes and go,
+“Ahh right, that makes more sense now.”</p>
 
 <p>Sidenote: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">“Operating Systems: Three Easy
 Pieces”</a>, ch. 17 “Free-Space

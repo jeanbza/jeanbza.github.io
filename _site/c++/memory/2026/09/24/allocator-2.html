@@ -58,9 +58,16 @@
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>In <a href="/c++/memory/2026/09/24/allocator-1.html">“An unaligned memory allocator”</a>,
-we built a memory allocator that allocated memory to unaligned addresses. In
-this post, we’ll talk about what that means, why we would want to allocate to
-aligned addresses, and the code to do so.</p>
+we built a memory allocator that allocated memory to unaligned addresses.</p>
+
+<p>Is it fun getting nastygrams from clang and lldb about all your misaligned
+addresses?</p>
+
+<p><img src="/assets/misaligned1.png" alt="Misaligned"></p>
+
+<p>No. No it is not.</p>
+
+<p>In this post, we’ll talk about what that means, why we would want to allocate to aligned addresses, and the code to do so.</p>
 
 <p>A working version of all this code can be found <a href="https://gist.github.com/jeanbza/e2e361ca0b0bf3484d6a239dfb1ad55e">here</a>.</p>
 
@@ -100,10 +107,9 @@ reasons:</p>
 
 <ul>
   <li>
-<a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires
-it</a> and various compiler
-choices depend on it. (And when you compile, you’ll get lots of nastygrams about
-it 😁)</li>
+<a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires it</a> and
+various compiler choices depend on it. (As you can obviously tell from the
+abundant warnings when you compile 😬)</li>
   <li>Memory <em>may</em> straddle cache lines or pages, which worsens performance.
     <ul>
       <li>Straddling cache lines requires two lookups during CPU memory loads. That

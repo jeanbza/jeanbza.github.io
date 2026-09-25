@@ -1,8 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-24T23:05:11-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-24T23:17:47-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
 This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">An aligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html" rel="alternate" type="text/html" title="An aligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-2</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html"><![CDATA[<p>In <a href="/c++/memory/2026/09/24/allocator-1.html">“An unaligned memory allocator”</a>,
-we built a memory allocator that allocated memory to unaligned addresses. In
-this post, we’ll talk about what that means, why we would want to allocate to
-aligned addresses, and the code to do so.</p>
+we built a memory allocator that allocated memory to unaligned addresses.</p>
+
+<p>Is it fun getting nastygrams from clang and lldb about all your misaligned
+addresses?</p>
+
+<p><img src="/assets/misaligned1.png" alt="Misaligned" /></p>
+
+<p>No. No it is not.</p>
+
+<p>In this post, we’ll talk about what that means, why we would want to allocate to aligned addresses, and the code to do so.</p>
 
 <p>A working version of all this code can be found <a href="https://gist.github.com/jeanbza/e2e361ca0b0bf3484d6a239dfb1ad55e">here</a>.</p>
 
@@ -40,10 +47,9 @@ a 7 byte size struct at 4, another int at 11, and so on.</p>
 reasons:</p>
 
 <ul>
-  <li><a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires
-it</a> and various compiler
-choices depend on it. (And when you compile, you’ll get lots of nastygrams about
-it 😁)</li>
+  <li><a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires it</a> and
+various compiler choices depend on it. (As you can obviously tell from the
+abundant warnings when you compile 😬)</li>
   <li>Memory <em>may</em> straddle cache lines or pages, which worsens performance.
     <ul>
       <li>Straddling cache lines requires two lookups during CPU memory loads. That
@@ -163,25 +169,19 @@ will remain unusable until the 8 bytes are freed.</p>
 of those 128 bytes, even if the next spot adjacent to it is free (we’d want to
 coalesce those two into one to serve the 129 byte request).</p>
 
-<p>In the next post, we’ll talk about splitting and coalescing.</p>]]></content><author><name></name></author><category term="c++" /><category term="memory" /><summary type="html"><![CDATA[Updating our allocator to use aligned memory addresses.]]></summary></entry><entry><title type="html">An unaligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-1.html" rel="alternate" type="text/html" title="An unaligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-1</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-1.html"><![CDATA[<p>When I worked on ObjFS at Google, I worked with a few peers who I can
-confidently say were C++ legends (hiya Matt, Frank, Sarah, Riba, Ambrose, and
-co). A few of them were easy to get into deep discussions about Computer
-Science, and I’d come away an hour or two later knowing far more than I’d
-started in the conversation. This is one of my biggest joys working with highly
-skilled colleagues.</p>
+<p>In the next post, we’ll talk about splitting and coalescing.</p>]]></content><author><name></name></author><category term="c++" /><category term="memory" /><summary type="html"><![CDATA[Updating our allocator to use aligned memory addresses.]]></summary></entry><entry><title type="html">An unaligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-1.html" rel="alternate" type="text/html" title="An unaligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-1</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-1.html"><![CDATA[<p>When I worked on ObjFS at Google, I had the total honour of working with some
+C++ legends. Several times, deep in a discussion about some deep-in-the-woods thing, one of
+them would mention offhand that this was all a lot easier to reason about if
+you’d written one of these deep-in-the-woods things yourself.</p>
 
-<p>A few times during these conversations, after spending a while talking about
-something very deep in the weeds, one of them would mention that this was a lot
-easier to reason about if you’d written one of these deep-in-the-weeds things
-before.</p>
+<p>That stuck with me. I’ve particularly always had a curiousity to learn more
+about how memory gets allocated. So, I finally got around to building a memory
+allocator from first principles.</p>
 
-<p>I had several opportunities to do some version of that just by working on ObjFS,
-but I recently decided that I wanted to better understand the heap/stack/memory
-allocation. So, I built an allocator as a learning experience. I also figured
-out how to use ImHex to look at the bytes being allocated, which was a really
-helpful exercise in making the ideas stick. This article series details the
-building of that allocator and how you too can look at bytes and go, “Ahh right,
-that makes more sense now.”</p>
+<p>I also figured out how to use ImHex to look at the bytes being allocated, which
+was a really helpful exercise in making the ideas stick. This article series
+details the building of that allocator and how you too can look at bytes and go,
+“Ahh right, that makes more sense now.”</p>
 
 <p>Sidenote: <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/">“Operating Systems: Three Easy
 Pieces”</a>, ch. 17 “Free-Space
