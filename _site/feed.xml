@@ -1,5 +1,167 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-24T17:15:06-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">A simple, unaligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/alllocator-1.html" rel="alternate" type="text/html" title="A simple, unaligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/alllocator-1</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/alllocator-1.html"><![CDATA[<p>I took some time recently to write a simple memory allocator, and thought I’d
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-24T22:42:57-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">An aligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html" rel="alternate" type="text/html" title="An aligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-2</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html"><![CDATA[<p>In <a href="/c++/memory/2026/09/24/allocator-1.html">“An unaligned memory allocator”</a>,
+we built a memory allocator that allocated memory to unaligned addresses. In
+this post, we’ll talk about what that means, why we would want to allocate to
+aligned addresses, and the code to do so.</p>
+
+<p>A working version of all this code can be found <a href="https://gist.github.com/jeanbza/e2e361ca0b0bf3484d6a239dfb1ad55e">here</a>.</p>
+
+<p>Here’s what we want our heap to look like. Every header starts at an address
+that’s a multiple of 16. This is a 16 byte aligned allocator. Note that we’re
+paying wasted space (internal fragmentation) for alignment, in contrast to our
+prior allocator which was unaligned but very efficient at byte packing.</p>
+
+<p><img src="/assets/imhex2.png" alt="Aligned" /></p>
+
+<h2 id="alignment">Alignment</h2>
+
+<p>Alignment refers to the fact that memory gets allocated to addresses that are
+a multiple of the alignment base.</p>
+
+<p>With <strong>natural alignment</strong>, an int gets allocated to memory addresses that are
+multiples of 4, longs get allocated to memory addresses that are multiples of 8,
+and so on.</p>
+
+<p>People also often talk about <strong>cache alignment</strong>, which has to do with making
+sure that you don’t straddle cache lines (which are usually bigger things like
+64 bytes).</p>
+
+<p>In the code in this post, we just align everything to 16, the highest scalar
+alignment base that C++ offers. So, all memory gets allocated at addresses 0,
+16, 32, etc.</p>
+
+<p>That’s in contrast to our prior unaligned allocator, which allocates at the next
+available free spot. Ignoring headers, it might allocate an int (4 bytes) at 0,
+a 7 byte size struct at 4, another int at 11, and so on.</p>
+
+<p>We want our allocator to allocate memory to aligned addresses for a variety of
+reasons:</p>
+
+<ul>
+  <li><a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires
+it</a> and various compiler
+choices depend on it. (And when you compile, you’ll get lots of nastygrams about
+it 😁)</li>
+  <li>Memory <em>may</em> straddle cache lines or pages, which worsens performance.
+    <ul>
+      <li>Straddling cache lines requires two lookups during CPU memory loads. That
+can be 1.5x to 2x more cycles (~5-&gt;~10).</li>
+      <li>As an extension of the last, two lookups means two chances to miss the CPU
+  cache and need to go to DRAM. That can be ~50x more cycles (~5-&gt;~250).</li>
+      <li>Straddling pages means also straddling a cache line. So, same issue as
+  above: 1.5x to 2x more cycles. But also, it’s two
+  <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/vm-tlbs.pdf">TLB</a> entries, so you
+  have double the chance to miss the TLB and need to go do page walking.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="aligning">Aligning</h2>
+
+<p>The good news for us is that alignment is pretty easy. Let’s see how to do it:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// C++ helpfully provides a type whose alignment requirement is at least as</span>
+<span class="c1">// strict (as large) as that of every scalar type.</span>
+<span class="k">constexpr</span> <span class="kt">int</span> <span class="n">alignment</span> <span class="o">=</span> <span class="k">alignof</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">max_align_t</span><span class="p">);</span>
+<span class="k">constexpr</span> <span class="kt">int</span> <span class="n">heap_size</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">;</span>
+
+<span class="c1">// We align heap so that it itself starts on an address which is a multiple of</span>
+<span class="c1">// `alignment`. It wouldn't do us much good for all our memory in here to be</span>
+<span class="c1">// aligned, but the whole heap to be misaligned!</span>
+<span class="k">alignas</span><span class="p">(</span><span class="n">alignment</span><span class="p">)</span> <span class="kt">char</span> <span class="n">heap</span><span class="p">[</span><span class="n">heap_size</span><span class="p">]</span> <span class="o">=</span> <span class="p">{};</span>
+</code></pre></div></div>
+
+<p>We’re going to need a way to ask for the next alignment multiple above any
+arbitrary size, so let’s make a function for that:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Returns the next highest multiple of alignment above n.</span>
+<span class="k">constexpr</span> <span class="kt">int</span> <span class="nf">align_up</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">rem</span> <span class="o">=</span> <span class="n">n</span> <span class="o">%</span> <span class="n">alignment</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">rem</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">n</span> <span class="o">+</span> <span class="n">alignment</span> <span class="o">-</span> <span class="n">rem</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Ok, now let’s fix our headers so that we pad them to the nearest alignment.
+Luckily in this case, it’s actually easier to do this than the byte packing we
+were doing before, since we can now just <code class="language-plaintext highlighter-rouge">std::memcpy</code> the struct directly
+without concern for the extra padding (we <em>want</em> the extra padding!):</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">constexpr</span> <span class="kt">int</span> <span class="n">header_size</span> <span class="o">=</span> <span class="n">align_up</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">header</span><span class="p">));</span>
+
+<span class="n">header</span> <span class="nf">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="n">bytes</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">header</span> <span class="n">out</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="o">&amp;</span><span class="n">out</span><span class="p">,</span> <span class="n">bytes</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="k">sizeof</span> <span class="n">out</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span> <span class="n">bytes</span><span class="p">,</span> <span class="k">const</span> <span class="n">header</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">bytes</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">,</span> <span class="k">sizeof</span> <span class="n">h</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>And finally, our malloc and free. Mostly these are identical, except that malloc
+needs to size up any request to the nearest multiple of alignment:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">void</span><span class="o">*</span> <span class="nf">specialmalloc</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span> <span class="c1">// Junk request.</span>
+    <span class="kt">int</span> <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="n">header</span> <span class="n">h</span><span class="p">;</span>
+    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">offset</span> <span class="o">+=</span> <span class="n">header_size</span><span class="p">;</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">));</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">footer</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span> <span class="c1">// Walked every block, nothing fits.</span>
+        <span class="p">}</span>
+        <span class="kt">bool</span> <span class="n">enough_space_in_heap</span> <span class="o">=</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">header_size</span> <span class="o">+</span> <span class="n">align_up</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">heap_size</span> <span class="o">-</span> <span class="n">header_size</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">enough_space_in_heap</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nb">nullptr</span><span class="p">;</span> <span class="c1">// Fresh space is the tail, so nothing further fits.</span>
+        <span class="p">}</span>
+        <span class="kt">bool</span> <span class="n">unused</span> <span class="o">=</span> <span class="o">!</span><span class="n">h</span><span class="p">.</span><span class="n">used</span><span class="p">;</span>
+        <span class="kt">bool</span> <span class="n">enough_space</span> <span class="o">=</span> <span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">align_up</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">size</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">unused</span> <span class="o">&amp;&amp;</span> <span class="n">enough_space</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">break</span><span class="p">;</span> <span class="c1">// Got a spot: break and use it.</span>
+        <span class="p">}</span>
+        <span class="n">offset</span> <span class="o">+=</span> <span class="n">align_up</span><span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// If the pre-existing len is larger, keep it so the walk still jumps over</span>
+    <span class="c1">// the whole block.</span>
+    <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span><span class="p">.</span><span class="n">len</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="n">size</span> <span class="o">:</span> <span class="n">h</span><span class="p">.</span><span class="n">len</span><span class="p">;</span>
+    <span class="n">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="n">header</span><span class="p">{.</span><span class="n">len</span> <span class="o">=</span> <span class="n">len</span><span class="p">,</span> <span class="p">.</span><span class="n">used</span> <span class="o">=</span> <span class="nb">true</span><span class="p">});</span>
+    <span class="n">offset</span> <span class="o">+=</span> <span class="n">header_size</span><span class="p">;</span>
+    <span class="k">return</span> <span class="o">&amp;</span><span class="n">heap</span><span class="p">[</span><span class="n">offset</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">specialfree</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ptr</span> <span class="o">==</span> <span class="nb">nullptr</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span> <span class="c1">// Junk request.</span>
+    <span class="kt">uintptr_t</span> <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
+    <span class="kt">uintptr_t</span> <span class="n">base</span> <span class="o">=</span> <span class="p">(</span><span class="kt">uintptr_t</span><span class="p">)</span><span class="n">heap</span><span class="p">;</span>
+    <span class="kt">uintptr_t</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">-</span> <span class="n">base</span> <span class="o">-</span> <span class="n">header_size</span><span class="p">;</span>
+    <span class="n">header</span> <span class="n">h</span> <span class="o">=</span> <span class="n">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">));</span>
+    <span class="n">h</span><span class="p">.</span><span class="n">used</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="n">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="n">h</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="next-up">Next up</h2>
+
+<p>This is great, and solves the alignment issues as the image at the top showed.
+Huzzah! But, we have a major issue: fragmentation.</p>
+
+<p>When memory gets allocated, it takes the first available aligned amount. If 128
+bytes are requested, that’s what gets returned. When memory is returned, that
+128 bytes becomes available… without splitting! The header for those 128 bytes
+is just marked available.</p>
+
+<p>If a request comes in for 8 bytes, it will see that the 128 bytes is the first
+available spot, claim it, and write 8 bytes. That means 120 bytes are wasted and
+will remain unusable until the 8 bytes are freed.</p>
+
+<p>Furthermore, if a request for 129 bytes comes in, it won’t be able to make use
+of those 128 bytes, even if the next spot adjacent to it is free (we’d want to
+coalesce those two into one to serve the 129 byte request).</p>
+
+<p>In the next post, we’ll talk about splitting and coalescing.</p>]]></content><author><name></name></author><category term="c++" /><category term="memory" /><summary type="html"><![CDATA[Updating our allocator to use aligned memory addresses.]]></summary></entry><entry><title type="html">An unaligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-1.html" rel="alternate" type="text/html" title="An unaligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-1</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-1.html"><![CDATA[<p>I took some time recently to write a simple memory allocator, and thought I’d
 write here the things I thought interesting. That’s mostly so that I can come
 back in a while and recall all this, but maybe you’d find it interesting too.</p>
 
@@ -25,7 +187,7 @@ allocate memory out of a contiguous 4096-sized address space:</p>
 
 <p>We want usage to look something like this:</p>
 
-<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// First one: gets its a memory range after the heap's header.</span>
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// First one: gets a memory range after the heap's header.</span>
 <span class="kt">void</span><span class="o">*</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">specialmalloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
 <span class="kt">int</span><span class="o">*</span> <span class="n">x1</span> <span class="o">=</span> <span class="k">new</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="kt">int</span><span class="p">{</span><span class="mi">42</span><span class="p">};</span>
 <span class="o">*</span><span class="n">x1</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
@@ -80,9 +242,8 @@ start/end.</p>
 </code></pre></div></div>
 
 <p>You might have already noticed that we are doing zero alignment here. We’re
-intentionally NOT doing <code class="language-plaintext highlighter-rouge">sizeof(header)</code> which would return 16, and instead
-doing <code class="language-plaintext highlighter-rouge">header::size()</code> which would return 8. And similarly we’re intentionally
-mapping individual fields at their exact sizes rather than the entire struct.
+intentionally NOT doing <code class="language-plaintext highlighter-rouge">sizeof(header)</code> since we want zero padding. So, we
+map/unmap individual fields at their exact sizes rather than the entire struct.
 We’re going to talk about alignment in the next article.</p>
 
 <h2 id="a-simple-malloc-and-free">A simple malloc and free</h2>
@@ -131,7 +292,7 @@ We’re going to talk about alignment in the next article.</p>
     <span class="kt">uintptr_t</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">-</span> <span class="n">base</span> <span class="o">-</span> <span class="n">header</span><span class="o">::</span><span class="n">size</span><span class="p">();</span>
     <span class="n">header</span> <span class="n">h</span> <span class="o">=</span> <span class="n">read_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">));</span>
     <span class="n">h</span><span class="p">.</span><span class="n">used</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
-    <span class="n">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="n">h</span><span class="p">);</span> <span class="c1">// We could just directly bit flip too.</span>
+    <span class="n">write_header</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="p">(</span><span class="n">heap</span><span class="p">).</span><span class="n">subspan</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="n">h</span><span class="p">);</span> <span class="c1">// We could just directly byte flip too.</span>
 <span class="p">}</span>
 </code></pre></div></div>
 
@@ -142,9 +303,9 @@ the bytes we’ve allocated:</p>
 
 <p><img src="/assets/imhex1.gif" alt="Unaligned" /></p>
 
-<p>(Note: this gif taken before adding the used bool, so you won’t see that)</p>
+<p>(Note: this gif was taken before adding the used bool, so you won’t see that)</p>
 
-<p>This neatly shows the byte space being used by our heap, and the tight bit
+<p>This neatly shows the byte space being used by our heap, and the tight byte
 packing achieved.</p>
 
 <p>In this image, two ints were allocated and no free was called. If we called
@@ -154,8 +315,9 @@ zeroing out its space.</p>
 
 <h2 id="next-up">Next up</h2>
 
-<p>In the next post we’ll talk about the alignment issues here, and fix it. We’ll
-also discuss splitting and coalescing that we might want to do.</p>]]></content><author><name></name></author><category term="c++" /><category term="memory" /><summary type="html"><![CDATA[A simple memory allocator: unaligned, no splitting, and no coalescing. But very easy to understand!]]></summary></entry><entry><title type="html">A generic heap in Go</title><link href="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html" rel="alternate" type="text/html" title="A generic heap in Go" /><published>2026-08-19T02:55:23-06:00</published><updated>2026-08-19T02:55:23-06:00</updated><id>http://localhost:4000/go/heap/2026/08/19/go-generic-heap</id><content type="html" xml:base="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html"><![CDATA[<p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
+<p><a href="/c++/memory/2026/09/24/allocator-2.html">In the next post</a> we’ll talk about
+the alignment issues here, and fix it. We’ll also discuss splitting and
+coalescing that we might want to do.</p>]]></content><author><name></name></author><category term="c++" /><category term="memory" /><summary type="html"><![CDATA[A simple memory allocator: unaligned, no splitting, and no coalescing. But very easy to understand!]]></summary></entry><entry><title type="html">A generic heap in Go</title><link href="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html" rel="alternate" type="text/html" title="A generic heap in Go" /><published>2026-08-19T02:55:23-06:00</published><updated>2026-08-19T02:55:23-06:00</updated><id>http://localhost:4000/go/heap/2026/08/19/go-generic-heap</id><content type="html" xml:base="http://localhost:4000/go/heap/2026/08/19/go-generic-heap.html"><![CDATA[<p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
 package with generics instead of an interface.</p>
 
 <h3 id="usage-without-generic-methods">Usage without generic methods</h3>
@@ -1133,119 +1295,4 @@ bookmark associated with the rev if one exists.</p>
 <span class="n">log</span> <span class="o">=</span><span class="w"> </span><span class="s">"present(@) | ancestors(mine() &amp; immutable_heads().., 2) | trunk()"</span>
 </code></pre></div></div>
 
-<p>That does a good job showing me <em>my</em> commits when I <code class="language-plaintext highlighter-rouge">jj log</code>.</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A bash-it plugin that surfaces jj repository state in your shell prompt.]]></summary></entry><entry><title type="html">Storing protobuf-generated Go code without a registry</title><link href="http://localhost:4000/protobuf/modules/2025/06/10/proto-storage.html" rel="alternate" type="text/html" title="Storing protobuf-generated Go code without a registry" /><published>2025-06-10T02:55:23-06:00</published><updated>2025-06-10T02:55:23-06:00</updated><id>http://localhost:4000/protobuf/modules/2025/06/10/proto-storage</id><content type="html" xml:base="http://localhost:4000/protobuf/modules/2025/06/10/proto-storage.html"><![CDATA[<p>Before diving into this topic, you may want to familiarize yourself with <a href="https://go.dev/blog/using-go-modules">Using Go Modules</a> and subsequent posts, or <a href="https://go.dev/ref/mod">the module spec</a>. Go modules work considerably differently than other languages’ dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.</p>
-
-<h2 id="local-protos">Local protos</h2>
-
-<p>The following covers local protos that you own.</p>
-
-<h3 id="that-you-expect-to-be-imported">That you expect to be imported</h3>
-
-<p>If you expect others to import your proto, declare <code class="language-plaintext highlighter-rouge">option go_package</code> and generate Go bindings to that location.</p>
-
-<p>This defines the single source of truth for Go generated code for your proto, making it easy for others to use your proto without needing to generate and store the Go bindings themselves.</p>
-
-<p>For example:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">head </span>protos/server/server.proto
-syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
-
-package server<span class="p">;</span>
-
-option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/protos/server"</span><span class="p">;</span>
-<span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____protos
-| |____server
-| | |____server.pb.go
-| | |____server.proto
-</code></pre></div></div>
-
-<p>Note: Public directories and releasing a tag. Remember that these Go bindings are intended to be import-able, so they should be in a non-<code class="language-plaintext highlighter-rouge">internal/</code> directory. And, if your repo has tagged releases, remember to tag a new release when you generate for the first time, so that others can begin depending on your proto-generated code.</p>
-
-<h3 id="that-you-dont-expect-to-be-imported">That you don’t expect to be imported</h3>
-
-<p>Even if you don’t expect others to import your proto, it’s still best to treat it as if it will be imported.</p>
-
-<p>But, if you’re certain you’ll never want anybody else to import it, give it an <code class="language-plaintext highlighter-rouge">option go_package</code> that generates to an <code class="language-plaintext highlighter-rouge">internal/</code> directory in your Go module and add a comment above explaining that it is not meant to be depended upon.</p>
-
-<p>For example:</p>
-
-<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">head </span>protos/server/server.proto
-syntax <span class="o">=</span> <span class="s2">"proto3"</span><span class="p">;</span>
-
-package server<span class="p">;</span>
-
-// This proto is not intended to be depended upon, and as such always generates
-// into an internal/ directory.
-option go_package <span class="o">=</span> <span class="s2">"github.com/username/myrepo/internal/protogen/server"</span><span class="p">;</span>
-<span class="nv">$ </span>tree
-<span class="nb">.</span>
-|____protos
-| |____server
-| | |____server.proto
-|____internal
-| |____protogen
-| | |____server
-| | | |____server.pb.go
-</code></pre></div></div>
-
-<h2 id="foreign-protos">Foreign protos</h2>
-
-<p>The following covers foreign protos that you don’t own.</p>
-
-<p>WARNING: Never copy <code class="language-plaintext highlighter-rouge">.protos</code>. What follows provides nuance about whether or not to store Go bindings for a proto in your module. However, you should never copy and store a foreign <code class="language-plaintext highlighter-rouge">.proto</code> in your repo.</p>
-
-<h3 id="with-a-single-source-of-truth">With a single source of truth</h3>
-
-<p>If a proto declares <code class="language-plaintext highlighter-rouge">option go_package</code> and provides its Go bindings at that location, that is the single source of truth for its generated Go code and you should import the single source of truth instead of generating and storing your own Go bindings.</p>
-
-<p>If you are generating with <code class="language-plaintext highlighter-rouge">protoc</code>, that means you should not provide <code class="language-plaintext highlighter-rouge">--go_opt=M</code> for the proto.</p>
-
-<p>If you are generating with <code class="language-plaintext highlighter-rouge">buf</code>, that means you should not include the proto in <code class="language-plaintext highlighter-rouge">managed.override</code>.</p>
-
-<h4 id="looking-at-a-concrete-example">Looking at a concrete example</h4>
-
-<p>Here’s a concrete example of that:</p>
-
-<ul>
-  <li><a href="https://github.com/googleapis/googleapis/blob/c759e924aa786f3df0e64499daf97d46a27edb31/google/cloud/speech/v1/cloud_speech.proto"><code class="language-plaintext highlighter-rouge">github.com/googleapis/google/cloud/speech/v1/cloud_speech.proto</code></a> is a proto that defines <code class="language-plaintext highlighter-rouge">option go_package = "cloud.google.com/go/speech/apiv1/speechpb;speechpb";</code>.</li>
-  <li>Accordingly, its generated Go code exists at <a href="https://github.com/googleapis/google-cloud-go/tree/main/speech/apiv1/speechpb"><code class="language-plaintext highlighter-rouge">github.com/google-cloud-go/speech/apiv1/speechpb</code></a>.
-    <ul>
-      <li>Note: <code class="language-plaintext highlighter-rouge">cloud.google.com/go</code> is an alias for <code class="language-plaintext highlighter-rouge">github.com/googleapis/google-cloud-go</code>.</li>
-    </ul>
-  </li>
-  <li>If you want to use it,
-    <ul>
-      <li>✅ You should import it as <code class="language-plaintext highlighter-rouge">speechpb cloud.google.com/go/speech/apiv1/speechpb</code>.</li>
-      <li>❌ You should not generate (or store) <code class="language-plaintext highlighter-rouge">cloud_speech.pb.go</code>.</li>
-    </ul>
-  </li>
-</ul>
-
-<h4 id="what-if-a-proto-declares-option-go_package-but-i-cant-import-it">What if a proto declares option go_package, but I can’t import it?</h4>
-
-<p>The proto is incorrectly configured. You should reach out to the proto owners to have them either remove the option go_package or generate the Go bindings at the expected location.</p>
-
-<h3 id="without-a-single-source-of-truth">Without a single source of truth</h3>
-
-<p>If a foreign proto does not declare <code class="language-plaintext highlighter-rouge">option go_package</code>, you have two options:</p>
-
-<ol>
-  <li>
-    <p>If you can: convince the maintainers to add option go_package, generate their Go bindings at that location, and make it available in a Go module. This is the best option.</p>
-
-    <p>However, this can be a big ask for non-Go teams that aren’t used to maintaining any Go code.And, if it’s a widely used proto there may need to be considerable thought given to how to migrate all existing dependers. So, it may be more pragmatic to:</p>
-  </li>
-  <li>
-    <p>Otherwise: Generate and store their Go bindings in your module. This is risky, since it opens you and others up to the runtime panic described in Proto global registry.</p>
-
-    <p>To mitigate that, store the Go bindings an <code class="language-plaintext highlighter-rouge">internal/</code> directory. If any of your code depends on these Go bindings and is accessible to other modules (is not in <code class="language-plaintext highlighter-rouge">main</code> or <code class="language-plaintext highlighter-rouge">_test</code> package), then it should also be in an <code class="language-plaintext highlighter-rouge">internal/</code> directory. See the discussion on transitive dependencies in Proto global registry.</p>
-  </li>
-</ol>
-
-<p>Doing so won’t reduce your chance of running into this issue, but it does prevent anyone else accidentally depending on your copy of the Go bindings.</p>
-
-<h2 id="proto-global-registry">Proto global registry</h2>
-
-<p>All protocol buffers declarations linked into a Go binary are inserted into an <a href="https://protobuf.dev/reference/go/faq/#namespace-conflict">in-memory global registry</a>. If two protobuf declarations linked into a Go binary have the same name, then this leads to a namespace conflict. Worse, this error is a runtime error, making it easy to find its way into a deployment.</p>]]></content><author><name></name></author><category term="protobuf" /><category term="modules" /><summary type="html"><![CDATA[Where to store protobuf-generated Go code without the buf BSR.]]></summary></entry></feed>
+<p>That does a good job showing me <em>my</em> commits when I <code class="language-plaintext highlighter-rouge">jj log</code>.</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A bash-it plugin that surfaces jj repository state in your shell prompt.]]></summary></entry></feed>
