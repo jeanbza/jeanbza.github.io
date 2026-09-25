@@ -38,33 +38,19 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#designing-crud-operations-in-go">Designing CRUD operations in Go</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#the-problem-ambiguity">The Problem: Ambiguity</a></li>
-<li class="toc-entry toc-h2"><a href="#sentinel-values">Sentinel Values</a></li>
-<li class="toc-entry toc-h2"><a href="#pointers">Pointers</a></li>
-<li class="toc-entry toc-h2"><a href="#optionals">Optionals</a></li>
-<li class="toc-entry toc-h2"><a href="#choosing-the-right-solution">Choosing The Right Solution</a></li>
-<li class="toc-entry toc-h2"><a href="#a-note-on--experimental">A Note On // Experimental</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#designing-crud-operations-in-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>Designing CRUD operations in Go</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Designing CRUD operations in Go</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2019-06-08T15:55:23-06:00" itemprop="datePublished">Jun 8, 2019
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>This post is intended to provide some insight into the considerations that
 go into adding CRUD operations in a Go client library.</p>
 
-<h2 id="the-problem-ambiguity">
-<a class="anchor" href="#the-problem-ambiguity" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Problem: Ambiguity</h2>
+<h2 id="the-problem-ambiguity">The Problem: Ambiguity</h2>
 
 <p>Every time we add a new create or update RPC - <code class="language-plaintext highlighter-rouge">CreateFoo</code> or <code class="language-plaintext highlighter-rouge">UpdateFoo</code> - that
 takes parameters, we have to ask the questions:</p>
@@ -127,8 +113,7 @@ Its default value is <code class="language-plaintext highlighter-rouge">time.Dur
   <li>Optionals.</li>
 </ul>
 
-<h2 id="sentinel-values">
-<a class="anchor" href="#sentinel-values" aria-hidden="true"><span class="octicon octicon-link"></span></a>Sentinel Values</h2>
+<h2 id="sentinel-values">Sentinel Values</h2>
 
 <p>Sentinel values are basically special values that signal to the client library
 to perform special logic. For example, consider:</p>
@@ -147,8 +132,7 @@ sentinel to delete as such:</p>
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="n">foopkg</span><span class="o">.</span><span class="n">NeverExpire</span><span class="p">})</span>
 </code></pre></div></div>
 
-<h2 id="pointers">
-<a class="anchor" href="#pointers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Pointers</h2>
+<h2 id="pointers">Pointers</h2>
 
 <p>When using pointers, we automatically resolve ambiguity, because beside the
 empty value we now also have the nil value.</p>
@@ -161,8 +145,7 @@ taken as “delete this”.</p>
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="nb">new</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">Duration</span><span class="p">(</span><span class="m">0</span><span class="p">))})</span>
 </code></pre></div></div>
 
-<h2 id="optionals">
-<a class="anchor" href="#optionals" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optionals</h2>
+<h2 id="optionals">Optionals</h2>
 
 <p>Optionals are a Java concept. Without involving pointers, they add an
 additional “set or unset” parameter to a value in a similar way that pointers
@@ -181,8 +164,7 @@ empty value is taken as “delete this”.</p>
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">f</span><span class="o">.</span><span class="n">Update</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foopkg</span><span class="o">.</span><span class="n">FooConfigToUpdate</span><span class="p">{</span><span class="n">Expiration</span><span class="o">:</span> <span class="n">time</span><span class="o">.</span><span class="n">Duration</span><span class="p">(</span><span class="m">0</span><span class="p">)})</span>
 </code></pre></div></div>
 
-<h2 id="choosing-the-right-solution">
-<a class="anchor" href="#choosing-the-right-solution" aria-hidden="true"><span class="octicon octicon-link"></span></a>Choosing The Right Solution</h2>
+<h2 id="choosing-the-right-solution">Choosing The Right Solution</h2>
 
 <p>There are downsides to each solution:</p>
 
@@ -221,8 +203,7 @@ and aren’t backwards-compatible. Optionals are fairly widely used, too.</p>
 <p>In general, it’s best to investigate the client you’re working on and focus on
 consistency of choice. Ideally, all clients would be consistent with each other, too.</p>
 
-<h2 id="a-note-on--experimental">
-<a class="anchor" href="#a-note-on--experimental" aria-hidden="true"><span class="octicon octicon-link"></span></a>A Note On // Experimental</h2>
+<h2 id="a-note-on--experimental">A Note On // Experimental</h2>
 
 <p>Note that if a part of the API surface is marked experimental, the above notes
 on backwards compatibility don’t apply. Therefore, if you’re adding to an API
@@ -232,8 +213,7 @@ surface and not sure how it’ll evolve over time, opt to add the
 <div class="language-go highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">// It is EXPERIMENTAL and subject to change or removal without notice.</span>
 </code></pre></div></div>
 
-  </div>
-<a class="u-url" href="/go/2019/06/08/designing-crud-operations-in-go.html" hidden></a>
+  </div><a class="u-url" href="/go/2019/06/08/designing-crud-operations-in-go.html" hidden></a>
 </article>
 
       </div>

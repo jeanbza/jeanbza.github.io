@@ -38,31 +38,13 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#queues-in-postgres">Queues in Postgres</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#schema">Schema</a></li>
-<li class="toc-entry toc-h2"><a href="#enqueueing">Enqueueing</a></li>
-<li class="toc-entry toc-h2"><a href="#dequeueing">Dequeueing</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#with-priority">With priority</a></li>
-<li class="toc-entry toc-h3"><a href="#with-batch-dequeue">With batch dequeue</a></li>
-<li class="toc-entry toc-h3"><a href="#with-lease-extension">With lease extension</a></li>
-<li class="toc-entry toc-h3"><a href="#with-max-consumers">With max consumers</a></li>
-</ul>
-</li>
-<li class="toc-entry toc-h2"><a href="#conclusion">Conclusion</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#queues-in-postgres" aria-hidden="true"><span class="octicon octicon-link"></span></a>Queues in Postgres</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Queues in Postgres</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2026-05-06T02:55:23-06:00" itemprop="datePublished">May 6, 2026
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>At Netflix, part of the infrastructure I work on is a distributed priority queue
@@ -79,8 +61,7 @@ but again, haven’t load tested).</p>
 <a href="https://github.com/Netflix-Skunkworks/golang-index">golang-index</a> as well as in
 <a href="https://github.com/golang/pkgsite/commit/372618454cdb62e4cbaab1fd14c58f2faf5db80a">Go’s pkgsite Postgres queue</a>.</p>
 
-<h2 id="schema">
-<a class="anchor" href="#schema" aria-hidden="true"><span class="octicon octicon-link"></span></a>Schema</h2>
+<h2 id="schema">Schema</h2>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- This is the queue table.</span>
 <span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">IF</span> <span class="k">NOT</span> <span class="k">EXISTS</span> <span class="n">queue_tasks</span> <span class="p">(</span>
@@ -103,8 +84,7 @@ but again, haven’t load tested).</p>
 <span class="k">ON</span> <span class="n">queue_tasks</span> <span class="p">(</span><span class="n">started_at</span><span class="p">,</span> <span class="n">created_at</span><span class="p">);</span>
 </code></pre></div></div>
 
-<h2 id="enqueueing">
-<a class="anchor" href="#enqueueing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Enqueueing</h2>
+<h2 id="enqueueing">Enqueueing</h2>
 
 <p>Enqueue with an atomic test-and-set query:</p>
 
@@ -113,8 +93,7 @@ but again, haven’t load tested).</p>
 <span class="k">ON</span> <span class="n">CONFLICT</span> <span class="p">(</span><span class="n">task_name</span><span class="p">)</span> <span class="k">DO</span> <span class="k">NOTHING</span><span class="p">;</span> <span class="c1">-- Another consumer won the race; no-op.</span>
 </code></pre></div></div>
 
-<h2 id="dequeueing">
-<a class="anchor" href="#dequeueing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dequeueing</h2>
+<h2 id="dequeueing">Dequeueing</h2>
 
 <p>Dequeue with a test for stalled workers:</p>
 
@@ -136,19 +115,16 @@ but again, haven’t load tested).</p>
 
 <p>And then to complete work, you’d simply <code class="language-plaintext highlighter-rouge">DELETE</code> the row.</p>
 
-<h3 id="with-priority">
-<a class="anchor" href="#with-priority" aria-hidden="true"><span class="octicon octicon-link"></span></a>With priority</h3>
+<h3 id="with-priority">With priority</h3>
 
 <p>Simple add a <code class="language-plaintext highlighter-rouge">priority</code> field of your choosing and then <code class="language-plaintext highlighter-rouge">ORDER BY priority</code>
 instead of <code class="language-plaintext highlighter-rouge">ORDER BY created_at</code>.</p>
 
-<h3 id="with-batch-dequeue">
-<a class="anchor" href="#with-batch-dequeue" aria-hidden="true"><span class="octicon octicon-link"></span></a>With batch dequeue</h3>
+<h3 id="with-batch-dequeue">With batch dequeue</h3>
 
 <p>To batch dequeue simply change <code class="language-plaintext highlighter-rouge">LIMIT 1</code> to <code class="language-plaintext highlighter-rouge">LIMIT n</code>.</p>
 
-<h3 id="with-lease-extension">
-<a class="anchor" href="#with-lease-extension" aria-hidden="true"><span class="octicon octicon-link"></span></a>With lease extension</h3>
+<h3 id="with-lease-extension">With lease extension</h3>
 
 <p>If you need lease extension, you can add <code class="language-plaintext highlighter-rouge">leased_until</code> and change the stall check
 to:</p>
@@ -175,8 +151,7 @@ to:</p>
 <p>And then have your workers periodically update <code class="language-plaintext highlighter-rouge">leased_until</code> to some time in
 the near future.</p>
 
-<h3 id="with-max-consumers">
-<a class="anchor" href="#with-max-consumers" aria-hidden="true"><span class="octicon octicon-link"></span></a>With max consumers</h3>
+<h3 id="with-max-consumers">With max consumers</h3>
 
 <p>If you need to limit work to a maximum amount of in-flight work/consumers, you can do:</p>
 
@@ -201,8 +176,7 @@ the near future.</p>
 <span class="n">RETURNING</span> <span class="n">id</span><span class="p">,</span> <span class="n">started_at</span>
 </code></pre></div></div>
 
-<h2 id="conclusion">
-<a class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h2>
+<h2 id="conclusion">Conclusion</h2>
 
 <p>SQL databases are pretty easy to turn into queueing databases, and it’s
 fairly easy to tweak your SQL scripts to make the queue behave the way you want
@@ -212,8 +186,7 @@ them to.</p>
 doing it in your pre-existing SQL database rather than adding a whole new system
 dependency.</p>
 
-  </div>
-<a class="u-url" href="/infrastructure/2026/05/06/postgres-queue.html" hidden></a>
+  </div><a class="u-url" href="/infrastructure/2026/05/06/postgres-queue.html" hidden></a>
 </article>
 
       </div>

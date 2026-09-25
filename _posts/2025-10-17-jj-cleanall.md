@@ -4,7 +4,6 @@ title:  "A jj script to lint your entire graph"
 date:   2025-10-17 02:55:23 -0600
 categories: [jj, tooling]
 description: "A small script that walks every mutable rev in the jj graph and lints as it goes."
-toc: true
 ---
 
 This is the second of a series of posts about `jj`. The first is

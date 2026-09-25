@@ -38,47 +38,24 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#generating-protobuf-generated-go-code-without-a-registry">Generating protobuf-generated Go code without a registry</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#generating-go-code-with-protoc">Generating Go code with protoc</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#simple-code-generation">Simple code generation</a></li>
-<li class="toc-entry toc-h3"><a href="#foreign-protos">Foreign protos</a></li>
-<li class="toc-entry toc-h3"><a href="#large-dependency-graphs">Large dependency graphs</a></li>
-</ul>
-</li>
-<li class="toc-entry toc-h2"><a href="#generating-go-code-with-buf">Generating Go code with buf</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#simple-code-generation-1">Simple code generation</a></li>
-<li class="toc-entry toc-h3"><a href="#foreign-protos-1">Foreign protos</a></li>
-<li class="toc-entry toc-h3"><a href="#concurrent-git-clones">Concurrent git clones</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#generating-protobuf-generated-go-code-without-a-registry" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating protobuf-generated Go code without a registry</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Generating protobuf-generated Go code without a registry</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2025-06-10T01:55:23-06:00" itemprop="datePublished">Jun 10, 2025
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>I’ve recently had to generate Go code from protos, without the aid of a proto
 registry. This article covers my advice for anyone needing to do the same.</p>
 
-<h2 id="generating-go-code-with-protoc">
-<a class="anchor" href="#generating-go-code-with-protoc" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating Go code with protoc</h2>
+<h2 id="generating-go-code-with-protoc">Generating Go code with protoc</h2>
 
 <p>Generating code with <code class="language-plaintext highlighter-rouge">protoc</code> is best for protos that have few or no
 dependencies.</p>
 
-<h3 id="simple-code-generation">
-<a class="anchor" href="#simple-code-generation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Simple code generation</h3>
+<h3 id="simple-code-generation">Simple code generation</h3>
 
 <p>Imagine two simple protos:</p>
 
@@ -139,8 +116,7 @@ message Server {
     <span class="nt">--go-grpc_opt</span><span class="o">=</span><span class="nv">paths</span><span class="o">=</span>source_relative
 </code></pre></div></div>
 
-<h3 id="foreign-protos">
-<a class="anchor" href="#foreign-protos" aria-hidden="true"><span class="octicon octicon-link"></span></a>Foreign protos</h3>
+<h3 id="foreign-protos">Foreign protos</h3>
 
 <p>Part of your dependency graph may include protos in other repos:</p>
 
@@ -206,20 +182,17 @@ protoc protos/<span class="k">**</span>/<span class="k">*</span>.proto <span cla
 
 <p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
 
-<h3 id="large-dependency-graphs">
-<a class="anchor" href="#large-dependency-graphs" aria-hidden="true"><span class="octicon octicon-link"></span></a>Large dependency graphs</h3>
+<h3 id="large-dependency-graphs">Large dependency graphs</h3>
 
 <p>Using <code class="language-plaintext highlighter-rouge">protoc</code> becomes progressively more unwieldy the larger your proto dependency graph becomes, since you have to specify all transitive dependencies at <code class="language-plaintext highlighter-rouge">protoc</code> time.</p>
 
 <p>Let’s now look at a better tool for managing larger dependency graphs.</p>
 
-<h2 id="generating-go-code-with-buf">
-<a class="anchor" href="#generating-go-code-with-buf" aria-hidden="true"><span class="octicon octicon-link"></span></a>Generating Go code with buf</h2>
+<h2 id="generating-go-code-with-buf">Generating Go code with buf</h2>
 
 <p>Generating code with <code class="language-plaintext highlighter-rouge">buf</code> is better for protos that have more than a few dependencies.</p>
 
-<h3 id="simple-code-generation-1">
-<a class="anchor" href="#simple-code-generation-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Simple code generation</h3>
+<h3 id="simple-code-generation-1">Simple code generation</h3>
 
 <p>Imagine two simple protos:</p>
 
@@ -255,8 +228,7 @@ message Server <span class="o">{</span>
   <li>
     <p>A <code class="language-plaintext highlighter-rouge">buf.yaml</code>:</p>
 
-    <div class="language-yml highlighter-rouge">
-<div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.yaml</span>
+    <div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.yaml</span>
   <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml</span>
   <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
   <span class="na">lint</span><span class="pi">:</span>
@@ -272,8 +244,7 @@ message Server <span class="o">{</span>
   <li>
     <p>A <code class="language-plaintext highlighter-rouge">buf.gen.yaml</code>:</p>
 
-    <div class="language-yml highlighter-rouge">
-<div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.gen.yaml</span>
+    <div class="language-yml highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="c1"># buf.gen.yaml</span>
   <span class="c1"># For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-gen-yaml</span>
   <span class="na">version</span><span class="pi">:</span> <span class="s">v2</span>
   <span class="na">plugins</span><span class="pi">:</span>
@@ -318,8 +289,7 @@ message Server <span class="o">{</span>
       <span class="pi">-</span> <span class="s">paths=source_relative</span>
 </code></pre></div></div>
 
-<h3 id="foreign-protos-1">
-<a class="anchor" href="#foreign-protos-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Foreign protos</h3>
+<h3 id="foreign-protos-1">Foreign protos</h3>
 
 <p>Part of your dependency graph may include protos in other repos:</p>
 
@@ -406,8 +376,7 @@ buf generate
 
 <p>Note that all the generated code was generated into <code class="language-plaintext highlighter-rouge">internal/</code>. That involved overwriting <code class="language-plaintext highlighter-rouge">user.proto</code> and <code class="language-plaintext highlighter-rouge">server.proto</code>’s <code class="language-plaintext highlighter-rouge">option go_package</code> with <code class="language-plaintext highlighter-rouge">--go_opt=M</code>. That’s because different generated versions of <code class="language-plaintext highlighter-rouge">import.proto</code> may not exist (directly or transitively) in any Go import graph due to Go’s global proto registry. So, <code class="language-plaintext highlighter-rouge">internal/</code> is used to prevent anybody from depending on these <code class="language-plaintext highlighter-rouge">.pb.go</code>s. Read more on this in “Storing generated code”.</p>
 
-<h3 id="concurrent-git-clones">
-<a class="anchor" href="#concurrent-git-clones" aria-hidden="true"><span class="octicon octicon-link"></span></a>Concurrent git clones</h3>
+<h3 id="concurrent-git-clones">Concurrent git clones</h3>
 
 <p>If you have many <code class="language-plaintext highlighter-rouge">git clone</code> statements, consider using <code class="language-plaintext highlighter-rouge">&amp;</code> and <code class="language-plaintext highlighter-rouge">wait</code> to run them concurrently:</p>
 
@@ -418,8 +387,7 @@ git clone ... &amp;
 </span>buf generate
 </code></pre></div></div>
 
-  </div>
-<a class="u-url" href="/protobuf/2025/06/10/proto-generation.html" hidden></a>
+  </div><a class="u-url" href="/protobuf/2025/06/10/proto-generation.html" hidden></a>
 </article>
 
       </div>

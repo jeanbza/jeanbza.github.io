@@ -38,22 +38,16 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#wrapped-errors-are-stacks">Wrapped errors are stacks</a></li>
-<li class="toc-entry toc-h1"><a href="#wrapped-errors-are-stacks">Wrapped errors are stacks</a></li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#wrapped-errors-are-stacks" aria-hidden="true"><span class="octicon octicon-link"></span></a>Wrapped errors are stacks</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Wrapped errors are stacks</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2022-02-09T14:55:23-07:00" itemprop="datePublished">Feb 9, 2022
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h1 id="wrapped-errors-are-stacks">
-<a class="anchor" href="#wrapped-errors-are-stacks" aria-hidden="true"><span class="octicon octicon-link"></span></a>Wrapped errors are stacks</h1>
+    <h1 id="wrapped-errors-are-stacks">Wrapped errors are stacks</h1>
 
 <p>Wrapping an error creates a stack: a linked list of error pointing to the next error, where newly wrapped errors are added to the head, and the stack is traversed from head to tail during As, Is, and with the Unwrap interface.</p>
 
@@ -96,8 +90,7 @@ func (e *PathParseErrors) Unwrap() error {
 
 <p>When you need to collect several errors at once, use <code class="language-plaintext highlighter-rouge">[]error</code>, a map of errors, or a structured error that does not support Unwrap.</p>
 
-  </div>
-<a class="u-url" href="/errors/go/2022/02/09/wrapped-errors-are-stacks.html" hidden></a>
+  </div><a class="u-url" href="/errors/go/2022/02/09/wrapped-errors-are-stacks.html" hidden></a>
 </article>
 
       </div>

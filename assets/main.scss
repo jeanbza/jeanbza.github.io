@@ -56,7 +56,7 @@ a.post-category:hover {
 }
 
 // Keep an anchor target from landing flush against the top of the viewport
-// when you jump to it -- applies to category headings and in-post TOC links.
+// when you jump to it -- e.g. the category headings linked from /categories/.
 .post-content h2,
 .post-content h3 {
   scroll-margin-top: $spacing-unit * 0.5;
@@ -102,4 +102,86 @@ code {
   .gi               { color: #116329; background-color: #dafbe1 } // diff added
   .gh, .gu          { color: #0550ae; font-weight: bold } // headings
   .gr, .gt          { color: #82071e }
+}
+
+// ---------------------------------------------------------------------------
+// Series navigation card
+//
+// Rendered by _includes/series-nav.html from _layouts/post.html, for posts with
+// a `series:` front matter key.
+//
+// On wide screens this sits in the gutter to the right of the text column.
+// `.wrapper` is capped at $wide-width (55%) above, and minima sizes it
+// content-box with 30px of padding, so the clear space to the right of
+// .post-header's content edge is exactly (100vw - 55vw) / 2 = 22.5vw.
+//
+// The card needs $series-card-width + $series-card-gap of that. At the
+// $series-gutter-min breakpoint below, 22.5vw is 270px against the 240px
+// needed, which keeps ~30px of slack before it would crowd the prose. Narrower
+// than that and it collapses to an ordinary block under the title, which is
+// also what phones get.
+// ---------------------------------------------------------------------------
+$series-card-width: 200px;
+$series-card-gap: 40px;
+$series-gutter-min: 1200px;
+
+.series-nav {
+  margin: 0 0 $spacing-unit 0;
+  padding: 12px 15px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background-color: #f6f8fa;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.series-nav-title {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #57606a;
+}
+
+.series-nav-list {
+  margin: 0;
+  padding-left: 1.4em;
+
+  li {
+    margin: 0;
+    color: #57606a;
+  }
+
+  // The part you're currently reading: unlinked, and called out.
+  .is-current > span {
+    font-weight: 600;
+    color: #24292f;
+  }
+
+  // Parts listed in _data/series.yml that have no post yet.
+  .is-upcoming > span {
+    color: #8c959f;
+
+    &::after {
+      content: " (soon)";
+      font-size: 12px;
+    }
+  }
+}
+
+@media screen and (min-width: $series-gutter-min) {
+  // Positioning context for the card. .post-header is the full width of the
+  // text column, so `left: 100%` lands flush against its right edge.
+  .post-header {
+    position: relative;
+  }
+
+  .series-nav {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    width: $series-card-width;
+    margin: 0 0 0 $series-card-gap;
+  }
 }

@@ -4,7 +4,6 @@ title: Categories
 permalink: /categories/
 # Reuses the site's existing jekyll-toc setup to render a jump list of every
 # category at the top of the page.
-toc: true
 ---
 
 {%- assign sorted_categories = site.categories | sort -%}

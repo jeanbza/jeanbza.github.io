@@ -38,34 +38,20 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#spock-gripes">Spock gripes</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#subtests">Subtests</a></li>
-<li class="toc-entry toc-h2"><a href="#fixed-parallelism">Fixed parallelism</a></li>
-<li class="toc-entry toc-h2"><a href="#poor-diff-quality">Poor diff quality</a></li>
-<li class="toc-entry toc-h2"><a href="#poor-logging-support">Poor logging support</a></li>
-<li class="toc-entry toc-h2"><a href="#dynamic-property-resolution">Dynamic property resolution</a></li>
-<li class="toc-entry toc-h2"><a href="#verbosity-magic-and-assertions">Verbosity, magic, and assertions</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#spock-gripes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Spock gripes</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Spock gripes</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2025-02-26T00:55:23-07:00" itemprop="datePublished">Feb 26, 2025
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>I’ve recently been using Spock, the Groovy test framework. I’ve got several
 gripes with it that I wanted to document. This is mostly for my future self,
 but may be interesting to others.</p>
 
-<h2 id="subtests">
-<a class="anchor" href="#subtests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Subtests</h2>
+<h2 id="subtests">Subtests</h2>
 
 <p><code class="language-plaintext highlighter-rouge">@Unroll</code> with a data provider is the way to run subtests. I have a major and a minor qualm with this:</p>
 
@@ -78,13 +64,11 @@ but may be interesting to others.</p>
   </li>
 </ul>
 
-<h2 id="fixed-parallelism">
-<a class="anchor" href="#fixed-parallelism" aria-hidden="true"><span class="octicon octicon-link"></span></a>Fixed parallelism</h2>
+<h2 id="fixed-parallelism">Fixed parallelism</h2>
 
 <p>I should be able to run any number of tests concurrently. Indeed with Spock I can do that as described <a href="https://spockframework.org/spock/docs/2.0-M4/parallel_execution.html">here</a>. But, despite the appearance of supporting fixed test parallelism, it actually supports fixed execution parallelism. This leads to very surprising behaviour, as documented at <a href="https://github.com/spockframework/spock/issues/2117">spockframework/spock/issues/2117</a>.</p>
 
-<h2 id="poor-diff-quality">
-<a class="anchor" href="#poor-diff-quality" aria-hidden="true"><span class="octicon octicon-link"></span></a>Poor diff quality</h2>
+<h2 id="poor-diff-quality">Poor diff quality</h2>
 
 <p>Here’s a Groovy diff comparing a want proto to a got proto:</p>
 
@@ -175,8 +159,7 @@ but may be interesting to others.</p>
 
 <p>See how much easier that is to understand? That Spock diff is inexcusably bad.</p>
 
-<h2 id="poor-logging-support">
-<a class="anchor" href="#poor-logging-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Poor logging support</h2>
+<h2 id="poor-logging-support">Poor logging support</h2>
 
 <p>Preface: This is not a Java-ecosystem issue that’s not specific to Spock.</p>
 
@@ -186,8 +169,7 @@ but may be interesting to others.</p>
 
 <p>(FWIW for fun I ran the same test with <code class="language-plaintext highlighter-rouge">--debug</code> and got 32,313 lines. Nice!)</p>
 
-<h2 id="dynamic-property-resolution">
-<a class="anchor" href="#dynamic-property-resolution" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dynamic property resolution</h2>
+<h2 id="dynamic-property-resolution">Dynamic property resolution</h2>
 
 <p>Preface: This is a Groovy issue, not Spock.</p>
 
@@ -195,8 +177,7 @@ but may be interesting to others.</p>
 
 <p>For example, if you want to retry until something happens, you might use Spock’s PollingConditions, whose <code class="language-plaintext highlighter-rouge">eventually</code> takes a closure. If you have compilations in that closure, you’re going to compile, run, retry until you time out, and only after that will your compilation error be surfaced. This is an insane loss of productivity considering that Groovy is built on a strongly typed language!</p>
 
-<h2 id="verbosity-magic-and-assertions">
-<a class="anchor" href="#verbosity-magic-and-assertions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Verbosity, magic, and assertions</h2>
+<h2 id="verbosity-magic-and-assertions">Verbosity, magic, and assertions</h2>
 
 <p>Spock looks for any function that has an <code class="language-plaintext highlighter-rouge">expect:</code> or <code class="language-plaintext highlighter-rouge">then:</code> block, and calls it a test. This is needlessly magical, adds a lot of verbosity (what if I just want a <code class="language-plaintext highlighter-rouge">1==1</code> simple assertion? I need to go add <code class="language-plaintext highlighter-rouge">expect:</code> first), and restrain what you can do (it’s harder to have utility functions doing assertions, because it’d require an expect: block, which now means your utility function is a test!).</p>
 
@@ -204,8 +185,7 @@ but may be interesting to others.</p>
 
 <p>For example, let’s say that I spend 30s waiting for something to happen. The assertion would look like <code class="language-plaintext highlighter-rouge">retryUntil(...).success</code>, and failure in groovy is just going to be “false expected to be true”. What I want is something like, <code class="language-plaintext highlighter-rouge">retryUntil(...).success &lt;&lt; “waited 30s for &lt;whatever&gt;, but timed out without success”</code> (using C++’s assertion annotation syntax there). That provides a meaningful message to the reader. But, you can’t do that in Spock!</p>
 
-  </div>
-<a class="u-url" href="/testing/2025/02/26/spock.html" hidden></a>
+  </div><a class="u-url" href="/testing/2025/02/26/spock.html" hidden></a>
 </article>
 
       </div>

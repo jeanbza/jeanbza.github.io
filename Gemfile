@@ -19,8 +19,6 @@ group :jekyll_plugins do
   gem "jekyll-feed", "~> 0.17"
 end
 
-# ToC
-gem "jekyll-toc"
 
 # Things that were removed from stdlib in ruby 3.4, but we still need.
 gem "csv"

@@ -4,7 +4,6 @@ title:  "testing in Go"
 date:   2022-02-08 15:55:23 -0600
 categories: [testing, go]
 description: "A case for testing Go with Go's testing."
-toc: true
 ---
 
 This is part of a series of posts on testing in Go:

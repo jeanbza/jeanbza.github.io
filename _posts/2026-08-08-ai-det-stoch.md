@@ -4,7 +4,6 @@ title:  "Reproducible, AI-driven large scale changes"
 date:   2026-08-08 02:55:23 -0600
 categories: [ai, infrastructure]
 description: "Making AI-driven large scale code changes deterministic, cheap, and auditable."
-toc: true
 ---
 
 Large scale code changes (LSCs) are groups of code changes that all try to

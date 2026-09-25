@@ -38,28 +38,16 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</a></li>
-<li class="toc-entry toc-h1"><a href="#graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</a></li>
-<li class="toc-entry toc-h1"><a href="#abrupt-degradation">Abrupt degradation</a></li>
-<li class="toc-entry toc-h1"><a href="#gradual-degradation">Gradual degradation</a></li>
-<li class="toc-entry toc-h1"><a href="#linear-function-downsides">Linear function downsides</a></li>
-<li class="toc-entry toc-h1"><a href="#graceful-degradation">Graceful degradation</a></li>
-<li class="toc-entry toc-h1"><a href="#implementing-logistic-function-server-throttling">Implementing logistic function server throttling</a></li>
-<li class="toc-entry toc-h1"><a href="#conclusion">Conclusion</a></li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#graceful-degradation-with-the-logistic-function" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful degradation with the logistic function</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Graceful degradation with the logistic function</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2022-05-05T15:55:23-06:00" itemprop="datePublished">May 5, 2022
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h1 id="graceful-degradation-with-the-logistic-function">
-<a class="anchor" href="#graceful-degradation-with-the-logistic-function" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful degradation with the logistic function</h1>
+    <h1 id="graceful-degradation-with-the-logistic-function">Graceful degradation with the logistic function</h1>
 
 <p>I recently worked on a server throttling feature in one of our build stack’s busiest binaries. We serve files from this binary, which is deployed as tens of thousands of tasks, which cumulatively serve millions of QPS.</p>
 
@@ -67,8 +55,7 @@
 
 <p>Eventually replication catches up, and there are enough peers to spread the load. But we’d like to fail more gracefully than just OOM =&gt; death. We’d like to monitor the current and allocated memory, and gradually reject requests (throttle) when current memory exceeds allocated memory.</p>
 
-<h1 id="abrupt-degradation">
-<a class="anchor" href="#abrupt-degradation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Abrupt degradation</h1>
+<h1 id="abrupt-degradation">Abrupt degradation</h1>
 
 <p>A simple way to abruptly degrade is to reject requests above the allocated amount. We can model that with a simple step function. For the sake of example, let’s imagine that our allocated memory is <code class="language-plaintext highlighter-rouge">3GiB = 3221225472 bytes</code>. We don’t want to hit 3GiB exactly, since that’s roughly where we’ll OOM, so let’s start throttling a bit before that: at <code class="language-plaintext highlighter-rouge">3000000000 bytes = 3e9 bytes</code> (number chosen because it’s conveniently round, and close to 3GiB 🙂).</p>
 
@@ -83,8 +70,7 @@
 
 <p>But, this is inefficient: we’re not using all our available memory. In a resource constrained environment, or when we’re highly scaled, we really want to squeeze every bit of memory that we can, and leaving a huge buffer untouched is far too wasteful.</p>
 
-<h1 id="gradual-degradation">
-<a class="anchor" href="#gradual-degradation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Gradual degradation</h1>
+<h1 id="gradual-degradation">Gradual degradation</h1>
 
 <p>It’s starting to sound like we need a linear function, not a stepwise function: something that rejects more and more requests the more memory we’re using. We now need a range to operate our throttler within: at the bottom of the range, we reject no requests; at the top, all requests.</p>
 
@@ -135,7 +121,7 @@ b = -1953125/144027\]
         \end{array}
     \right.\]
 
-<p><img src="/assets/linear.png" alt=""></p>
+<p><img src="/assets/linear.png" alt="" /></p>
 
 <p>We can verify that this works by plugging in our original numbers:</p>
 
@@ -151,8 +137,7 @@ f(x) = 3221225472/221225472 - 1953125/144027\\
 f(x) = 1
 \end{split}\\\]
 
-<h1 id="linear-function-downsides">
-<a class="anchor" href="#linear-function-downsides" aria-hidden="true"><span class="octicon octicon-link"></span></a>Linear function downsides</h1>
+<h1 id="linear-function-downsides">Linear function downsides</h1>
 
 <p>This is a lot nicer, but we can do better. If our binary is <em>expected</em> to consistently “run hot” (use most of its allocated memory), the linear function may be too aggressive.</p>
 
@@ -162,14 +147,13 @@ f(x) = 1
 
 <p>We need to find a function with a better shape.</p>
 
-<h1 id="graceful-degradation">
-<a class="anchor" href="#graceful-degradation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Graceful degradation</h1>
+<h1 id="graceful-degradation">Graceful degradation</h1>
 
 <p>The <a href="https://en.wikipedia.org/wiki/Logistic_function">logistic function</a> has a better shape for server throttling.</p>
 
 <p>Here’s the shape of the logistic function:</p>
 
-<p><img src="/assets/logistic.png" alt=""></p>
+<p><img src="/assets/logistic.png" alt="" /></p>
 
 <p>Its S-shaped curve allows more requests through when we’re at the bottom of our range, and aggressively throttles at the end of our range.</p>
 
@@ -257,7 +241,7 @@ f(x) = \dfrac{L}{1 + e^{-k(x-x_0)}}\\
 f(x) = \dfrac{1}{1 + e^{-.0000000415424043(x-3110612736)}}
 \end{align*}\]
 
-<p><img src="/assets/logistic_real.png" alt=""></p>
+<p><img src="/assets/logistic_real.png" alt="" /></p>
 
 <p>We can verify that this works by plugging in our original numbers:</p>
 
@@ -283,8 +267,7 @@ f(x) = 0.98999999158
         \end{array}
     \right.\]
 
-<h1 id="implementing-logistic-function-server-throttling">
-<a class="anchor" href="#implementing-logistic-function-server-throttling" aria-hidden="true"><span class="octicon octicon-link"></span></a>Implementing logistic function server throttling</h1>
+<h1 id="implementing-logistic-function-server-throttling">Implementing logistic function server throttling</h1>
 
 <p>Implementing server throttling with the logistic function is fairly straight forward, adding another positive to its list of positives:</p>
 
@@ -326,8 +309,7 @@ f(x) = 0.98999999158
 <span class="p">}</span>
 </code></pre></div></div>
 
-<h1 id="conclusion">
-<a class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conclusion</h1>
+<h1 id="conclusion">Conclusion</h1>
 
 <p>At tremendous scale, it’s important to eke every last bit of memory from servers. It’s also important to be able to gracefully degrade during memory spikes, to avoid out-of-memory crashes. The logistic function is an excellent function for deciding whether to throttle requests, which strikes a good balance between the competing priorities of using all available memory and avoiding out-of-memory crashes.</p>
 
@@ -358,8 +340,7 @@ f(x) = 0.98999999158
   </script>
 
 
-  </div>
-<a class="u-url" href="/infrastructure/2022/05/05/logistic-function-backoff.html" hidden></a>
+  </div><a class="u-url" href="/infrastructure/2022/05/05/logistic-function-backoff.html" hidden></a>
 </article>
 
       </div>

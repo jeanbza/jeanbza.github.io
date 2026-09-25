@@ -4,7 +4,6 @@ title:  "Google styleguide code review skills"
 date:   2026-08-13 02:55:23 -0600
 categories: [ai, claude, cpp, go, python]
 description: "A plugin containing skills for Claude to perform Google's styleguide reviews."
-toc: true
 ---
 
 At Google, code changes require both a language readability and a domain review.

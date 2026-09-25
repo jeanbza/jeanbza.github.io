@@ -4,7 +4,6 @@ title:  "Queues in Postgres"
 date:   2026-05-06 02:55:23 -0600
 categories: [infrastructure]
 description: "Building a distributed priority queue on Postgres."
-toc: true
 ---
 
 At Netflix, part of the infrastructure I work on is a distributed priority queue

@@ -4,7 +4,6 @@ title:  "A generic heap in Go"
 date:   2026-08-19 02:55:23 -0600
 categories: [go, heap]
 description: "An example of the heap package, re-imagined as a generic heap."
-toc: true
 ---
 
 Let's re-imagine the venerable [container/heap](https://pkg.go.dev/container/heap)

@@ -38,26 +38,13 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#reproducible-ai-driven-large-scale-changes">Reproducible, AI-driven large scale changes</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#context">Context</a></li>
-<li class="toc-entry toc-h2"><a href="#evaluation-framework">Evaluation framework</a></li>
-<li class="toc-entry toc-h2"><a href="#discovery-loop">Discovery loop</a></li>
-<li class="toc-entry toc-h2"><a href="#deterministic-solution">Deterministic solution</a></li>
-<li class="toc-entry toc-h2"><a href="#long-tail">Long tail</a></li>
-<li class="toc-entry toc-h2"><a href="#a-better-solution">A better solution</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#reproducible-ai-driven-large-scale-changes" aria-hidden="true"><span class="octicon octicon-link"></span></a>Reproducible, AI-driven large scale changes</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Reproducible, AI-driven large scale changes</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2026-08-08T02:55:23-06:00" itemprop="datePublished">Aug 8, 2026
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>Large scale code changes (LSCs) are groups of code changes that all try to
@@ -85,10 +72,9 @@ encode their results in a metaprogramming program which <em>itself</em> is used 
 perform the LSC in a way that is deterministic, leads to higher confidence, is
 cheap, and is as auditable as ordinary source code.</p>
 
-<p><img src="/assets/agent_exploration.gif" alt="Explore"></p>
+<p><img src="/assets/agent_exploration.gif" alt="Explore" /></p>
 
-<h2 id="context">
-<a class="anchor" href="#context" aria-hidden="true"><span class="octicon octicon-link"></span></a>Context</h2>
+<h2 id="context">Context</h2>
 
 <p>At Google and now at Netflix, I find myself frequently having to perform large
 scale changes to code: changes to hundreds or thousands of codebases. For
@@ -123,8 +109,7 @@ manner.</p>
 
 <p>Let’s take a look in closer detail.</p>
 
-<h2 id="evaluation-framework">
-<a class="anchor" href="#evaluation-framework" aria-hidden="true"><span class="octicon octicon-link"></span></a>Evaluation framework</h2>
+<h2 id="evaluation-framework">Evaluation framework</h2>
 
 <p>This technique starts with an evaluation framework and a discovery / actuate /
 evaluate loop. Using the vulnerability remediation project above, the evaluation
@@ -142,8 +127,7 @@ and if not what failed. (Goal: valid PR)</li>
 
 <p>This is all we need to begin our loop.</p>
 
-<h2 id="discovery-loop">
-<a class="anchor" href="#discovery-loop" aria-hidden="true"><span class="octicon octicon-link"></span></a>Discovery loop</h2>
+<h2 id="discovery-loop">Discovery loop</h2>
 
 <p>With a sufficiently large enough set of repositories (which we have at Netflix,
 or is generally available in GitHub), and enough compute, and enough tokens, and
@@ -169,10 +153,9 @@ quiescence, it expands its test cohort exponentially.</p>
 the problem space as txtar texts, we found fewer and fewer new cases as we
 expanded the test pool:</p>
 
-<p><img src="/assets/discovery_curve.jpg" alt="Discovery curve"></p>
+<p><img src="/assets/discovery_curve.jpg" alt="Discovery curve" /></p>
 
-<h2 id="deterministic-solution">
-<a class="anchor" href="#deterministic-solution" aria-hidden="true"><span class="octicon octicon-link"></span></a>Deterministic solution</h2>
+<h2 id="deterministic-solution">Deterministic solution</h2>
 
 <p>The end result is a single program which can be run on a repository to
 deterministically upgrade dependencies to remediate vulnerabilities. And since
@@ -191,14 +174,13 @@ this large scale change every 6h to remediate vulnerabilities quickly: that
 means we’d pay ~$0.66M/yr. At Google’s scale with 30x-40x those Go repos, that’s
 more like $20M/yr.</p>
 
-<p><img src="/assets/ai_agent_vs_program_cost.jpg" alt="AI cost for LSCs"></p>
+<p><img src="/assets/ai_agent_vs_program_cost.jpg" alt="AI cost for LSCs" /></p>
 
 <p>And, that’s a minimum: as developers 10x their velocity, they also 10x the repos
 they create, which 10x this cost. The program by comparison is ~$0 and will
 forever stay that way.</p>
 
-<h2 id="long-tail">
-<a class="anchor" href="#long-tail" aria-hidden="true"><span class="octicon octicon-link"></span></a>Long tail</h2>
+<h2 id="long-tail">Long tail</h2>
 
 <p>There may be a long tail of issues to deal with. In the cases we’ve dealt with
 so far, this has not been the case, but it’s fair to imagine that there might
@@ -212,8 +194,7 @@ be.</p>
 continually improve the program.</li>
 </ul>
 
-<h2 id="a-better-solution">
-<a class="anchor" href="#a-better-solution" aria-hidden="true"><span class="octicon octicon-link"></span></a>A better solution</h2>
+<h2 id="a-better-solution">A better solution</h2>
 
 <p>It’s attractive to throw AI Agents at every problem, since they’re so fast at
 exploring problems at producing solutions. But in the case of LSCs, the way that
@@ -232,16 +213,15 @@ everything else: by reading the source and the logs.</p>
 <div class="footnotes" role="doc-endnotes">
   <ol>
     <li id="fn:1">
-      <p>50k is the rough median. Low end was 28k, high end was 77k. Most were in the 40k-60k range. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">↩</a></p>
+      <p>50k is the rough median. Low end was 28k, high end was 77k. Most were in the 40k-60k range. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:2">
-      <p>4m is the rough median. Low end was 2m16s, high end was 8m53s. <a href="#fnref:2" class="reversefootnote" role="doc-backlink">↩</a></p>
+      <p>4m is the rough median. Low end was 2m16s, high end was 8m53s. <a href="#fnref:2" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
 </div>
 
-  </div>
-<a class="u-url" href="/ai/infrastructure/2026/08/08/ai-det-stoch.html" hidden></a>
+  </div><a class="u-url" href="/ai/infrastructure/2026/08/08/ai-det-stoch.html" hidden></a>
 </article>
 
       </div>

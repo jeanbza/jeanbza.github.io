@@ -4,7 +4,6 @@ title:  "Stubbing gRPC clients in Go tests"
 date:   2020-10-08 15:55:23 -0600
 categories: [testing, go]
 description: "Stubbing gRPC clients in Go tests."
-toc: true
 ---
 
 This is part of a series of posts on testing in Go:

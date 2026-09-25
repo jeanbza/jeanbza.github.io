@@ -38,21 +38,13 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#bad-times-initializing-with-append">Bad Times Initializing With Append</a></li>
-<li class="toc-entry toc-h1"><a href="#a-modest-test">A modest test</a></li>
-<li class="toc-entry toc-h1"><a href="#what-the-heck">What the heck?</a></li>
-<li class="toc-entry toc-h1"><a href="#how-to-solve-this">How to solve this?</a></li>
-<li class="toc-entry toc-h1"><a href="#when-is-this-not-a-problem">When is this not a problem?</a></li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#bad-times-initializing-with-append" aria-hidden="true"><span class="octicon octicon-link"></span></a>Bad Times Initializing With Append</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Bad Times Initializing With Append</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2019-10-23T15:55:23-06:00" itemprop="datePublished">Oct 23, 2019
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>I recently found out as part of <a href="https://go-review.googlesource.com/c/tools/+/184357">a code review</a>
@@ -60,8 +52,7 @@ that initializing variables with append is, under some circumstances, A
 Terrible Idea. This post briefly explores what can happen when you do that,
 the underlying reason these things are happening, and how to avoid it.</p>
 
-<h1 id="a-modest-test">
-<a class="anchor" href="#a-modest-test" aria-hidden="true"><span class="octicon octicon-link"></span></a>A modest test</h1>
+<h1 id="a-modest-test">A modest test</h1>
 
 <p>Consider <a href="https://play.golang.org/p/3v_fgJLmtgO">the following program</a>:</p>
 
@@ -117,8 +108,7 @@ b [one two three four five seven]
 c [one two three four five seven]
 </code></pre></div></div>
 
-<h1 id="what-the-heck">
-<a class="anchor" href="#what-the-heck" aria-hidden="true"><span class="octicon octicon-link"></span></a>What the heck?</h1>
+<h1 id="what-the-heck">What the heck?</h1>
 
 <p>Note: this section assumes you understand that slices are composed of a
 reference to an underlying array, a length, and a capacity. See more details at
@@ -156,20 +146,17 @@ got its own <code class="language-plaintext highlighter-rouge">len: 6, cap: 8</c
 and <code class="language-plaintext highlighter-rouge">c</code> share an underlying array, but <em>do not</em> share their counters, that means
 they both tried to assign a value to index <code class="language-plaintext highlighter-rouge">5</code>.</p>
 
-<h1 id="how-to-solve-this">
-<a class="anchor" href="#how-to-solve-this" aria-hidden="true"><span class="octicon octicon-link"></span></a>How to solve this?</h1>
+<h1 id="how-to-solve-this">How to solve this?</h1>
 
 <p>Here are some other ways you could accomplish the same thing:</p>
 
 <ul>
   <li>If you know the values ahead of time, do <code class="language-plaintext highlighter-rouge">a := []string{...}</code>.</li>
-  <li>If you know the capacity ahead of time, do <code class="language-plaintext highlighter-rouge">a := make([]string, 0, cap)</code>
-</li>
+  <li>If you know the capacity ahead of time, do <code class="language-plaintext highlighter-rouge">a := make([]string, 0, cap)</code></li>
   <li>Copy https://github.com/golang/go/wiki/SliceTricks#copy.</li>
 </ul>
 
-<h1 id="when-is-this-not-a-problem">
-<a class="anchor" href="#when-is-this-not-a-problem" aria-hidden="true"><span class="octicon octicon-link"></span></a>When is this not a problem?</h1>
+<h1 id="when-is-this-not-a-problem">When is this not a problem?</h1>
 
 <p>The key piece above is that <code class="language-plaintext highlighter-rouge">b</code> and <code class="language-plaintext highlighter-rouge">c</code> are the result of appending to <code class="language-plaintext highlighter-rouge">a</code>. If
 <code class="language-plaintext highlighter-rouge">a</code> is only ever going to be appended to itself (a very common use of slices),
@@ -177,8 +164,7 @@ the problem won’t occur, since there will always only ever be one length count
 to maintain. With only one length counter, there’s no room for two appends
 accidentally assigning to the same index.</p>
 
-  </div>
-<a class="u-url" href="/go/2019/10/23/init-with-append.html" hidden></a>
+  </div><a class="u-url" href="/go/2019/10/23/init-with-append.html" hidden></a>
 </article>
 
       </div>

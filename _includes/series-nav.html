@@ -1,0 +1,30 @@
+{%- comment -%}
+  Series navigation card, rendered for any post with a `series:` front matter
+  key. Published parts are discovered from the posts themselves (ordered by
+  `series_part`); planned-but-unwritten parts come from `upcoming` in
+  _data/series.yml.
+
+  Positioning lives in assets/main.scss: on wide screens this sits in the empty
+  gutter to the right of the text column, and collapses to an ordinary block
+  under the post title when the gutter gets too narrow to hold it.
+{%- endcomment -%}
+{%- if page.series -%}
+  {%- assign series = site.data.series[page.series] -%}
+  {%- assign parts = site.posts | where: "series", page.series | sort: "series_part" -%}
+  <aside class="series-nav" aria-label="Parts in this series">
+    <p class="series-nav-title">{{ series.title | default: "This series" | escape }}</p>
+    <ol class="series-nav-list">
+      {%- for part in parts -%}
+        {%- assign label = part.series_title | default: part.title -%}
+        {%- if part.url == page.url -%}
+          <li class="is-current" aria-current="page"><span>{{ label | escape }}</span></li>
+        {%- else -%}
+          <li><a href="{{ part.url | relative_url }}">{{ label | escape }}</a></li>
+        {%- endif -%}
+      {%- endfor -%}
+      {%- for item in series.upcoming -%}
+        <li class="is-upcoming"><span>{{ item | escape }}</span></li>
+      {%- endfor -%}
+    </ol>
+  </aside>
+{%- endif -%}

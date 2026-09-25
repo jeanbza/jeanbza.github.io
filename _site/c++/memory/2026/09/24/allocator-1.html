@@ -38,25 +38,16 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#an-unaligned-memory-allocator">An unaligned memory allocator</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#a-simple-unaligned-allocator">A simple, unaligned allocator</a></li>
-<li class="toc-entry toc-h2"><a href="#what-do-we-want-that-code-to-do">What do we want that code to do?</a></li>
-<li class="toc-entry toc-h2"><a href="#a-simple-malloc-and-free">A simple malloc and free</a></li>
-<li class="toc-entry toc-h2"><a href="#viewing-this-with-imhex">Viewing this with ImHex</a></li>
-<li class="toc-entry toc-h2"><a href="#next-up">Next up</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#an-unaligned-memory-allocator" aria-hidden="true"><span class="octicon octicon-link"></span></a>An unaligned memory allocator</h1>
+    <h1 class="post-title p-name" itemprop="name headline">An unaligned memory allocator</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2026-09-24T02:55:23-06:00" itemprop="datePublished">Sep 24, 2026
-      </time></p>
-  </header>
+      </time></p><aside class="series-nav" aria-label="Parts in this series">
+    <p class="series-nav-title">Memory allocator series</p>
+    <ol class="series-nav-list"><li class="is-current" aria-current="page"><span>Unaligned malloc</span></li><li><a href="/c++/memory/2026/09/24/allocator-2.html">Aligned malloc</a></li><li class="is-upcoming"><span>Splitting &amp; coalescing</span></li></ol>
+  </aside></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>When I worked on ObjFS at Google, I had the total honour of working with some
@@ -80,12 +71,11 @@ for most of what I’m going to write about.</p>
 
 <p>A working version of all this code can be found <a href="https://gist.github.com/jeanbza/7865168b77e53b61619138cebf9a15cd">here</a>.</p>
 
-<p><img src="/assets/imhex1.png" alt="Unaligned"></p>
+<p><img src="/assets/imhex1.png" alt="Unaligned" /></p>
 
 <p><em>Memory allocated by my unaligned allocator, nicely byte packed but otherwise mostly a bad idea.</em></p>
 
-<h2 id="a-simple-unaligned-allocator">
-<a class="anchor" href="#a-simple-unaligned-allocator" aria-hidden="true"><span class="octicon octicon-link"></span></a>A simple, unaligned allocator</h2>
+<h2 id="a-simple-unaligned-allocator">A simple, unaligned allocator</h2>
 
 <p>Below is a very simple program with a malloc and free which can be used to
 allocate memory out of a contiguous 4096-sized address space:</p>
@@ -113,8 +103,7 @@ allocate memory out of a contiguous 4096-sized address space:</p>
 <span class="n">specialfree</span><span class="p">(</span><span class="n">p2</span><span class="p">);</span>
 </code></pre></div></div>
 
-<h2 id="what-do-we-want-that-code-to-do">
-<a class="anchor" href="#what-do-we-want-that-code-to-do" aria-hidden="true"><span class="octicon octicon-link"></span></a>What do we want that code to do?</h2>
+<h2 id="what-do-we-want-that-code-to-do">What do we want that code to do?</h2>
 
 <p>So essentially we have a 4096 byte range and we want to hand out slices of it to
 code that calls <code class="language-plaintext highlighter-rouge">specialmalloc</code>, and give them a <code class="language-plaintext highlighter-rouge">specialfree</code> to return it to
@@ -158,8 +147,7 @@ intentionally NOT doing <code class="language-plaintext highlighter-rouge">sizeo
 map/unmap individual fields at their exact sizes rather than the entire struct.
 We’re going to talk about alignment in the next article.</p>
 
-<h2 id="a-simple-malloc-and-free">
-<a class="anchor" href="#a-simple-malloc-and-free" aria-hidden="true"><span class="octicon octicon-link"></span></a>A simple malloc and free</h2>
+<h2 id="a-simple-malloc-and-free">A simple malloc and free</h2>
 
 <p>Let’s write a really simple implicit free list malloc, where we just write
 <code class="language-plaintext highlighter-rouge">header{.header=true}</code>, <code class="language-plaintext highlighter-rouge">header{.len=xyz, .used=true}</code>, <code class="language-plaintext highlighter-rouge">payload</code>,
@@ -209,13 +197,12 @@ We’re going to talk about alignment in the next article.</p>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<h2 id="viewing-this-with-imhex">
-<a class="anchor" href="#viewing-this-with-imhex" aria-hidden="true"><span class="octicon octicon-link"></span></a>Viewing this with ImHex</h2>
+<h2 id="viewing-this-with-imhex">Viewing this with ImHex</h2>
 
 <p><a href="https://imhex.werwolv.net/">ImHex</a> is a really neat little tool for viewing
 the bytes we’ve allocated:</p>
 
-<p><img src="/assets/imhex1.gif" alt="Unaligned"></p>
+<p><img src="/assets/imhex1.gif" alt="Unaligned" /></p>
 
 <p>(Note: this gif was taken before adding the used bool, so you won’t see that)</p>
 
@@ -227,15 +214,13 @@ free on both pointers and allocated a new int, the first pointer’s space would
 get re-used and the second pointer would just be marked used=false without
 zeroing out its space.</p>
 
-<h2 id="next-up">
-<a class="anchor" href="#next-up" aria-hidden="true"><span class="octicon octicon-link"></span></a>Next up</h2>
+<h2 id="next-up">Next up</h2>
 
 <p><a href="/c++/memory/2026/09/24/allocator-2.html">In the next post</a> we’ll talk about
 the alignment issues here, and fix it. We’ll also discuss splitting and
 coalescing that we might want to do.</p>
 
-  </div>
-<a class="u-url" href="/c++/memory/2026/09/24/allocator-1.html" hidden></a>
+  </div><a class="u-url" href="/c++/memory/2026/09/24/allocator-1.html" hidden></a>
 </article>
 
       </div>

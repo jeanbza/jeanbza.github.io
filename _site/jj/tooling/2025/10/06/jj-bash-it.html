@@ -38,30 +38,26 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#a-jj-plugin-for-bash-it">A jj plugin for bash-it</a></li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#a-jj-plugin-for-bash-it" aria-hidden="true"><span class="octicon octicon-link"></span></a>A jj plugin for bash-it</h1>
+    <h1 class="post-title p-name" itemprop="name headline">A jj plugin for bash-it</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2025-10-06T02:55:23-06:00" itemprop="datePublished">Oct 6, 2025
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
 <a href="/2025/10/16/jj-cleanall.html">A jj script to lint your entire graph</a>.</p>
 
-<hr>
+<hr />
 
 <p>I’ve been using <a href="https://github.com/jj-vcs/jj"><code class="language-plaintext highlighter-rouge">jj</code></a> instead of <code class="language-plaintext highlighter-rouge">git</code>, and it’s
 been great. One thing I really miss using <code class="language-plaintext highlighter-rouge">git</code>, though, is a nice terminal
 prompt that I get from <a href="https://github.com/Bash-it/bash-it"><code class="language-plaintext highlighter-rouge">bash-it</code></a>. So, I
 whipped up one for <code class="language-plaintext highlighter-rouge">jj</code>.</p>
 
-<p><img src="/assets/jj.png" alt="jj prompt"></p>
+<p><img src="/assets/jj.png" alt="jj prompt" /></p>
 
 <p><em>Notice:</em> The prompt now prints |jj:<strong>ty</strong>mnqrpn - readme| and
 |jj:<strong>s</strong>ttyyssy|. The coloured short letters (ty, s) are the <code class="language-plaintext highlighter-rouge">jj</code> short prefix,
@@ -74,8 +70,7 @@ bookmark associated with the rev if one exists.</p>
   <li>
     <p>Create <code class="language-plaintext highlighter-rouge">~/.bash_it/custom/jj.plugins.bash</code> with:</p>
 
-    <div class="language-sh highlighter-rouge">
-<div class="highlight"><pre class="highlight"><code> <span class="c"># ~/.bash_it/custom/jj.plugins.bash</span>
+    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c"># ~/.bash_it/custom/jj.plugins.bash</span>
 
  <span class="c"># Set jj prompt to be enabled by default</span>
  <span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="k">:-</span><span class="nv">true</span><span class="k">}</span><span class="s2">"</span>
@@ -148,8 +143,7 @@ bookmark associated with the rev if one exists.</p>
     <p>Update <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/&lt;theme&gt;/&lt;theme&gt;.bash</code> (ex
 <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>), amending the prompt_command:</p>
 
-    <div class="language-sh highlighter-rouge">
-<div class="highlight"><pre class="highlight"><code> <span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
+    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
  <span class="nb">local </span><span class="nv">scm_info</span><span class="o">=</span><span class="s2">""</span>
 
  <span class="c"># 1. Check if it is a JJ repo first (Priority)</span>
@@ -177,9 +171,9 @@ bookmark associated with the rev if one exists.</p>
 
 <p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>
 
-<hr>
+<hr />
 
-<p><br>I’m also partial to the following <code class="language-plaintext highlighter-rouge">jj config edit --user</code>:</p>
+<p><br />I’m also partial to the following <code class="language-plaintext highlighter-rouge">jj config edit --user</code>:</p>
 
 <div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">[</span><span class="n">revsets</span><span class="k">]</span>
 <span class="n">log</span> <span class="o">=</span><span class="w"> </span><span class="s">"present(@) | ancestors(mine() &amp; immutable_heads().., 2) | trunk()"</span>
@@ -187,8 +181,7 @@ bookmark associated with the rev if one exists.</p>
 
 <p>That does a good job showing me <em>my</em> commits when I <code class="language-plaintext highlighter-rouge">jj log</code>.</p>
 
-  </div>
-<a class="u-url" href="/jj/tooling/2025/10/06/jj-bash-it.html" hidden></a>
+  </div><a class="u-url" href="/jj/tooling/2025/10/06/jj-bash-it.html" hidden></a>
 </article>
 
       </div>

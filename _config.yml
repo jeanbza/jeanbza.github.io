@@ -34,7 +34,6 @@ github_username:  jeanbza
 theme: minima
 plugins:
   - jekyll-feed
-  - jekyll-toc
 
 # Pages listed in the header nav. Without this, minima lists *every* page it
 # finds. GitHub Pages enables jekyll-optional-front-matter, which promotes

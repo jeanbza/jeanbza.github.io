@@ -4,7 +4,6 @@ title:  "Error unwrapping for library authors"
 date:   2022-02-08 15:55:23 -0600
 categories: [errors, go]
 description: "Go's Unwrap is part of your library's API."
-toc: true
 ---
 
 # Introduction

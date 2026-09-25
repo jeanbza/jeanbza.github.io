@@ -4,7 +4,6 @@ title:  "Storing protobuf-generated Go code without a registry"
 date:   2025-06-10 02:55:23 -0600
 categories: [protobuf, modules]
 description: "Where to store protobuf-generated Go code without the buf BSR."
-toc: true
 ---
 
 Before diving into this topic, you may want to familiarize yourself with [Using Go Modules](https://go.dev/blog/using-go-modules) and subsequent posts, or [the module spec](https://go.dev/ref/mod). Go modules work considerably differently than other languages' dependency management schemes: of particular note to this article is that Go modules are comprised of the code that lives in VCS, as opposed to external registries like Artifactory, pypi, npmjs.org, and so on.

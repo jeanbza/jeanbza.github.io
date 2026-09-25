@@ -38,48 +38,16 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#running-your-own-pkgsite">Running your own pkgsite</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#who-this-is-for">Who this is for</a></li>
-<li class="toc-entry toc-h2"><a href="#understanding-pkgsite">Understanding pkgsite</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#code-layout">Code layout</a></li>
-<li class="toc-entry toc-h3"><a href="#modifiable-config">Modifiable config</a></li>
-</ul>
-</li>
-<li class="toc-entry toc-h2"><a href="#running-pkgsite">Running pkgsite</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#a-simple-pkgsite">A simple pkgsite</a></li>
-<li class="toc-entry toc-h3"><a href="#standing-up-a-real-pkgsite">Standing up a real pkgsite</a>
-<ul>
-<li class="toc-entry toc-h4"><a href="#proxy">Proxy</a></li>
-<li class="toc-entry toc-h4"><a href="#index">Index</a></li>
-<li class="toc-entry toc-h4"><a href="#postgres">Postgres</a></li>
-<li class="toc-entry toc-h4"><a href="#frontend">Frontend</a></li>
-<li class="toc-entry toc-h4"><a href="#worker">Worker</a></li>
-</ul>
-</li>
-<li class="toc-entry toc-h3"><a href="#poke-the-worker">Poke the worker</a></li>
-<li class="toc-entry toc-h3"><a href="#see-the-results">See the results</a></li>
-</ul>
-</li>
-<li class="toc-entry toc-h2"><a href="#useful-debugging">Useful debugging</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#running-your-own-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running your own pkgsite</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Running your own pkgsite</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2025-01-29T00:55:23-07:00" itemprop="datePublished">Jan 29, 2025
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h2 id="who-this-is-for">
-<a class="anchor" href="#who-this-is-for" aria-hidden="true"><span class="octicon octicon-link"></span></a>Who this is for</h2>
+    <h2 id="who-this-is-for">Who this is for</h2>
 
 <p>Netflix has a private enterprise GitHub (and goproxy), which means that
 <a href="https://pkg.go.dev/golang.org/x/pkgsite">pkgsite</a> does not crawl it. I set out
@@ -87,16 +55,14 @@ to run pkgsite myself against this private enterprise GitHub.</p>
 
 <p>This article is for anyone else setting out to do similarly.</p>
 
-<h2 id="understanding-pkgsite">
-<a class="anchor" href="#understanding-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Understanding pkgsite</h2>
+<h2 id="understanding-pkgsite">Understanding pkgsite</h2>
 
 <p><a href="https://github.com/golang/pkgsite/blob/master/doc/design.md">github.com/golang/pkgsite/blob/master/doc/design.md</a>
 describes pkgsite’s components.
 <a href="https://sum.golang.org/">sum.golang.org</a> describes the proxy and index that
 enables pkgsite.</p>
 
-<h3 id="code-layout">
-<a class="anchor" href="#code-layout" aria-hidden="true"><span class="octicon octicon-link"></span></a>Code layout</h3>
+<h3 id="code-layout">Code layout</h3>
 
 <p>pkgsite is canonically hosted at <a href="https://go.googlesource.com/pkgsite">go.googlesource.com/pkgsite</a>
 and can be cloned with <code class="language-plaintext highlighter-rouge">git clone https://go.googlesource.com/pkgsite</code>. The
@@ -125,28 +91,22 @@ important parts for this article are,</p>
 <p>Let’s quickly describe each:</p>
 
 <ul>
-  <li>
-<strong>cmd/pkgsite</strong>: The simplest and best documented. Running this lets you host
+  <li><strong>cmd/pkgsite</strong>: The simplest and best documented. Running this lets you host
 a minimal pkgsite. It’s not connected to a database and doesn’t have a worker
 searching for modules. So, it doesn’t have a usable search feature. It’s useful
 for looking at one or two of your own projects but without search, it’s not good
 enough for an entire org.</li>
-  <li>
-<strong>frontend</strong>: The web-serving frontend. When run, serves the frontend at
+  <li><strong>frontend</strong>: The web-serving frontend. When run, serves the frontend at
 <code class="language-plaintext highlighter-rouge">localhost:8080</code>.</li>
-  <li>
-<strong>worker</strong>: The data-fetching backend that updates the database. When run,
+  <li><strong>worker</strong>: The data-fetching backend that updates the database. When run,
 serves a work management page at <code class="language-plaintext highlighter-rouge">localhost:8000</code>.</li>
-  <li>
-<strong>migrations</strong>: A series of sql scripts that when run in order will set up
+  <li><strong>migrations</strong>: A series of sql scripts that when run in order will set up
 all the necessary tables and schemas.</li>
-  <li>
-<strong>seeddb</strong>: A one-shot program that reads a <code class="language-plaintext highlighter-rouge">seed.txt</code> file, fetches modules
+  <li><strong>seeddb</strong>: A one-shot program that reads a <code class="language-plaintext highlighter-rouge">seed.txt</code> file, fetches modules
 listed there-in, and populates the database with the information.</li>
 </ul>
 
-<h3 id="modifiable-config">
-<a class="anchor" href="#modifiable-config" aria-hidden="true"><span class="octicon octicon-link"></span></a>Modifiable config</h3>
+<h3 id="modifiable-config">Modifiable config</h3>
 
 <p>The frontend and worker both use <code class="language-plaintext highlighter-rouge">internal/config/serverconfig/config.go</code>, which
 is modifiable with environment variables. Here’s a few you may care about:</p>
@@ -163,17 +123,14 @@ DBPort:               GetEnv("GO_DISCOVERY_DATABASE_PORT", "5432"),
 DBName:               GetEnv("GO_DISCOVERY_DATABASE_NAME", "discovery-db"),
 </code></pre></div></div>
 
-<h2 id="running-pkgsite">
-<a class="anchor" href="#running-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running pkgsite</h2>
+<h2 id="running-pkgsite">Running pkgsite</h2>
 
-<h3 id="a-simple-pkgsite">
-<a class="anchor" href="#a-simple-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>A simple pkgsite</h3>
+<h3 id="a-simple-pkgsite">A simple pkgsite</h3>
 
 <p>You can run a simple pkgsite with <code class="language-plaintext highlighter-rouge">go run cmd/pkgsite/main.go -proxy=URL</code>, but
 it only hosts documentation for a single repo. So, we’ll move on from this.</p>
 
-<h3 id="standing-up-a-real-pkgsite">
-<a class="anchor" href="#standing-up-a-real-pkgsite" aria-hidden="true"><span class="octicon octicon-link"></span></a>Standing up a real pkgsite</h3>
+<h3 id="standing-up-a-real-pkgsite">Standing up a real pkgsite</h3>
 
 <p>We’ll need five things running:</p>
 
@@ -185,23 +142,20 @@ it only hosts documentation for a single repo. So, we’ll move on from this.</p
   <li>The pkgsite worker.</li>
 </ul>
 
-<h4 id="proxy">
-<a class="anchor" href="#proxy" aria-hidden="true"><span class="octicon octicon-link"></span></a>Proxy</h4>
+<h4 id="proxy">Proxy</h4>
 
 <p>We’ll assume you already have a proxy server. But if not, check out
 <a href="https://github.com/goproxy/goproxy">github.com/goproxy/goproxy</a> as one
 option.</p>
 
-<h4 id="index">
-<a class="anchor" href="#index" aria-hidden="true"><span class="octicon octicon-link"></span></a>Index</h4>
+<h4 id="index">Index</h4>
 
 <p>A simple index server is given at
 <a href="https://github.com/jeanbza/golang-index">github.com/jeanbza/golang-index</a>. You
 may wish to build your own, though. Its role is simple, and described at
 <a href="https://github.com/golang/pkgsite/blob/master/doc/design.md">github.com/golang/pkgsite/blob/master/doc/design.md</a>.</p>
 
-<h4 id="postgres">
-<a class="anchor" href="#postgres" aria-hidden="true"><span class="octicon octicon-link"></span></a>Postgres</h4>
+<h4 id="postgres">Postgres</h4>
 
 <p>There are numerous ways to run a postgres database. Here’s something quick,
 written for a Mac, to get you started:</p>
@@ -223,8 +177,7 @@ migrate <span class="nt">-source</span> file:migrations <span class="nt">-databa
 <span class="se">\d</span>t
 </code></pre></div></div>
 
-<h4 id="frontend">
-<a class="anchor" href="#frontend" aria-hidden="true"><span class="octicon octicon-link"></span></a>Frontend</h4>
+<h4 id="frontend">Frontend</h4>
 
 <p>Now, let’s run the frontend:</p>
 
@@ -236,8 +189,7 @@ go run cmd/frontend/main.go <span class="se">\</span>
     <span class="nt">-bypass_license_check</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div></div>
 
-<h4 id="worker">
-<a class="anchor" href="#worker" aria-hidden="true"><span class="octicon octicon-link"></span></a>Worker</h4>
+<h4 id="worker">Worker</h4>
 
 <p>Finally, let’s run the worker:</p>
 
@@ -254,8 +206,7 @@ to run the worker with a non-TLS’d GO_MODULE_INDEX_URL will result in an error
 Get around this by making the worker accept a non-https index by commenting out
 the https validation at <code class="language-plaintext highlighter-rouge">pkgsite/internal/index/index.go</code>’s <code class="language-plaintext highlighter-rouge">New()</code> function.</p>
 
-<h3 id="poke-the-worker">
-<a class="anchor" href="#poke-the-worker" aria-hidden="true"><span class="octicon octicon-link"></span></a>Poke the worker</h3>
+<h3 id="poke-the-worker">Poke the worker</h3>
 
 <p>The worker will periodically do work, but you can poke it by either visiting
 http://localhost:8000 and clicking the poll/enqueue buttons, or by something
@@ -265,8 +216,7 @@ like,</p>
 <span class="k">while </span><span class="nb">true</span> <span class="p">;</span> <span class="k">do </span><span class="nb">date</span> <span class="o">&amp;&amp;</span> curl localhost:8000/enqueue <span class="o">&amp;&amp;</span> curl localhost:8000/poll <span class="o">&amp;&amp;</span> <span class="nb">sleep </span>20<span class="p">;</span> <span class="k">done</span><span class="p">;</span>
 </code></pre></div></div>
 
-<h3 id="see-the-results">
-<a class="anchor" href="#see-the-results" aria-hidden="true"><span class="octicon octicon-link"></span></a>See the results</h3>
+<h3 id="see-the-results">See the results</h3>
 
 <p>Check the “modules” page at http://localhost:8000 to see how the worker is
 getting along.</p>
@@ -275,8 +225,7 @@ getting along.</p>
 seeing modules through the frontend. To do so, navigate to
 http://localhost:8080, where the frontend is hosted.</p>
 
-<h2 id="useful-debugging">
-<a class="anchor" href="#useful-debugging" aria-hidden="true"><span class="octicon octicon-link"></span></a>Useful debugging</h2>
+<h2 id="useful-debugging">Useful debugging</h2>
 
 <p>I found the following db commands useful:</p>
 
@@ -300,8 +249,7 @@ http://localhost:8080, where the frontend is hosted.</p>
 <span class="k">TRUNCATE</span> <span class="n">documentation</span><span class="p">,</span> <span class="n">documentation_symbols</span><span class="p">,</span> <span class="n">excluded_prefixes</span><span class="p">,</span> <span class="n">imports</span><span class="p">,</span> <span class="n">imports_unique</span><span class="p">,</span> <span class="n">latest_module_versions</span><span class="p">,</span> <span class="n">legacy_documentation_symbols</span><span class="p">,</span> <span class="n">licenses</span><span class="p">,</span> <span class="n">module_version_states</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">package_symbols</span><span class="p">,</span> <span class="n">package_version_states</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">readmes</span><span class="p">,</span> <span class="n">search_documents</span><span class="p">,</span> <span class="n">symbol_history</span><span class="p">,</span> <span class="n">symbol_names</span><span class="p">,</span> <span class="n">symbol_search_documents</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">version_map</span><span class="p">;</span>
 </code></pre></div></div>
 
-  </div>
-<a class="u-url" href="/go/tooling/2025/01/29/pkgsite.html" hidden></a>
+  </div><a class="u-url" href="/go/tooling/2025/01/29/pkgsite.html" hidden></a>
 </article>
 
       </div>

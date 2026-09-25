@@ -38,22 +38,13 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#complex-assertions">Complex assertions</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#custom-matcher-examples">Custom matcher examples</a></li>
-<li class="toc-entry toc-h2"><a href="#custom-matchers-tend-to-reduce-comprehensibility-of-your-tests">Custom matchers tend to reduce comprehensibility of your tests</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#complex-assertions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Complex assertions</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Complex assertions</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2022-02-08T14:55:23-07:00" itemprop="datePublished">Feb 8, 2022
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>This is part of a series of posts on testing in Go:</p>
@@ -70,8 +61,7 @@
 
 <p>The following are real code examples pulled from real codebases.</p>
 
-<h2 id="custom-matcher-examples">
-<a class="anchor" href="#custom-matcher-examples" aria-hidden="true"><span class="octicon octicon-link"></span></a>Custom matcher examples</h2>
+<h2 id="custom-matcher-examples">Custom matcher examples</h2>
 
 <p>Consider the following Java code:</p>
 
@@ -108,8 +98,7 @@
 
 <p>I couldn’t really tell you what’s going on in either without looking at <code class="language-plaintext highlighter-rouge">assertParagraphElement</code> or <code class="language-plaintext highlighter-rouge">dos_quotas::HasRequest</code>.</p>
 
-<h2 id="custom-matchers-tend-to-reduce-comprehensibility-of-your-tests">
-<a class="anchor" href="#custom-matchers-tend-to-reduce-comprehensibility-of-your-tests" aria-hidden="true"><span class="octicon octicon-link"></span></a>Custom matchers tend to reduce comprehensibility of your tests</h2>
+<h2 id="custom-matchers-tend-to-reduce-comprehensibility-of-your-tests">Custom matchers tend to reduce comprehensibility of your tests</h2>
 
 <p>I tend to see people using custom matchers either because it’s super terse, or as a way to implement a helper function.</p>
 
@@ -121,8 +110,7 @@
 
 <p>I’d recommend preferring more verbose but easier to read code to keep your team going fast. When you need a helper, I’d suggest writing it as a simple function rather than as a matcher.</p>
 
-  </div>
-<a class="u-url" href="/testing/go/2022/02/08/complex-assertions.html" hidden></a>
+  </div><a class="u-url" href="/testing/go/2022/02/08/complex-assertions.html" hidden></a>
 </article>
 
       </div>

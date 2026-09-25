@@ -13,6 +13,12 @@ layout: default
       {%- if page.author -%}
         • <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span class="p-author h-card" itemprop="name">{{ page.author }}</span></span>
       {%- endif -%}</p>
+    {%- comment -%}
+      Absolutely positioned into the right-hand gutter on wide screens, so it
+      must stay inside .post-header (its positioning context). No-ops for posts
+      without a `series:` key.
+    {%- endcomment -%}
+    {%- include series-nav.html -%}
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">

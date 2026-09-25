@@ -4,7 +4,6 @@ title:  "Bad Times Initializing With Append"
 date:   2019-10-23 15:55:23 -0600
 categories: [go]
 description: "Initializing a variable can be a bad idea."
-toc: true
 ---
 
 I recently found out as part of [a code review](https://go-review.googlesource.com/c/tools/+/184357)

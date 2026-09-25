@@ -38,36 +38,16 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#interfaces-in-depth">Interfaces in depth</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#foreword">Foreword</a></li>
-<li class="toc-entry toc-h2"><a href="#impetus">Impetus</a></li>
-<li class="toc-entry toc-h2"><a href="#what-are-interfaces-anyway">What are interfaces, anyway?</a></li>
-<li class="toc-entry toc-h2"><a href="#interfaces-behave-different-than-structs">Interfaces behave different than structs</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#a-struct-can-implement-an-interface-with-concrete-or-pointer-method-receivers">A struct can implement an interface with concrete or pointer method receivers</a></li>
-<li class="toc-entry toc-h3"><a href="#selectors-automatically-dereference-pointers-to-structs">Selectors automatically dereference pointers to structs</a></li>
-<li class="toc-entry toc-h3"><a href="#pointers-to-interfaces-do-not-automatically-dereference">Pointers to interfaces do not automatically dereference</a></li>
-</ul>
-</li>
-<li class="toc-entry toc-h2"><a href="#putting-it-all-together">Putting it all together</a></li>
-<li class="toc-entry toc-h2"><a href="#afterword">Afterword</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#interfaces-in-depth" aria-hidden="true"><span class="octicon octicon-link"></span></a>Interfaces in depth</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Interfaces in depth</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2022-12-05T00:55:23-07:00" itemprop="datePublished">Dec 5, 2022
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <h2 id="foreword">
-<a class="anchor" href="#foreword" aria-hidden="true"><span class="octicon octicon-link"></span></a>Foreword</h2>
+    <h2 id="foreword">Foreword</h2>
 
 <p>A conversation with a colleague inspired a deep dive into the refspec, to gain
 concrete understanding on some things I had until then only had intuitions
@@ -77,8 +57,7 @@ write the article that my chat message was trying to be.</p>
 
 <p>This is that article.</p>
 
-<h2 id="impetus">
-<a class="anchor" href="#impetus" aria-hidden="true"><span class="octicon octicon-link"></span></a>Impetus</h2>
+<h2 id="impetus">Impetus</h2>
 
 <p>This article is inspired by the following confusion:</p>
 
@@ -99,8 +78,7 @@ certainly wants a pointer to the <em>struct</em>. Both concrete structs and poin
 structs can implement interfaces. That’s the intuition I mentioned above. But,
 let’s dive into this a bit and figure out what’s behind this.</p>
 
-<h2 id="what-are-interfaces-anyway">
-<a class="anchor" href="#what-are-interfaces-anyway" aria-hidden="true"><span class="octicon octicon-link"></span></a>What are interfaces, anyway?</h2>
+<h2 id="what-are-interfaces-anyway">What are interfaces, anyway?</h2>
 
 <p>From <a href="https://go.dev/blog/laws-of-reflection">Laws of reflection</a>,</p>
 
@@ -154,8 +132,7 @@ when we pass it around.</li>
 but not the interface itself. So there’s no modify/persist state benefit.</li>
 </ul>
 
-<h2 id="interfaces-behave-different-than-structs">
-<a class="anchor" href="#interfaces-behave-different-than-structs" aria-hidden="true"><span class="octicon octicon-link"></span></a>Interfaces behave different than structs</h2>
+<h2 id="interfaces-behave-different-than-structs">Interfaces behave different than structs</h2>
 
 <p>Ok, so we’ve talked about how interfaces are fundamentally different, and that
 variables conceptually should (usually) not use interface pointer types; in
@@ -165,8 +142,7 @@ constrast to structs, where pointers to structs are very common and useful.</p>
 to pointer referencing and dereferencing. Let’s do so by collecting together a
 few facts about interfaces from the refspec, to prepare for our conclusion:</p>
 
-<h3 id="a-struct-can-implement-an-interface-with-concrete-or-pointer-method-receivers">
-<a class="anchor" href="#a-struct-can-implement-an-interface-with-concrete-or-pointer-method-receivers" aria-hidden="true"><span class="octicon octicon-link"></span></a>A struct can implement an interface with concrete or pointer method receivers</h3>
+<h3 id="a-struct-can-implement-an-interface-with-concrete-or-pointer-method-receivers">A struct can implement an interface with concrete or pointer method receivers</h3>
 
 <p>A struct can implement an interface with either concrete or pointer method
 receivers. Per
@@ -188,8 +164,7 @@ implementation details)</p>
 
 <p><a href="https://go.dev/play/p/sjU9d72ZWzw">play/p/sjU9d72ZWzw</a></p>
 
-<h3 id="selectors-automatically-dereference-pointers-to-structs">
-<a class="anchor" href="#selectors-automatically-dereference-pointers-to-structs" aria-hidden="true"><span class="octicon octicon-link"></span></a>Selectors automatically dereference pointers to structs</h3>
+<h3 id="selectors-automatically-dereference-pointers-to-structs">Selectors automatically dereference pointers to structs</h3>
 
 <p>Selectors automatically dereference pointers to structs <a href="https://go.dev/ref/spec#Method_values">ref/spec#Method_values</a>:</p>
 
@@ -225,8 +200,7 @@ for interface (concrete struct <em>won’t</em> be automatically turned to point
 
 <p><a href="https://go.dev/play/p/aWQ8C2-SwZ2">play/p/aWQ8C2-SwZ2</a></p>
 
-<h3 id="pointers-to-interfaces-do-not-automatically-dereference">
-<a class="anchor" href="#pointers-to-interfaces-do-not-automatically-dereference" aria-hidden="true"><span class="octicon octicon-link"></span></a>Pointers to interfaces do not automatically dereference</h3>
+<h3 id="pointers-to-interfaces-do-not-automatically-dereference">Pointers to interfaces do not automatically dereference</h3>
 
 <p>Pointers to interfaces do not automatically dereference, like pointers to
 structs do. (they used to in pre-Go1, fwiw; <a href="https://groups.google.com/g/golang-nuts/c/RhIIHM3XC4o">g/golang-nuts/c/RhIIHM3XC4o</a>)</p>
@@ -241,8 +215,7 @@ structs do. (they used to in pre-Go1, fwiw; <a href="https://groups.google.com/g
 
 <p><a href="https://go.dev/play/p/9QBQmO4-nZN">play/p/9QBQmO4-nZN</a></p>
 
-<h2 id="putting-it-all-together">
-<a class="anchor" href="#putting-it-all-together" aria-hidden="true"><span class="octicon octicon-link"></span></a>Putting it all together</h2>
+<h2 id="putting-it-all-together">Putting it all together</h2>
 
 <p>So, let’s talk about the various ways you can declare and use an <strong>interface</strong>.
 As mentioned before and shown with
@@ -270,22 +243,17 @@ As mentioned before and shown with
 <p>So, the rules for structs and interfaces are different, to prevent interface
 mis-use.</p>
 
-<h2 id="afterword">
-<a class="anchor" href="#afterword" aria-hidden="true"><span class="octicon octicon-link"></span></a>Afterword</h2>
+<h2 id="afterword">Afterword</h2>
 
 <p>You can read more about how interfaces are represented here:</p>
 
 <ul>
-  <li>
-<a href="https://research.swtch.com/interfaces">Go Data Structures: Interfaces</a> by rsc@</li>
-  <li>
-<a href="https://www.airs.com/blog/archives/277">Go Interfaces</a> by iant@</li>
-  <li>
-<a href="https://go.dev/blog/laws-of-reflection">Laws of Reflection</a> by r@</li>
+  <li><a href="https://research.swtch.com/interfaces">Go Data Structures: Interfaces</a> by rsc@</li>
+  <li><a href="https://www.airs.com/blog/archives/277">Go Interfaces</a> by iant@</li>
+  <li><a href="https://go.dev/blog/laws-of-reflection">Laws of Reflection</a> by r@</li>
 </ul>
 
-  </div>
-<a class="u-url" href="/go/2022/12/05/interfaces.html" hidden></a>
+  </div><a class="u-url" href="/go/2022/12/05/interfaces.html" hidden></a>
 </article>
 
       </div>

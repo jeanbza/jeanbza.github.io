@@ -4,11 +4,7 @@ layout: default
 <article class="post">
 
   <header class="post-header">
-    {%- comment -%}
-      `no_toc` keeps the page's own title out of the jekyll-toc jump list on
-      pages that set `toc: true` (e.g. /categories/).
-    {%- endcomment -%}
-    <h1 class="post-title no_toc">{{ page.title | escape }}</h1>
+    <h1 class="post-title">{{ page.title | escape }}</h1>
   </header>
 
   <div class="post-content">

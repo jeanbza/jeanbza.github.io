@@ -4,7 +4,6 @@ title:  "Designing CRUD operations in Go"
 date:   2019-06-08 15:55:23 -0600
 categories: [go]
 description: "The design considerations that go into adding CRUD operations to a Go client library."
-toc: true
 ---
 
 This post is intended to provide some insight into the considerations that

@@ -4,7 +4,6 @@ title:  "Reflecting on two years at Google"
 date:   2019-09-01 15:55:23 -0600
 categories: [career]
 description: "Two years at Google."
-toc: true
 ---
 
 I had meant to write a _"Reflecting on one year at Google"_ post earlier this

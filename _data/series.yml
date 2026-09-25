@@ -1,0 +1,14 @@
+# Metadata for multi-part post series.
+#
+# A post joins a series by setting `series: <key>` in its front matter, plus
+# `series_part: <n>` for ordering and an optional short `series_title:` for the
+# nav card (post titles are usually too long for a 200px card).
+#
+# The parts themselves are discovered from the posts, so they do not need to be
+# repeated here. `upcoming` is the exception: it lists parts that are planned
+# but not yet written, which by definition have no post to discover.
+
+allocator:
+  title: "Memory allocator series"
+  upcoming:
+    - "Splitting & coalescing"

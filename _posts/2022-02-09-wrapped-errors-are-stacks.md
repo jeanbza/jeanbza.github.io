@@ -4,7 +4,6 @@ title:  "Wrapped errors are stacks"
 date:   2022-02-09 15:55:23 -0600
 categories: [errors, go]
 description: "Wrapped errors form a stack."
-toc: true
 ---
 
 # Wrapped errors are stacks

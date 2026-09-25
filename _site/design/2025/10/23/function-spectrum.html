@@ -38,24 +38,13 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#inlining-function-code">Inlining function code</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#cost">Cost</a></li>
-<li class="toc-entry toc-h2"><a href="#objective-value">Objective value</a></li>
-<li class="toc-entry toc-h2"><a href="#subjective-value">Subjective value</a></li>
-<li class="toc-entry toc-h2"><a href="#illustrating-subjectivity">Illustrating subjectivity</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#inlining-function-code" aria-hidden="true"><span class="octicon octicon-link"></span></a>Inlining function code</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Inlining function code</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2025-10-23T02:55:23-06:00" itemprop="datePublished">Oct 23, 2025
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p><em>Preface: John Carmack’s
@@ -67,8 +56,7 @@ question about how often we should be abstracting code into functions. I thought
 about it a while and came up with this answer. I’m somewhat satisfied by it, but
 if you have a better way to frame this, please reach out to let me know.</p>
 
-<h2 id="cost">
-<a class="anchor" href="#cost" aria-hidden="true"><span class="octicon octicon-link"></span></a>Cost</h2>
+<h2 id="cost">Cost</h2>
 
 <p>All abstractions come with a <strong>cost</strong>:</p>
 
@@ -89,8 +77,7 @@ if you have a better way to frame this, please reach out to let me know.</p>
 
 <p>So, their cost should be justified by their value.</p>
 
-<h2 id="objective-value">
-<a class="anchor" href="#objective-value" aria-hidden="true"><span class="octicon octicon-link"></span></a>Objective value</h2>
+<h2 id="objective-value">Objective value</h2>
 
 <p>Functions are <strong>objectively valuable</strong> in a few situations:</p>
 
@@ -104,8 +91,7 @@ test.</li>
   <li>(There are probably a few other objectively useful cases)</li>
 </ul>
 
-<h2 id="subjective-value">
-<a class="anchor" href="#subjective-value" aria-hidden="true"><span class="octicon octicon-link"></span></a>Subjective value</h2>
+<h2 id="subjective-value">Subjective value</h2>
 
 <p>Functions are <strong>subjectively valuable</strong> when they’re used just for the sake of
 abstraction. That subjectivity is what this article is about. Let’s dive into
@@ -140,8 +126,7 @@ trying to understand <em>completely</em>) and people who tend to want to underst
 program <em>quickly</em> are more on the bottom part of the spectrum (more abstractions
 to gain vague understanding quickly).</p>
 
-<h2 id="illustrating-subjectivity">
-<a class="anchor" href="#illustrating-subjectivity" aria-hidden="true"><span class="octicon octicon-link"></span></a>Illustrating subjectivity</h2>
+<h2 id="illustrating-subjectivity">Illustrating subjectivity</h2>
 
 <p>To illustrate that a little more:</p>
 
@@ -159,8 +144,7 @@ may make a series of notes or flow charts outside of code to help cope) (And,
 every time she returns, she has to perform some re-grouping as the mapping
 inevitably falls out of her head each time she context switches)</p>
 
-  </div>
-<a class="u-url" href="/design/2025/10/23/function-spectrum.html" hidden></a>
+  </div><a class="u-url" href="/design/2025/10/23/function-spectrum.html" hidden></a>
 </article>
 
       </div>

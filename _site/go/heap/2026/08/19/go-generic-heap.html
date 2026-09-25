@@ -38,30 +38,19 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#a-generic-heap-in-go">A generic heap in Go</a>
-<ul>
-<li class="toc-entry toc-h3"><a href="#usage-without-generic-methods">Usage without generic methods</a></li>
-<li class="toc-entry toc-h3"><a href="#usage-with-generic-methods">Usage with generic methods</a></li>
-<li class="toc-entry toc-h3"><a href="#implementing-heap-with-generic-methods">Implementing heap with generic methods</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#a-generic-heap-in-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>A generic heap in Go</h1>
+    <h1 class="post-title p-name" itemprop="name headline">A generic heap in Go</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2026-08-19T02:55:23-06:00" itemprop="datePublished">Aug 19, 2026
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>Let’s re-imagine the venerable <a href="https://pkg.go.dev/container/heap">container/heap</a>
 package with generics instead of an interface.</p>
 
-<h3 id="usage-without-generic-methods">
-<a class="anchor" href="#usage-without-generic-methods" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage without generic methods</h3>
+<h3 id="usage-without-generic-methods">Usage without generic methods</h3>
 
 <p><a href="https://go.dev/play/p/3-QCvtyZVH1">Here’s how a user uses heap today:</a></p>
 
@@ -113,8 +102,7 @@ bubbling, but the UX is a bit clunky. It’s not great to lose types, and it’s
 great to have to implement 5 functions every time I have a different type of
 heap.</p>
 
-<h3 id="usage-with-generic-methods">
-<a class="anchor" href="#usage-with-generic-methods" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage with generic methods</h3>
+<h3 id="usage-with-generic-methods">Usage with generic methods</h3>
 
 <p>With generic methods, a differently-defined heap (which we’ll look at shortly)
 <a href="https://go.dev/play/p/GiRznCugGt-">could just be:</a></p>
@@ -151,8 +139,7 @@ we try to do <code class="language-plaintext highlighter-rouge">h.Push("foo")</c
 # yay!
 </code></pre></div></div>
 
-<h3 id="implementing-heap-with-generic-methods">
-<a class="anchor" href="#implementing-heap-with-generic-methods" aria-hidden="true"><span class="octicon octicon-link"></span></a>Implementing heap with generic methods</h3>
+<h3 id="implementing-heap-with-generic-methods">Implementing heap with generic methods</h3>
 
 <p>And finally, here’s how the heap package looks with generic methods. Mostly the
 same as it is, except we define Push and Pop directly on a heap type rather than
@@ -240,8 +227,7 @@ remains the same:</p>
 <span class="p">}</span>
 </code></pre></div></div>
 
-  </div>
-<a class="u-url" href="/go/heap/2026/08/19/go-generic-heap.html" hidden></a>
+  </div><a class="u-url" href="/go/heap/2026/08/19/go-generic-heap.html" hidden></a>
 </article>
 
       </div>

@@ -38,26 +38,13 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#testing-in-go">testing in Go</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#why-do-people-use-non-testing-libraries">Why do people use non-testing libraries</a></li>
-<li class="toc-entry toc-h2"><a href="#terse">Terse</a></li>
-<li class="toc-entry toc-h2"><a href="#bdd">BDD</a></li>
-<li class="toc-entry toc-h2"><a href="#langx-port">LangX port</a></li>
-<li class="toc-entry toc-h2"><a href="#functionality-gaps-ecosystem-drag-and-expressiveness">Functionality gaps, ecosystem drag, and expressiveness</a></li>
-<li class="toc-entry toc-h2"><a href="#prefer-testing">Prefer testing</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#testing-in-go" aria-hidden="true"><span class="octicon octicon-link"></span></a>testing in Go</h1>
+    <h1 class="post-title p-name" itemprop="name headline">testing in Go</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2022-02-08T14:55:23-07:00" itemprop="datePublished">Feb 8, 2022
-      </time></p>
-  </header>
+      </time></p></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>This is part of a series of posts on testing in Go:</p>
@@ -76,8 +63,7 @@
 
 <p>For context, I’ve used several non-“testing” libraries on pre-established projects, including <a href="https://github.com/stretchr/testify">testify</a>, <a href="https://github.com/onsi/ginkgo">ginko/gomega</a>, and <a href="https://github.com/go-check/check">check</a>. I’ve also used “testing” on many projects, both internal to Google, and on the Go project, and in numerous open source projects. So, I think that I’ve seen a fair amount of both sides.</p>
 
-<h2 id="why-do-people-use-non-testing-libraries">
-<a class="anchor" href="#why-do-people-use-non-testing-libraries" aria-hidden="true"><span class="octicon octicon-link"></span></a>Why do people use non-testing libraries</h2>
+<h2 id="why-do-people-use-non-testing-libraries">Why do people use non-testing libraries</h2>
 
 <p>In my experience, people tend to use non-“testing” libraries for one or some of these three reasons:</p>
 
@@ -89,8 +75,7 @@
 
 <p>Let’s evaluate and talk about each of these. I’ll use testify to compare against “testing”, but you can substitute most of what’s below with any LibraryX of your choice.</p>
 
-<h2 id="terse">
-<a class="anchor" href="#terse" aria-hidden="true"><span class="octicon octicon-link"></span></a>Terse</h2>
+<h2 id="terse">Terse</h2>
 
 <p>Here is a simple “testing” test:</p>
 
@@ -110,8 +95,7 @@
 
 <p>The argument for terseness is very valid and similarly often repeated about error checking (<a href="https://github.com/golang/go/issues/32437">ex1</a>, <a href="https://github.com/golang/go/issues/21161">ex2</a>, <a href="https://github.com/golang/go/issues/71203">ex3</a>).</p>
 
-<h2 id="bdd">
-<a class="anchor" href="#bdd" aria-hidden="true"><span class="octicon octicon-link"></span></a>BDD</h2>
+<h2 id="bdd">BDD</h2>
 
 <p>Some folks strongly prefer writing tests with assertions that read more like ordinary human sentences. That style is often associated with <a href="https://en.wikipedia.org/wiki/Behavior-driven_development">BDD</a> or <a href="https://en.wikipedia.org/wiki/Cucumber_(software)">Gherkin-style testing</a>.</p>
 
@@ -119,8 +103,7 @@
 
 <p>I’ve never once seen this play out as described in practice, so I have to admit to being a skeptic. But even then, some programmers are used to it and just prefer the style over the more “ordinary code” style the ordinary “testing” tests use, with explicit conditionals, loops, and general programming happening in the test.</p>
 
-<h2 id="langx-port">
-<a class="anchor" href="#langx-port" aria-hidden="true"><span class="octicon octicon-link"></span></a>LangX port</h2>
+<h2 id="langx-port">LangX port</h2>
 
 <p>Some folks coming from LangX are comfortable with the testing idioms in that language, and like to port them to Go. AFAICT that’s probably how <a href="https://github.com/stretchr/testify/commit/2930d903bf969b4e153bb2f2d05a65455d214949">testify started in 2012</a> as basically a port of JUnit4:</p>
 
@@ -128,8 +111,7 @@
 assert.Equal(t, expected, actual) // testify
 </code></pre></div></div>
 
-<h2 id="functionality-gaps-ecosystem-drag-and-expressiveness">
-<a class="anchor" href="#functionality-gaps-ecosystem-drag-and-expressiveness" aria-hidden="true"><span class="octicon octicon-link"></span></a>Functionality gaps, ecosystem drag, and expressiveness</h2>
+<h2 id="functionality-gaps-ecosystem-drag-and-expressiveness">Functionality gaps, ecosystem drag, and expressiveness</h2>
 
 <p>I’ve not seen other reasons to use non-“testing” libraries to test Go code. I’m not aware of any functionality that they provide that you don’t have available to you with ordinary Go code and “testing”.</p>
 
@@ -139,8 +121,7 @@ assert.Equal(t, expected, actual) // testify
 
 <p>And in terms of expressiveness, libraries by definition can’t express the full range of things that ordinary Go code can. Worse, in trying to do so by flattening the Go language into assertions (ex <a href="https://pkg.go.dev/github.com/stretchr/testify/assert">testify has 312 assertions</a> as of writing), they can end up with a considerably more complex and less easy to use alternative than just writing Go code.</p>
 
-<h2 id="prefer-testing">
-<a class="anchor" href="#prefer-testing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prefer testing</h2>
+<h2 id="prefer-testing">Prefer testing</h2>
 
 <p>I sympathise with all three benefits to using non-“testing” libraries. But, I tend not to agree with the motivations:</p>
 
@@ -166,8 +147,7 @@ assert.Equal(t, expected, actual) // testify
 
 <p>These benefits are massive, and in my opinion far outweigh what you’d get otherwise.</p>
 
-  </div>
-<a class="u-url" href="/testing/go/2022/02/08/testing-in-go.html" hidden></a>
+  </div><a class="u-url" href="/testing/go/2022/02/08/testing-in-go.html" hidden></a>
 </article>
 
       </div>

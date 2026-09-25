@@ -38,23 +38,16 @@
 </header>
 <main class="page-content" aria-label="Content">
       <div class="wrapper">
-        <ul id="toc" class="section-nav">
-<li class="toc-entry toc-h1"><a href="#an-aligned-memory-allocator">An aligned memory allocator</a>
-<ul>
-<li class="toc-entry toc-h2"><a href="#alignment">Alignment</a></li>
-<li class="toc-entry toc-h2"><a href="#aligning">Aligning</a></li>
-<li class="toc-entry toc-h2"><a href="#next-up">Next up</a></li>
-</ul>
-</li>
-</ul><article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">
-<a class="anchor" href="#an-aligned-memory-allocator" aria-hidden="true"><span class="octicon octicon-link"></span></a>An aligned memory allocator</h1>
+    <h1 class="post-title p-name" itemprop="name headline">An aligned memory allocator</h1>
     <p class="post-meta">
       <time class="dt-published" datetime="2026-09-24T02:55:23-06:00" itemprop="datePublished">Sep 24, 2026
-      </time></p>
-  </header>
+      </time></p><aside class="series-nav" aria-label="Parts in this series">
+    <p class="series-nav-title">Memory allocator series</p>
+    <ol class="series-nav-list"><li><a href="/c++/memory/2026/09/24/allocator-1.html">Unaligned malloc</a></li><li class="is-current" aria-current="page"><span>Aligned malloc</span></li><li class="is-upcoming"><span>Splitting &amp; coalescing</span></li></ol>
+  </aside></header>
 
   <div class="post-content e-content" itemprop="articleBody">
     <p>In <a href="/c++/memory/2026/09/24/allocator-1.html">“An unaligned memory allocator”</a>,
@@ -63,7 +56,7 @@ we built a memory allocator that allocated memory to unaligned addresses.</p>
 <p>Is it fun getting nastygrams from clang and lldb about all your misaligned
 addresses?</p>
 
-<p><img src="/assets/misaligned1.png" alt="Misaligned"></p>
+<p><img src="/assets/misaligned1.png" alt="Misaligned" /></p>
 
 <p>No. No it is not.</p>
 
@@ -76,12 +69,11 @@ that’s a multiple of 16. This is a 16 byte aligned allocator. Note that we’r
 paying wasted space (internal fragmentation) for alignment, in contrast to our
 prior allocator which was unaligned but very efficient at byte packing.</p>
 
-<p><img src="/assets/imhex2.png" alt="Aligned"></p>
+<p><img src="/assets/imhex2.png" alt="Aligned" /></p>
 
 <p><em>Memory allocated by the fixed alignment allocator. Less packed, but overall better!</em></p>
 
-<h2 id="alignment">
-<a class="anchor" href="#alignment" aria-hidden="true"><span class="octicon octicon-link"></span></a>Alignment</h2>
+<h2 id="alignment">Alignment</h2>
 
 <p>Alignment refers to the fact that memory gets allocated to addresses that are
 a multiple of the alignment base.</p>
@@ -106,8 +98,7 @@ a 7 byte size struct at 4, another int at 11, and so on.</p>
 reasons:</p>
 
 <ul>
-  <li>
-<a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires it</a> and
+  <li><a href="https://eel.is/c++draft/basic.align#1">The C++ standard requires it</a> and
 various compiler choices depend on it. (As you can obviously tell from the
 abundant warnings when you compile 😬)</li>
   <li>Memory <em>may</em> straddle cache lines or pages, which worsens performance.
@@ -124,8 +115,7 @@ can be 1.5x to 2x more cycles (~5-&gt;~10).</li>
   </li>
 </ul>
 
-<h2 id="aligning">
-<a class="anchor" href="#aligning" aria-hidden="true"><span class="octicon octicon-link"></span></a>Aligning</h2>
+<h2 id="aligning">Aligning</h2>
 
 <p>The good news for us is that alignment is pretty easy. Let’s see how to do it:</p>
 
@@ -212,8 +202,7 @@ needs to size up any request to the nearest multiple of alignment:</p>
 <span class="p">}</span>
 </code></pre></div></div>
 
-<h2 id="next-up">
-<a class="anchor" href="#next-up" aria-hidden="true"><span class="octicon octicon-link"></span></a>Next up</h2>
+<h2 id="next-up">Next up</h2>
 
 <p>This is great, and solves the alignment issues as the image at the top showed.
 Huzzah! But, we have a major issue: fragmentation.</p>
@@ -233,8 +222,7 @@ coalesce those two into one to serve the 129 byte request).</p>
 
 <p>In the next post, we’ll talk about splitting and coalescing.</p>
 
-  </div>
-<a class="u-url" href="/c++/memory/2026/09/24/allocator-2.html" hidden></a>
+  </div><a class="u-url" href="/c++/memory/2026/09/24/allocator-2.html" hidden></a>
 </article>
 
       </div>
