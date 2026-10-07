@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.9.0 -->
+<title>Moving average cache locality and SIMD | Jean Barkhuysen</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Moving average cache locality and SIMD" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Can cache locality and SIMD with a simple summation over a sliding window beat Kahan summation? (no)" />
+<meta name="twitter:description" property="og:description" content="Can cache locality and SIMD with a simple summation over a sliding window beat Kahan summation? (no)" />
+<link rel="canonical" href="http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg.html" />
+<meta property="og:url" content="http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg.html" />
+<meta property="og:site_name" content="Jean Barkhuysen" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-10-06T02:55:23-06:00" />
+<meta property="article:modified_time" content="2026-10-06T02:55:23-06:00" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Moving average cache locality and SIMD" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-10-06T02:55:23-06:00","datePublished":"2026-10-06T02:55:23-06:00","description":"Can cache locality and SIMD with a simple summation over a sliding window beat Kahan summation? (no)","headline":"Moving average cache locality and SIMD","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg.html"},"url":"http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Jean Barkhuysen" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Jean Barkhuysen</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/categories/">Categories</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Moving average cache locality and SIMD</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-10-06T02:55:23-06:00" itemprop="datePublished">Oct 6, 2026
+      </time></p></header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>When <a href="https://en.wikipedia.org/wiki/Moving_average">calculating moving average</a>,
+two approaches come to mind: simple summation over a sliding window (ring
+buffer), or an incremental sum, where as new values come in, you add newVal to
+the total count, and remove oldestVal from it; and when you get the avg, you
+divide by total count. But, if you have floating point numbers, you’ll lose
+precision over time as you do those adds. That leads to
+<a href="https://en.wikipedia.org/wiki/Kahan_summation_algorithm">Kahan summation</a>.</p>
+
+<p>Simple summation is O(n), whereas Kahan summation O(1). Kahan summation is
+obviously better for performance. But, I was mildly curious to see whether naive
+summation can make up the difference by making use of cache locality and SIMD.</p>
+
+<p>It turns out it can not. At all. Or at least, not past a small <em>n</em>.</p>
+
+<p>But it was fun exploring cache locality and SIMD and seeing how much performance
+we can eke out of a doomed battle, anyways. Let’s dive in.</p>
+
+<p>Preface: All runs on a Macbook Air M3. <a href="https://gist.github.com/jeanbza/08e515d67dafcdb1899540562cbea826">Code available here</a>.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>Here’s my quick and dirty implementation of the regular summing approach:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MovingAverage</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">explicit</span> <span class="n">MovingAverage</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span> <span class="o">:</span> <span class="n">ring_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="n">size_</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="p">{}</span>
+
+    <span class="c1">// Given the next value, what's the new avg?</span>
+    <span class="c1">// Regular summation.</span>
+    <span class="kt">double</span> <span class="nf">next</span><span class="p">(</span><span class="kt">double</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+        <span class="n">cursor_</span><span class="o">++</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cursor_</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">full_</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nf">range_avg</span><span class="p">();</span>
+    <span class="p">}</span>
+
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">ring_</span><span class="p">;</span> <span class="c1">// Ring buffer.</span>
+    <span class="kt">int</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">full_</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">sum_</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+
+    <span class="c1">// Range over ring_ and sum, then return the avg.</span>
+    <span class="kt">double</span> <span class="nf">range_avg</span><span class="p">()</span> <span class="p">{</span>
+        <span class="kt">double</span> <span class="n">sum</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">rangeTo</span> <span class="o">=</span> <span class="n">full_</span> <span class="o">?</span> <span class="n">size_</span> <span class="o">:</span> <span class="n">cursor_</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">rangeTo</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="n">ring_</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">sum</span> <span class="o">/</span> <span class="kt">double</span><span class="p">(</span><span class="n">rangeTo</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>And, here’s Kahan summation, pretty much straight out of the wiki page:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MovingAverage</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">explicit</span> <span class="n">MovingAverage</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span> <span class="o">:</span> <span class="n">ring_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="n">size_</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="p">{}</span>
+
+    <span class="c1">// Given the next value, what's the new avg?</span>
+    <span class="c1">// Kahan summation.</span>
+    <span class="kt">double</span> <span class="nf">next</span><span class="p">(</span><span class="kt">double</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">full_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">sum_</span> <span class="o">+=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">cursor_</span><span class="o">++</span><span class="p">;</span>
+            <span class="kt">double</span> <span class="n">avg</span> <span class="o">=</span> <span class="n">sum_</span> <span class="o">/</span> <span class="kt">double</span><span class="p">(</span><span class="n">cursor_</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">cursor_</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">full_</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+                <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">return</span> <span class="n">avg</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Diff of new and old, minus c.</span>
+        <span class="c1">// This is the error corrected change.</span>
+        <span class="kt">double</span> <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">val</span> <span class="o">-</span> <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">])</span> <span class="o">-</span> <span class="n">c_</span><span class="p">;</span> 
+
+        <span class="c1">// Sum plus that error corrected change.</span>
+        <span class="c1">// This is the sum plus the error correction.</span>
+        <span class="kt">double</span> <span class="n">t</span> <span class="o">=</span> <span class="n">sum_</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+
+        <span class="c1">// New c is: Remove sum from error corrected sum. Then remove error correction.</span>
+        <span class="n">c_</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">-</span> <span class="n">sum_</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span><span class="p">;</span>
+
+        <span class="c1">// New sum is t.</span>
+        <span class="n">sum_</span> <span class="o">=</span> <span class="n">t</span><span class="p">;</span>
+
+        <span class="c1">// We can replace the old value.</span>
+        <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span> 
+        <span class="n">cursor_</span> <span class="o">=</span> <span class="n">next_cursor</span><span class="p">();</span>
+        <span class="k">return</span> <span class="n">sum_</span> <span class="o">/</span> <span class="kt">double</span><span class="p">(</span><span class="n">size_</span><span class="p">);</span>
+    <span class="p">}</span>
+
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">ring_</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">full_</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">sum_</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">c_</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+
+    <span class="kt">int</span> <span class="nf">next_cursor</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">full_</span><span class="p">)</span> <span class="k">return</span> <span class="n">cursor_</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cursor_</span><span class="o">+</span><span class="mi">1</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">cursor_</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="which-is-faster">Which is faster?</h2>
+
+<p>Here’s my benchmark results graphed (<a href="https://gist.github.com/jeanbza/4a19fdbdf809644b1115783efa47e2af">raw results here</a>):</p>
+
+<p><img src="/assets/summation.png" alt="Summation" /></p>
+
+<p>So, as expected, for larger values of <em>n</em> Kahan summation’s O(1) beats out
+simple summation.</p>
+
+<p>But two things are a bit interesting here. First, using <code class="language-plaintext highlighter-rouge">int</code>s is quite a bit
+faster instead of <code class="language-plaintext highlighter-rouge">double</code>s for the simple summation (whereas no difference
+for Kahan summation). Why is that?</p>
+
+<p>And secondly, the cache locality effects are not really driving major speed
+ups. <a href="https://en.wikipedia.org/wiki/Apple_M3">My Mac has a 128KiB L1 cache</a>.
+In C++, <code class="language-plaintext highlighter-rouge">double</code>s are 8 bytes, so we should be able to fit an array of 16,384
+<code class="language-plaintext highlighter-rouge">double</code>s in L1. And for <code class="language-plaintext highlighter-rouge">int</code>s, they’re 4 bytes, so we should be able to fit
+32,768 <code class="language-plaintext highlighter-rouge">int</code>s in L1.</p>
+
+<p>The benchmarks show simple summation falling off from Kahan summation around
+n=64, way before we get cache misses. What’s up with that?</p>
+
+<h2 id="confirming-cache-miss-behaviour">Confirming cache miss behaviour</h2>
+
+<p>Let’s confirm that we’re actually fitting our array into L1 cache as expected.</p>
+
+<p>We’d use valgrind on Linux, but since we’re on a Mac, let’s use the
+<a href="https://developer.apple.com/tutorials/instruments">Instruments</a> profiler.</p>
+
+<p>You’ll need to install the full xcode and do the whole xcode-select license
+install song and dance. Once that’s set up, instructions to run the benchmark
+under the CPU / L1D cache profilers are
+<a href="https://gist.github.com/jeanbza/cf59fa683a26f752bed492ecdce8d23e">here</a>.</p>
+
+<p>Here’s one of the benchmarks as an example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ BIN</span><span class="o">=</span>./bench_out
+<span class="nv">$ FILTER</span><span class="o">=</span><span class="s1">'Next2_SteadyState/4096$'</span> <span class="c"># "Next" refers to kahan, "Next2" refers to simple</span>
+<span class="nv">$ </span>xcrun xctrace record <span class="nt">--template</span> <span class="s1">'CPU Counters'</span> <span class="nt">--recording-options</span> opts.json <span class="se">\</span>
+<span class="o">&gt;</span>   <span class="nt">--output</span> run.trace <span class="nt">--launch</span> <span class="nt">--</span> <span class="s2">"</span><span class="nv">$BIN</span><span class="s2">"</span> <span class="nt">--benchmark_filter</span><span class="o">=</span><span class="s2">"</span><span class="nv">$FILTER</span><span class="s2">"</span> <span class="nt">--benchmark_min_time</span><span class="o">=</span>0.5s
+Starting recording with the CPU Counters template. Launching process: bench_out.
+Ctrl-C to stop the recording
+Target app exited, ending recording...
+Recording completed. Saving output file...
+Output file saved as: run.trace
+<span class="nv">$ </span>xcrun xctrace <span class="nb">export</span> <span class="nt">--input</span> run.trace   <span class="nt">--xpath</span> <span class="s1">'/trace-toc/run[@number="1"]/data/table[@schema="MetricTable"]'</span> | python3 l1d.py
+  cycle                     7,402,673,255
+  ld_uop_spec                 644,880,380
+  st_uop_spec                   2,186,942
+  l1d_writeback                   263,618
+  l1d_miss_ld_spec                204,559
+  l1d_miss_st_spec                 32,693
+
+  L1D load miss rate:    0.032%
+</code></pre></div></div>
+
+<p>This shows that with n=4096, we see almost 0% cache misses. It’s in L1 the
+whole time, which makes sense since 4096 doubles is 32KiB, well below our 128KiB
+L1 cache size.</p>
+
+<p>Here’s a graph of a bunch of different sizes of n:</p>
+
+<p><img src="/assets/cachemiss.png" alt="Cachemiss" /></p>
+
+<p>As expected, we see a large jump in cache miss rate right at the 128KiB mark.</p>
+
+<p>So, we’re definitely hitting the cache until 128KiB / n=16384. So why are we
+seeing poor performance for n &gt;= 16?</p>
+
+<h2 id="cpu-cycles-and-simd">CPU cycles and SIMD</h2>
+
+<p>CPU cycles! The performance is bounded by the algorithm’s need for more CPU
+cycles, not by memory loading time. We’ve pretty much come full circle back to
+the fact that we’re talking about an O(n) algorithm vs an O(1) algorithm</p>
+
+<p>There is a trick that we can play to improve performance a bit and stretch to
+further from n~=16 to n~=64 matching Kahan summation performance:
+<a href="https://en.wikipedia.org/wiki/Single_instruction,_multiple_data">SIMD</a>.</p>
+
+<p>And thankfully clang does this for us. Let’s take this simpler loop program:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">$</span> <span class="n">cat</span> <span class="n">sum</span><span class="p">.</span><span class="n">cpp</span>
+<span class="kt">int</span>    <span class="nf">sum_int</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span><span class="o">*</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span>    <span class="p">{</span> <span class="kt">int</span>    <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>   <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="n">s</span> <span class="o">+=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="k">return</span> <span class="n">s</span><span class="p">;</span> <span class="p">}</span>
+<span class="kt">double</span> <span class="nf">sum_dbl</span><span class="p">(</span><span class="k">const</span> <span class="kt">double</span><span class="o">*</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span> <span class="kt">double</span> <span class="n">s</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span> <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="n">s</span> <span class="o">+=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="k">return</span> <span class="n">s</span><span class="p">;</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Compile and dump the assembly:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>clang++ <span class="nt">-O2</span> <span class="nt">-S</span> <span class="nt">-o</span> sum.s sum.cpp
+<span class="nv">$ </span><span class="nb">cat </span>sum.s
+...
+<span class="c"># int</span>
+ldp	q4, q5, <span class="o">[</span>x8, <span class="c">#-32]</span>
+ldp	q6, q7, <span class="o">[</span>x8], <span class="c">#64</span>
+add.4s	v0, v4, v0
+add.4s	v1, v5, v1
+add.4s	v2, v6, v2
+add.4s	v3, v7, v3
+subs	x12, x12, <span class="c">#16</span>
+b.ne	LBB0_7
+<span class="p">;</span> %bb.8:
+add.4s	v0, v1, v0
+add.4s	v0, v2, v0
+add.4s	v0, v3, v0
+addv.4s	s0, v0
+...
+<span class="c"># double</span>
+ldp   q1, q2, <span class="o">[</span>x10, <span class="c">#-32]</span>
+ldp   q5, q6, <span class="o">[</span>x10], <span class="c">#64</span>
+fadd  d0, d0, d1
+fadd  d0, d0, d3
+fadd  d0, d0, d2
+fadd  d0, d0, d4
+fadd  d0, d0, d5
+...
+</code></pre></div></div>
+
+<p>We can get a bit of a hint from the compiler about what happened there by asking
+the compiler to give us remarks:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>clang++ <span class="nt">-O2</span> <span class="nt">-c</span> sum.cpp <span class="nt">-o</span> /dev/null   <span class="nt">-Rpass</span><span class="o">=</span>loop-vectorize
+sum.cpp:1:58: remark: vectorized loop <span class="o">(</span>vectorization width: 4, interleaved count: 4<span class="o">)</span> <span class="o">[</span><span class="nt">-Rpass</span><span class="o">=</span>loop-vectorize]
+    1 | int    sum_int<span class="o">(</span>const int<span class="k">*</span> r, int n<span class="o">)</span>    <span class="o">{</span> int    s <span class="o">=</span> 0<span class="p">;</span>   <span class="k">for</span> <span class="o">(</span>int <span class="nv">i</span><span class="o">=</span>0<span class="p">;</span>i&lt;n<span class="p">;</span>++i<span class="o">)</span> s +<span class="o">=</span> r[i]<span class="p">;</span> <span class="k">return </span>s<span class="p">;</span> <span class="o">}</span>
+      |                                                          ^
+sum.cpp:2:58: remark: vectorized loop <span class="o">(</span>vectorization width: 2, interleaved count: 4<span class="o">)</span> <span class="o">[</span><span class="nt">-Rpass</span><span class="o">=</span>loop-vectorize]
+    2 | double sum_dbl<span class="o">(</span>const double<span class="k">*</span> r, int n<span class="o">)</span> <span class="o">{</span> double s <span class="o">=</span> 0.0<span class="p">;</span> <span class="k">for</span> <span class="o">(</span>int <span class="nv">i</span><span class="o">=</span>0<span class="p">;</span>i&lt;n<span class="p">;</span>++i<span class="o">)</span> s +<span class="o">=</span> r[i]<span class="p">;</span> <span class="k">return </span>s<span class="p">;</span> <span class="o">}</span>
+      |
+</code></pre></div></div>
+
+<p>This is the loop vectoriser: https://llvm.org/docs/Vectorizers.html.</p>
+
+<p>I don’t at all pretend to understand CPU architecture and assembly well enough,
+but luckily we have AI agents that can help decipher this quickly.</p>
+
+<p><code class="language-plaintext highlighter-rouge">add.4s</code> is an <a href="https://developer.arm.com/community/arm-community-blogs/b/operating-systems-blog/posts/arm-neon-programming-quick-reference">AArch64 Neon</a> instruction.
+Here’s what I’m told it gets used to do:</p>
+
+<blockquote>
+  <p>The v registers are 128 bits wide, and .4s means “treat that as 4 separate
+32-bit ints”. So add.4s v0, v4, v0 does four additions at once — lane 0 plus
+lane 0, lane 1 plus lane 1, and so on — leaving 4 running totals in v0.</p>
+
+  <p>The two ldp (load pair) instructions pull 16 ints into v4–v7, and then four
+add.4s instructions consume them into four separate accumulators, v0–v3. Because
+no add depends on another’s result, the CPU runs all four at the same time
+instead of queueing them.</p>
+
+  <p>So each iteration handles 4 lanes × 4 accumulators = 16 ints, and the four
+adds execute concurrently. Afterwards, three more add.4s fold v1–v3 into v0, and
+a single addv.4s sums v0’s four lanes into the one number that gets returned.</p>
+</blockquote>
+
+<p>It didn’t do so with double. Or rather, it did get vectorised according to the
+compiler, but all the additions still happened serially. Presumably clang is
+worried about floating point precision when adding out of order.</p>
+
+<p>Either way, now we know why <code class="language-plaintext highlighter-rouge">int</code> is faster than <code class="language-plaintext highlighter-rouge">double</code> above, and also
+gained some intuition about cache locality and the criticality of focusing on
+algorithm runtime complexity.</p>
+
+  </div><a class="u-url" href="/c++/algorithms/memory/2026/10/06/moving-avg.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Jean Barkhuysen</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Jean Barkhuysen</li><li><a class="u-email" href="mailto:jbarkhuysen@netflix.com">jbarkhuysen@netflix.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/jeanbza"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">jeanbza</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

@@ -1,5 +1,278 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-09-25T16:03:18-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
-This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">An aligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html" rel="alternate" type="text/html" title="An aligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-2</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html"><![CDATA[<p>In <a href="/c++/memory/2026/09/24/allocator-1.html">“An unaligned memory allocator”</a>,
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-10-07T20:59:42-06:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Jean Barkhuysen</title><subtitle>SWE at Netflix working on distributed media processing/storage. Former Googler working on distributed storage. Former surname de Klerk.
+This is my personal website. The views represented here are my own, and do not represent my employer.</subtitle><entry><title type="html">Moving average cache locality and SIMD</title><link href="http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg.html" rel="alternate" type="text/html" title="Moving average cache locality and SIMD" /><published>2026-10-06T02:55:23-06:00</published><updated>2026-10-06T02:55:23-06:00</updated><id>http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg</id><content type="html" xml:base="http://localhost:4000/c++/algorithms/memory/2026/10/06/moving-avg.html"><![CDATA[<p>When <a href="https://en.wikipedia.org/wiki/Moving_average">calculating moving average</a>,
+two approaches come to mind: simple summation over a sliding window (ring
+buffer), or an incremental sum, where as new values come in, you add newVal to
+the total count, and remove oldestVal from it; and when you get the avg, you
+divide by total count. But, if you have floating point numbers, you’ll lose
+precision over time as you do those adds. That leads to
+<a href="https://en.wikipedia.org/wiki/Kahan_summation_algorithm">Kahan summation</a>.</p>
+
+<p>Simple summation is O(n), whereas Kahan summation O(1). Kahan summation is
+obviously better for performance. But, I was mildly curious to see whether naive
+summation can make up the difference by making use of cache locality and SIMD.</p>
+
+<p>It turns out it can not. At all. Or at least, not past a small <em>n</em>.</p>
+
+<p>But it was fun exploring cache locality and SIMD and seeing how much performance
+we can eke out of a doomed battle, anyways. Let’s dive in.</p>
+
+<p>Preface: All runs on a Macbook Air M3. <a href="https://gist.github.com/jeanbza/08e515d67dafcdb1899540562cbea826">Code available here</a>.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>Here’s my quick and dirty implementation of the regular summing approach:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MovingAverage</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">explicit</span> <span class="n">MovingAverage</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span> <span class="o">:</span> <span class="n">ring_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="n">size_</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="p">{}</span>
+
+    <span class="c1">// Given the next value, what's the new avg?</span>
+    <span class="c1">// Regular summation.</span>
+    <span class="kt">double</span> <span class="nf">next</span><span class="p">(</span><span class="kt">double</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+        <span class="n">cursor_</span><span class="o">++</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cursor_</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">full_</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="nf">range_avg</span><span class="p">();</span>
+    <span class="p">}</span>
+
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">ring_</span><span class="p">;</span> <span class="c1">// Ring buffer.</span>
+    <span class="kt">int</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">full_</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">sum_</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+
+    <span class="c1">// Range over ring_ and sum, then return the avg.</span>
+    <span class="kt">double</span> <span class="nf">range_avg</span><span class="p">()</span> <span class="p">{</span>
+        <span class="kt">double</span> <span class="n">sum</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+        <span class="kt">int</span> <span class="n">rangeTo</span> <span class="o">=</span> <span class="n">full_</span> <span class="o">?</span> <span class="n">size_</span> <span class="o">:</span> <span class="n">cursor_</span><span class="p">;</span>
+        <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">rangeTo</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">sum</span> <span class="o">+=</span> <span class="n">ring_</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">sum</span> <span class="o">/</span> <span class="kt">double</span><span class="p">(</span><span class="n">rangeTo</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<p>And, here’s Kahan summation, pretty much straight out of the wiki page:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">MovingAverage</span> <span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="k">explicit</span> <span class="n">MovingAverage</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span> <span class="o">:</span> <span class="n">ring_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="n">n</span><span class="p">)),</span> <span class="n">size_</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="p">{}</span>
+
+    <span class="c1">// Given the next value, what's the new avg?</span>
+    <span class="c1">// Kahan summation.</span>
+    <span class="kt">double</span> <span class="nf">next</span><span class="p">(</span><span class="kt">double</span> <span class="n">val</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">full_</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">sum_</span> <span class="o">+=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span>
+            <span class="n">cursor_</span><span class="o">++</span><span class="p">;</span>
+            <span class="kt">double</span> <span class="n">avg</span> <span class="o">=</span> <span class="n">sum_</span> <span class="o">/</span> <span class="kt">double</span><span class="p">(</span><span class="n">cursor_</span><span class="p">);</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">cursor_</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="p">{</span>
+                <span class="n">full_</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+                <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+            <span class="p">}</span>
+            <span class="k">return</span> <span class="n">avg</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Diff of new and old, minus c.</span>
+        <span class="c1">// This is the error corrected change.</span>
+        <span class="kt">double</span> <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">val</span> <span class="o">-</span> <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">])</span> <span class="o">-</span> <span class="n">c_</span><span class="p">;</span> 
+
+        <span class="c1">// Sum plus that error corrected change.</span>
+        <span class="c1">// This is the sum plus the error correction.</span>
+        <span class="kt">double</span> <span class="n">t</span> <span class="o">=</span> <span class="n">sum_</span> <span class="o">+</span> <span class="n">y</span><span class="p">;</span>
+
+        <span class="c1">// New c is: Remove sum from error corrected sum. Then remove error correction.</span>
+        <span class="n">c_</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">-</span> <span class="n">sum_</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span><span class="p">;</span>
+
+        <span class="c1">// New sum is t.</span>
+        <span class="n">sum_</span> <span class="o">=</span> <span class="n">t</span><span class="p">;</span>
+
+        <span class="c1">// We can replace the old value.</span>
+        <span class="n">ring_</span><span class="p">[</span><span class="n">cursor_</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">;</span> 
+        <span class="n">cursor_</span> <span class="o">=</span> <span class="n">next_cursor</span><span class="p">();</span>
+        <span class="k">return</span> <span class="n">sum_</span> <span class="o">/</span> <span class="kt">double</span><span class="p">(</span><span class="n">size_</span><span class="p">);</span>
+    <span class="p">}</span>
+
+<span class="k">private</span><span class="o">:</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="kt">double</span><span class="p">[]</span><span class="o">&gt;</span> <span class="n">ring_</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">size_</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">cursor_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="kt">bool</span> <span class="n">full_</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">sum_</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">c_</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+
+    <span class="kt">int</span> <span class="nf">next_cursor</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">full_</span><span class="p">)</span> <span class="k">return</span> <span class="n">cursor_</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">cursor_</span><span class="o">+</span><span class="mi">1</span> <span class="o">==</span> <span class="n">size_</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+        <span class="k">return</span> <span class="n">cursor_</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div></div>
+
+<h2 id="which-is-faster">Which is faster?</h2>
+
+<p>Here’s my benchmark results graphed (<a href="https://gist.github.com/jeanbza/4a19fdbdf809644b1115783efa47e2af">raw results here</a>):</p>
+
+<p><img src="/assets/summation.png" alt="Summation" /></p>
+
+<p>So, as expected, for larger values of <em>n</em> Kahan summation’s O(1) beats out
+simple summation.</p>
+
+<p>But two things are a bit interesting here. First, using <code class="language-plaintext highlighter-rouge">int</code>s is quite a bit
+faster instead of <code class="language-plaintext highlighter-rouge">double</code>s for the simple summation (whereas no difference
+for Kahan summation). Why is that?</p>
+
+<p>And secondly, the cache locality effects are not really driving major speed
+ups. <a href="https://en.wikipedia.org/wiki/Apple_M3">My Mac has a 128KiB L1 cache</a>.
+In C++, <code class="language-plaintext highlighter-rouge">double</code>s are 8 bytes, so we should be able to fit an array of 16,384
+<code class="language-plaintext highlighter-rouge">double</code>s in L1. And for <code class="language-plaintext highlighter-rouge">int</code>s, they’re 4 bytes, so we should be able to fit
+32,768 <code class="language-plaintext highlighter-rouge">int</code>s in L1.</p>
+
+<p>The benchmarks show simple summation falling off from Kahan summation around
+n=64, way before we get cache misses. What’s up with that?</p>
+
+<h2 id="confirming-cache-miss-behaviour">Confirming cache miss behaviour</h2>
+
+<p>Let’s confirm that we’re actually fitting our array into L1 cache as expected.</p>
+
+<p>We’d use valgrind on Linux, but since we’re on a Mac, let’s use the
+<a href="https://developer.apple.com/tutorials/instruments">Instruments</a> profiler.</p>
+
+<p>You’ll need to install the full xcode and do the whole xcode-select license
+install song and dance. Once that’s set up, instructions to run the benchmark
+under the CPU / L1D cache profilers are
+<a href="https://gist.github.com/jeanbza/cf59fa683a26f752bed492ecdce8d23e">here</a>.</p>
+
+<p>Here’s one of the benchmarks as an example:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ BIN</span><span class="o">=</span>./bench_out
+<span class="nv">$ FILTER</span><span class="o">=</span><span class="s1">'Next2_SteadyState/4096$'</span> <span class="c"># "Next" refers to kahan, "Next2" refers to simple</span>
+<span class="nv">$ </span>xcrun xctrace record <span class="nt">--template</span> <span class="s1">'CPU Counters'</span> <span class="nt">--recording-options</span> opts.json <span class="se">\</span>
+<span class="o">&gt;</span>   <span class="nt">--output</span> run.trace <span class="nt">--launch</span> <span class="nt">--</span> <span class="s2">"</span><span class="nv">$BIN</span><span class="s2">"</span> <span class="nt">--benchmark_filter</span><span class="o">=</span><span class="s2">"</span><span class="nv">$FILTER</span><span class="s2">"</span> <span class="nt">--benchmark_min_time</span><span class="o">=</span>0.5s
+Starting recording with the CPU Counters template. Launching process: bench_out.
+Ctrl-C to stop the recording
+Target app exited, ending recording...
+Recording completed. Saving output file...
+Output file saved as: run.trace
+<span class="nv">$ </span>xcrun xctrace <span class="nb">export</span> <span class="nt">--input</span> run.trace   <span class="nt">--xpath</span> <span class="s1">'/trace-toc/run[@number="1"]/data/table[@schema="MetricTable"]'</span> | python3 l1d.py
+  cycle                     7,402,673,255
+  ld_uop_spec                 644,880,380
+  st_uop_spec                   2,186,942
+  l1d_writeback                   263,618
+  l1d_miss_ld_spec                204,559
+  l1d_miss_st_spec                 32,693
+
+  L1D load miss rate:    0.032%
+</code></pre></div></div>
+
+<p>This shows that with n=4096, we see almost 0% cache misses. It’s in L1 the
+whole time, which makes sense since 4096 doubles is 32KiB, well below our 128KiB
+L1 cache size.</p>
+
+<p>Here’s a graph of a bunch of different sizes of n:</p>
+
+<p><img src="/assets/cachemiss.png" alt="Cachemiss" /></p>
+
+<p>As expected, we see a large jump in cache miss rate right at the 128KiB mark.</p>
+
+<p>So, we’re definitely hitting the cache until 128KiB / n=16384. So why are we
+seeing poor performance for n &gt;= 16?</p>
+
+<h2 id="cpu-cycles-and-simd">CPU cycles and SIMD</h2>
+
+<p>CPU cycles! The performance is bounded by the algorithm’s need for more CPU
+cycles, not by memory loading time. We’ve pretty much come full circle back to
+the fact that we’re talking about an O(n) algorithm vs an O(1) algorithm</p>
+
+<p>There is a trick that we can play to improve performance a bit and stretch to
+further from n~=16 to n~=64 matching Kahan summation performance:
+<a href="https://en.wikipedia.org/wiki/Single_instruction,_multiple_data">SIMD</a>.</p>
+
+<p>And thankfully clang does this for us. Let’s take this simpler loop program:</p>
+
+<div class="language-cpp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">$</span> <span class="n">cat</span> <span class="n">sum</span><span class="p">.</span><span class="n">cpp</span>
+<span class="kt">int</span>    <span class="nf">sum_int</span><span class="p">(</span><span class="k">const</span> <span class="kt">int</span><span class="o">*</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span>    <span class="p">{</span> <span class="kt">int</span>    <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>   <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="n">s</span> <span class="o">+=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="k">return</span> <span class="n">s</span><span class="p">;</span> <span class="p">}</span>
+<span class="kt">double</span> <span class="nf">sum_dbl</span><span class="p">(</span><span class="k">const</span> <span class="kt">double</span><span class="o">*</span> <span class="n">r</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span> <span class="kt">double</span> <span class="n">s</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span> <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">n</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="n">s</span> <span class="o">+=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="k">return</span> <span class="n">s</span><span class="p">;</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Compile and dump the assembly:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>clang++ <span class="nt">-O2</span> <span class="nt">-S</span> <span class="nt">-o</span> sum.s sum.cpp
+<span class="nv">$ </span><span class="nb">cat </span>sum.s
+...
+<span class="c"># int</span>
+ldp	q4, q5, <span class="o">[</span>x8, <span class="c">#-32]</span>
+ldp	q6, q7, <span class="o">[</span>x8], <span class="c">#64</span>
+add.4s	v0, v4, v0
+add.4s	v1, v5, v1
+add.4s	v2, v6, v2
+add.4s	v3, v7, v3
+subs	x12, x12, <span class="c">#16</span>
+b.ne	LBB0_7
+<span class="p">;</span> %bb.8:
+add.4s	v0, v1, v0
+add.4s	v0, v2, v0
+add.4s	v0, v3, v0
+addv.4s	s0, v0
+...
+<span class="c"># double</span>
+ldp   q1, q2, <span class="o">[</span>x10, <span class="c">#-32]</span>
+ldp   q5, q6, <span class="o">[</span>x10], <span class="c">#64</span>
+fadd  d0, d0, d1
+fadd  d0, d0, d3
+fadd  d0, d0, d2
+fadd  d0, d0, d4
+fadd  d0, d0, d5
+...
+</code></pre></div></div>
+
+<p>We can get a bit of a hint from the compiler about what happened there by asking
+the compiler to give us remarks:</p>
+
+<div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>clang++ <span class="nt">-O2</span> <span class="nt">-c</span> sum.cpp <span class="nt">-o</span> /dev/null   <span class="nt">-Rpass</span><span class="o">=</span>loop-vectorize
+sum.cpp:1:58: remark: vectorized loop <span class="o">(</span>vectorization width: 4, interleaved count: 4<span class="o">)</span> <span class="o">[</span><span class="nt">-Rpass</span><span class="o">=</span>loop-vectorize]
+    1 | int    sum_int<span class="o">(</span>const int<span class="k">*</span> r, int n<span class="o">)</span>    <span class="o">{</span> int    s <span class="o">=</span> 0<span class="p">;</span>   <span class="k">for</span> <span class="o">(</span>int <span class="nv">i</span><span class="o">=</span>0<span class="p">;</span>i&lt;n<span class="p">;</span>++i<span class="o">)</span> s +<span class="o">=</span> r[i]<span class="p">;</span> <span class="k">return </span>s<span class="p">;</span> <span class="o">}</span>
+      |                                                          ^
+sum.cpp:2:58: remark: vectorized loop <span class="o">(</span>vectorization width: 2, interleaved count: 4<span class="o">)</span> <span class="o">[</span><span class="nt">-Rpass</span><span class="o">=</span>loop-vectorize]
+    2 | double sum_dbl<span class="o">(</span>const double<span class="k">*</span> r, int n<span class="o">)</span> <span class="o">{</span> double s <span class="o">=</span> 0.0<span class="p">;</span> <span class="k">for</span> <span class="o">(</span>int <span class="nv">i</span><span class="o">=</span>0<span class="p">;</span>i&lt;n<span class="p">;</span>++i<span class="o">)</span> s +<span class="o">=</span> r[i]<span class="p">;</span> <span class="k">return </span>s<span class="p">;</span> <span class="o">}</span>
+      |
+</code></pre></div></div>
+
+<p>This is the loop vectoriser: https://llvm.org/docs/Vectorizers.html.</p>
+
+<p>I don’t at all pretend to understand CPU architecture and assembly well enough,
+but luckily we have AI agents that can help decipher this quickly.</p>
+
+<p><code class="language-plaintext highlighter-rouge">add.4s</code> is an <a href="https://developer.arm.com/community/arm-community-blogs/b/operating-systems-blog/posts/arm-neon-programming-quick-reference">AArch64 Neon</a> instruction.
+Here’s what I’m told it gets used to do:</p>
+
+<blockquote>
+  <p>The v registers are 128 bits wide, and .4s means “treat that as 4 separate
+32-bit ints”. So add.4s v0, v4, v0 does four additions at once — lane 0 plus
+lane 0, lane 1 plus lane 1, and so on — leaving 4 running totals in v0.</p>
+
+  <p>The two ldp (load pair) instructions pull 16 ints into v4–v7, and then four
+add.4s instructions consume them into four separate accumulators, v0–v3. Because
+no add depends on another’s result, the CPU runs all four at the same time
+instead of queueing them.</p>
+
+  <p>So each iteration handles 4 lanes × 4 accumulators = 16 ints, and the four
+adds execute concurrently. Afterwards, three more add.4s fold v1–v3 into v0, and
+a single addv.4s sums v0’s four lanes into the one number that gets returned.</p>
+</blockquote>
+
+<p>It didn’t do so with double. Or rather, it did get vectorised according to the
+compiler, but all the additions still happened serially. Presumably clang is
+worried about floating point precision when adding out of order.</p>
+
+<p>Either way, now we know why <code class="language-plaintext highlighter-rouge">int</code> is faster than <code class="language-plaintext highlighter-rouge">double</code> above, and also
+gained some intuition about cache locality and the criticality of focusing on
+algorithm runtime complexity.</p>]]></content><author><name></name></author><category term="c++" /><category term="algorithms" /><category term="memory" /><summary type="html"><![CDATA[Can cache locality and SIMD with a simple summation over a sliding window beat Kahan summation? (no)]]></summary></entry><entry><title type="html">An aligned memory allocator</title><link href="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html" rel="alternate" type="text/html" title="An aligned memory allocator" /><published>2026-09-24T02:55:23-06:00</published><updated>2026-09-24T02:55:23-06:00</updated><id>http://localhost:4000/c++/memory/2026/09/24/allocator-2</id><content type="html" xml:base="http://localhost:4000/c++/memory/2026/09/24/allocator-2.html"><![CDATA[<p>In <a href="/c++/memory/2026/09/24/allocator-1.html">“An unaligned memory allocator”</a>,
 we built a memory allocator that allocated memory to unaligned addresses.</p>
 
 <p>Is it fun getting nastygrams from clang and lldb about all your misaligned
@@ -1183,136 +1456,4 @@ them all off to be CI/CD’d with <code class="language-plaintext highlighter-ro
 
 <p>It makes use of <code class="language-plaintext highlighter-rouge">jj</code>’s
 <a href="https://jj-vcs.github.io/jj/latest/templates/">fantastic templating language</a>
-to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A small script that walks every mutable rev in the jj graph and lints as it goes.]]></summary></entry><entry><title type="html">A jj plugin for bash-it</title><link href="http://localhost:4000/jj/tooling/2025/10/06/jj-bash-it.html" rel="alternate" type="text/html" title="A jj plugin for bash-it" /><published>2025-10-06T02:55:23-06:00</published><updated>2025-10-06T02:55:23-06:00</updated><id>http://localhost:4000/jj/tooling/2025/10/06/jj-bash-it</id><content type="html" xml:base="http://localhost:4000/jj/tooling/2025/10/06/jj-bash-it.html"><![CDATA[<p>This is the first of a series of posts about <code class="language-plaintext highlighter-rouge">jj</code>. The next is
-<a href="/2025/10/16/jj-cleanall.html">A jj script to lint your entire graph</a>.</p>
-
-<hr />
-
-<p>I’ve been using <a href="https://github.com/jj-vcs/jj"><code class="language-plaintext highlighter-rouge">jj</code></a> instead of <code class="language-plaintext highlighter-rouge">git</code>, and it’s
-been great. One thing I really miss using <code class="language-plaintext highlighter-rouge">git</code>, though, is a nice terminal
-prompt that I get from <a href="https://github.com/Bash-it/bash-it"><code class="language-plaintext highlighter-rouge">bash-it</code></a>. So, I
-whipped up one for <code class="language-plaintext highlighter-rouge">jj</code>.</p>
-
-<p><img src="/assets/jj.png" alt="jj prompt" /></p>
-
-<p><em>Notice:</em> The prompt now prints |jj:<strong>ty</strong>mnqrpn - readme| and
-|jj:<strong>s</strong>ttyyssy|. The coloured short letters (ty, s) are the <code class="language-plaintext highlighter-rouge">jj</code> short prefix,
-the full 8 characters are the short rev, and the optional <code class="language-plaintext highlighter-rouge">- readme</code> show the
-bookmark associated with the rev if one exists.</p>
-
-<p>I thought I’d post it here if anyone else is looking for this:</p>
-
-<ol>
-  <li>
-    <p>Create <code class="language-plaintext highlighter-rouge">~/.bash_it/custom/jj.plugins.bash</code> with:</p>
-
-    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c"># ~/.bash_it/custom/jj.plugins.bash</span>
-
- <span class="c"># Set jj prompt to be enabled by default</span>
- <span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="k">:-</span><span class="nv">true</span><span class="k">}</span><span class="s2">"</span>
-
- <span class="c"># jj repo check</span>
- <span class="k">function </span>is_jj_repo <span class="o">{</span>
- <span class="k">if</span> <span class="o">[</span> <span class="nt">-d</span> <span class="s2">".jj"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
-     return </span>0
- <span class="k">else
-     return </span>1
- <span class="k">fi</span>
- <span class="o">}</span>
-
- <span class="c"># jj prompt</span>
- <span class="k">function </span>jj_prompt_info <span class="o">{</span>
- <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SCM_PROMPT_SHOW_JJ_PRIVATE_INFO</span><span class="s2">"</span> <span class="o">=</span> <span class="s2">"true"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then
-     </span><span class="nb">local </span>jj_info
-     <span class="nb">local </span>short_hash
-     <span class="nb">local </span>jj_bookmarks
-
-     <span class="c"># Get an 8-character short hash and bookmarks</span>
-     <span class="nv">short_hash</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'change_id.short(8)'</span> 2&gt;/dev/null<span class="si">)</span>
-     <span class="nv">jj_bookmarks</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'bookmarks.map(|b| b.name())'</span> 2&gt;/dev/null<span class="si">)</span>
-
-     <span class="c"># Exit if we couldn't get a hash</span>
-     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-z</span> <span class="s2">"</span><span class="nv">$short_hash</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
-     return
-     fi</span>
-
-     <span class="c"># --- FINAL DYNAMIC HIGHLIGHTING ---</span>
-     <span class="c"># Get the shortest unique prefix using the template you found</span>
-     <span class="nb">local </span><span class="nv">prefix</span><span class="o">=</span><span class="si">$(</span>jj log <span class="nt">-r</span> @ <span class="nt">--no-graph</span> <span class="nt">--template</span> <span class="s1">'self.change_id().shortest()'</span> 2&gt;/dev/null<span class="si">)</span>
-
-     <span class="c"># Fallback: if the command fails, default to the first character</span>
-     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-z</span> <span class="s2">"</span><span class="nv">$prefix</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
-     </span><span class="nv">prefix</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">short_hash</span>:0:1<span class="k">}</span><span class="s2">"</span>
-     <span class="k">fi</span>
-
-     <span class="c"># Determine the rest of the hash by removing the prefix</span>
-     <span class="nb">local </span><span class="nv">rest_of_hash</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">short_hash</span><span class="p">#</span><span class="nv">$prefix</span><span class="k">}</span><span class="s2">"</span>
-     <span class="nb">local </span><span class="nv">colored_hash</span><span class="o">=</span><span class="s2">"</span><span class="nv">$MAGENTA$prefix$WHITE$rest_of_hash</span><span class="s2">"</span>
-
-     <span class="c"># Build the base info string: always start with the hash</span>
-     <span class="nv">jj_info</span><span class="o">=</span><span class="s2">"</span><span class="nv">$colored_hash</span><span class="s2">"</span>
-
-     <span class="c"># If bookmarks exist, append them</span>
-     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$jj_bookmarks</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
-     </span><span class="nv">jj_info</span><span class="o">=</span><span class="s2">"</span><span class="nv">$jj_info</span><span class="s2"> - </span><span class="nv">$jj_bookmarks</span><span class="s2">"</span>
-     <span class="k">fi</span>
-
-     <span class="c"># Wrap in parentheses</span>
-     <span class="nv">jj_info</span><span class="o">=</span><span class="s2">"(</span><span class="nv">$jj_info</span><span class="s2">)"</span>
-
-     <span class="c"># --- ASTERISK LOGIC (UNCHANGED) ---</span>
-     <span class="nb">local </span><span class="nv">first_bookmark</span><span class="o">=</span><span class="s2">"</span><span class="k">${</span><span class="nv">jj_bookmarks</span><span class="p">%% *</span><span class="k">}</span><span class="s2">"</span>
-     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$first_bookmark</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
-     </span><span class="nb">local </span>any_diff
-     <span class="nv">any_diff</span><span class="o">=</span><span class="si">$(</span>jj diff <span class="nt">--summary</span> <span class="nt">--from</span> <span class="s2">"</span><span class="k">${</span><span class="nv">first_bookmark</span><span class="k">}</span><span class="s2">@origin"</span> 2&gt;/dev/null<span class="si">)</span>
-     <span class="k">if</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="s2">"</span><span class="nv">$any_diff</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
-         </span><span class="nv">jj_info</span><span class="o">=</span><span class="s2">"</span><span class="nv">$jj_info</span><span class="s2">*"</span>
-     <span class="k">fi
-     fi
-
-     </span><span class="nb">echo</span> <span class="nt">-e</span> <span class="s2">"</span><span class="k">${</span><span class="nv">SCM_THEME_PROMPT_PREFIX</span><span class="k">}${</span><span class="nv">jj_info</span><span class="k">}${</span><span class="nv">SCM_THEME_PROMPT_SUFFIX</span><span class="k">}</span><span class="s2">"</span>
- <span class="k">fi</span>
- <span class="o">}</span>
-</code></pre></div>    </div>
-  </li>
-  <li>
-    <p>Update <code class="language-plaintext highlighter-rouge">~/.bash_it/themes/&lt;theme&gt;/&lt;theme&gt;.bash</code> (ex
-<code class="language-plaintext highlighter-rouge">~/.bash_it/themes/sexy/sexy.bash</code>), amending the prompt_command:</p>
-
-    <div class="language-sh highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="k">function </span>prompt_command<span class="o">()</span> <span class="o">{</span>
- <span class="nb">local </span><span class="nv">scm_info</span><span class="o">=</span><span class="s2">""</span>
-
- <span class="c"># 1. Check if it is a JJ repo first (Priority)</span>
- <span class="c"># We use the 'is_jj_repo' function defined in your plugin.</span>
- <span class="k">if </span><span class="nb">type </span>is_jj_repo &amp;&gt;/dev/null <span class="o">&amp;&amp;</span> is_jj_repo<span class="p">;</span> <span class="k">then</span>
-     <span class="c"># If JJ, show ONLY JJ info (suppress Git)</span>
-     <span class="nv">scm_info</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="nv">$CYAN</span><span class="se">\]\$</span><span class="s2">(jj_prompt_info)"</span>
-        
- <span class="c"># 2. If not JJ, check if it is a Git repo</span>
- <span class="k">elif</span> <span class="o">[[</span> <span class="nt">-n</span> <span class="si">$(</span>git branch 2&gt; /dev/null<span class="si">)</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-     <span class="c"># If Git, show " on " + Git info</span>
-     <span class="nv">scm_info</span><span class="o">=</span><span class="s2">" on </span><span class="se">\[</span><span class="nv">$PURPLE</span><span class="se">\]\$</span><span class="s2">(parse_git_branch)"</span>
- <span class="k">fi</span>
-
- <span class="c"># Build the PS1 using the selected scm_info</span>
- <span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">MAGENTA</span><span class="k">}</span><span class="se">\]\u</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">at </span><span class="se">\[</span><span class="nv">$ORANGE</span><span class="se">\]\h</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="s2">in </span><span class="se">\[</span><span class="nv">$GREEN</span><span class="se">\]\w\[</span><span class="nv">$WHITE</span><span class="se">\]</span><span class="k">${</span><span class="nv">scm_info</span><span class="k">}</span><span class="se">\[</span><span class="nv">$WHITE</span><span class="se">\]\n\$</span><span class="s2"> </span><span class="se">\[</span><span class="nv">$RESET</span><span class="se">\]</span><span class="s2">"</span>
-
- <span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$SEXY_THEME_SHOW_PYTHON</span><span class="s2">"</span> <span class="o">=</span> <span class="nb">true</span> <span class="o">]</span> <span class="p">;</span> <span class="k">then
-     </span><span class="nv">PS1</span><span class="o">=</span><span class="s2">"</span><span class="se">\[</span><span class="k">${</span><span class="nv">BOLD</span><span class="k">}${</span><span class="nv">WHITE</span><span class="k">}</span><span class="se">\]</span><span class="si">$(</span>env_prompt<span class="si">)</span><span class="s2"> "</span><span class="nv">$PS1</span>
- <span class="k">fi</span>
- <span class="o">}</span>
-</code></pre></div>    </div>
-  </li>
-</ol>
-
-<p>And then you get some nice <code class="language-plaintext highlighter-rouge">jj</code> prompts!</p>
-
-<hr />
-
-<p><br />I’m also partial to the following <code class="language-plaintext highlighter-rouge">jj config edit --user</code>:</p>
-
-<div class="language-toml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">[</span><span class="n">revsets</span><span class="k">]</span>
-<span class="n">log</span> <span class="o">=</span><span class="w"> </span><span class="s">"present(@) | ancestors(mine() &amp; immutable_heads().., 2) | trunk()"</span>
-</code></pre></div></div>
-
-<p>That does a good job showing me <em>my</em> commits when I <code class="language-plaintext highlighter-rouge">jj log</code>.</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A bash-it plugin that surfaces jj repository state in your shell prompt.]]></summary></entry></feed>
+to walk the graph from oldgest to newest change, linting as it goes.</p>]]></content><author><name></name></author><category term="jj" /><category term="tooling" /><summary type="html"><![CDATA[A small script that walks every mutable rev in the jj graph and lints as it goes.]]></summary></entry></feed>
